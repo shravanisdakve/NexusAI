@@ -60,6 +60,19 @@ export const Textarea = React.forwardRef<HTMLTextAreaElement, React.TextareaHTML
     }
 );
 
+// Select Component
+export const Select = React.forwardRef<HTMLSelectElement, React.SelectHTMLAttributes<HTMLSelectElement>>(
+    ({ className, ...props }, ref) => {
+        return (
+            <select
+            ref={ref}
+            className={`w-full bg-slate-800 border border-slate-700 rounded-md py-2 px-3 text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-violet-500 transition-colors duration-200 ${className}`}
+            {...props}
+            />
+        );
+    }
+);
+
 // Spinner Component
 export const Spinner: React.FC = () => (
     <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
