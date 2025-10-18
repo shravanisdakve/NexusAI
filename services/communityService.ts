@@ -50,29 +50,33 @@ export const getRoom = async (id: string): Promise<StudyRoom | null> => {
 };
 
 export const addRoom = async (name: string, courseId: string, maxUsers: number, createdBy: string, university?: string): Promise<StudyRoom | null> => {
-    if (!db) return null;
-    try {
-        const roomsCollection = collection(db, 'rooms');
-        const newRoomData = {
-            name,
-            courseId,
-            maxUsers: Math.min(maxUsers, 10),
-            users: [],
-            createdBy,
-            university,
-            createdAt: serverTimestamp(),
-            pomodoro: {
-                state: 'stopped',
-                mode: 'focus',
-                startTime: 0,
-            },
-        };
-        const docRef = await addDoc(roomsCollection, newRoomData);
-        return { id: docRef.id, ...newRoomData } as StudyRoom;
-    } catch (error) {
-        console.error("Error adding room: ", error);
-        return null;
-    }
+    // Mock implementation since Firebase is disabled.
+    // This simulates creating a room and returns a mock room object.
+    console.log("Mocking room creation for:", name);
+    
+    // The user who is creating the room
+    const creator = {
+        email: auth.currentUser?.email || 'test@example.com',
+        displayName: auth.currentUser?.displayName || 'Test User'
+    };
+
+    const mockRoom: StudyRoom = {
+        id: `mock_${Date.now()}`, // Generate a unique mock ID
+        name,
+        courseId,
+        maxUsers,
+        createdBy,
+        university,
+        users: [creator], // Add the creator to the room
+        pomodoro: {
+            state: 'stopped',
+            mode: 'focus',
+            startTime: 0,
+        },
+    };
+    
+    // We use Promise.resolve to simulate an async operation
+    return Promise.resolve(mockRoom);
 };
 
 export const joinRoom = async (id: string, user: { email: string | null; displayName: string | null; }) => {
