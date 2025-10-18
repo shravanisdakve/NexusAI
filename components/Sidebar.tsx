@@ -1,6 +1,7 @@
 import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, MessageSquare, Share2, FileText, Code, BrainCircuit, LogOut, BarChart2, Users, ClipboardList } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
 
 const navigation = [
   { name: 'Study Hub', href: '/', icon: LayoutDashboard },
