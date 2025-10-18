@@ -13,6 +13,7 @@ import {
     Play, Pause, RefreshCw, PlusCircle, Trash2, User, Users, Star,
     BarChart, Clock, Brain, TrendingUp, TrendingDown, Edit3, Repeat
 } from 'lucide-react';
+import MyGoals from '../components/MyGoals';
 
 const formatSeconds = (seconds: number) => {
     if (seconds < 60) return `${seconds}s`;
@@ -332,78 +333,7 @@ const PomodoroTimer: React.FC = () => {
   );
 };
 
-const techniques = [
-    { 
-        name: 'Active Recall', 
-        description: 'Test your memory to strengthen it.',
-        icon: Brain,
-    },
-    {
-        name: 'Feynman Technique',
-        description: 'Explain it simply to find your knowledge gaps.',
-        icon: MessageSquare,
-    },
-    {
-        name: 'Spaced Repetition',
-        description: 'Review at increasing intervals for long-term retention.',
-        icon: Timer,
-    }
-];
 
-const LearningTechniques: React.FC = () => {
-    const navigate = useNavigate();
-    const [selectedTechnique, setSelectedTechnique] = useState(techniques[0].name);
-    const [topic, setTopic] = useState('');
-
-    const handleStart = () => {
-        if (topic.trim()) {
-            navigate('/tutor', { state: { technique: selectedTechnique, topic } });
-        }
-    };
-
-    return (
-        <div className="bg-slate-800/50 rounded-xl p-6 ring-1 ring-slate-700">
-            <h2 className="text-2xl font-bold text-slate-100 mb-4 flex items-center">
-                <Target className="w-6 h-6 mr-3 text-sky-400" />
-                Targeted Learning
-            </h2>
-            <p className="text-slate-400 mb-6">Choose a proven learning technique and a topic to start a focused session with the AI Tutor.</p>
-            
-            <div className="mb-6 space-y-3">
-                <label className="block text-sm font-medium text-slate-300">1. Choose a technique</label>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    {techniques.map(tech => (
-                        <button 
-                            key={tech.name} 
-                            onClick={() => setSelectedTechnique(tech.name)}
-                            className={`p-3 rounded-lg text-left transition-all duration-200 ring-2 ${selectedTechnique === tech.name ? 'bg-slate-700 ring-violet-500' : 'bg-slate-800 ring-transparent hover:ring-slate-600'}`}
-                        >
-                            <div className="flex items-center gap-2 mb-1">
-                                <tech.icon className="w-4 h-4 text-slate-300" />
-                                <h4 className="font-semibold text-sm text-slate-100">{tech.name}</h4>
-                            </div>
-                            <p className="text-xs text-slate-400">{tech.description}</p>
-                        </button>
-                    ))}
-                </div>
-            </div>
-
-            <div className="mb-6">
-                <label htmlFor="learning-topic" className="block text-sm font-medium text-slate-300 mb-2">2. Enter your topic</label>
-                <Input 
-                    id="learning-topic"
-                    value={topic}
-                    onChange={(e) => setTopic(e.target.value)}
-                    placeholder="e.g., Photosynthesis, JavaScript Promises"
-                />
-            </div>
-            
-            <Button onClick={handleStart} disabled={!topic.trim()} className="w-full">
-                Start Focused Session
-            </Button>
-        </div>
-    );
-};
 
 
 const StudyHub: React.FC = () => {
@@ -448,7 +378,7 @@ const StudyHub: React.FC = () => {
                     Go to Study Lobby
                 </Button>
             </div>
-             <LearningTechniques />
+             
             <div>
                  {mostUsedTool && (
                     <div className="mb-8">
@@ -474,6 +404,7 @@ const StudyHub: React.FC = () => {
 
         <div className="space-y-8">
           {showMoodCheckin && <MoodCheckin onMoodSelect={handleMoodSelected} />}
+          <MyGoals />
           <ProductivityInsights />
           <MyCourses />
           <PomodoroTimer />

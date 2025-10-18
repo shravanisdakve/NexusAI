@@ -42,6 +42,8 @@ export interface StudyRoom {
     users: { email: string; displayName: string }[];
     createdBy: string; // user email
     pomodoro?: PomodoroState;
+    technique?: string;
+    topic?: string;
 }
 
 export interface LeaderboardEntry {

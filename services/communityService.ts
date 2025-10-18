@@ -49,7 +49,7 @@ export const getRoom = async (id: string): Promise<StudyRoom | null> => {
     }
 };
 
-export const addRoom = async (name: string, courseId: string, maxUsers: number, createdBy: string, university?: string): Promise<StudyRoom | null> => {
+export const addRoom = async (name: string, courseId: string, maxUsers: number, createdBy: string, university: string | undefined, selectedTechnique: string, topic: string): Promise<StudyRoom | null> => {
     // Mock implementation since Firebase is disabled.
     // This simulates creating a room and returns a mock room object.
     console.log("Mocking room creation for:", name);
@@ -73,6 +73,8 @@ export const addRoom = async (name: string, courseId: string, maxUsers: number, 
             mode: 'focus',
             startTime: 0,
         },
+        technique: selectedTechnique,
+        topic: topic,
     };
     
     // We use Promise.resolve to simulate an async operation

@@ -89,6 +89,7 @@ const StudyRoom: React.FC = () => {
     const notesFileInputRef = useRef<HTMLInputElement>(null);
     const chatEndRef = useRef<HTMLDivElement>(null);
     const aiChatEndRef = useRef<HTMLDivElement>(null);
+    const welcomeMessageSent = useRef(false);
 
     // --- Effects for Setup and Teardown ---
     const getMedia = useCallback(async () => {
@@ -172,6 +173,14 @@ const StudyRoom: React.FC = () => {
     
     useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [chatMessages]);
     useEffect(() => { aiChatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [aiMessages, quiz]);
+
+    useEffect(() => {
+        if (room && room.technique && room.topic && !welcomeMessageSent.current) {
+            const welcomeMessage = `Welcome! This room is set up for a "Targeted Learning" session using the ${room.technique} technique on the topic: "${room.topic}". Let's get started!`
+            postSystemMessage(welcomeMessage);
+            welcomeMessageSent.current = true;
+        }
+    }, [room]);
 
     // --- Pomodoro Timer Effect ---
     useEffect(() => {
