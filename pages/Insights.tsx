@@ -8,9 +8,9 @@ import { getRooms, addRoom } from '../services/communityService';
 import { type Course, type StudyRoom } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { BarChart2, Users, Brain, Clock, HelpCircle, Trophy, Award, PlusCircle, ArrowRight, Building } from 'lucide-react';
+import CreateRoomModal from '../components/CreateRoomModal'; // Import the new modal
 
-// --- Reusable Components ---
-
+// ... (StatCard and BarChart components remain the same) ...
 const StatCard: React.FC<{ icon: React.ReactNode; label: string; value: string; }> = ({ icon, label, value }) => (
     <div className="bg-slate-800 p-4 rounded-lg flex items-center gap-4">
         <div className="bg-slate-700 p-3 rounded-md">{icon}</div>
@@ -35,8 +35,8 @@ const BarChart: React.FC<{ data: { label: string; value: number }[]; color: stri
     );
 };
 
-// --- Main Tabs ---
 
+// ... (PerformanceTab component remains the same) ...
 const PerformanceTab: React.FC = () => {
     const [courses, setCourses] = useState<Course[]>([]);
     const [selectedCourse, setSelectedCourse] = useState<string | null>(null);
@@ -142,12 +142,14 @@ const CommunityTab: React.FC = () => {
     const [rooms, setRooms] = useState<StudyRoom[]>([]);
     const [courses, setCourses] = useState<Course[]>([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isCreateModalOpen, setCreateModalOpen] = useState(false); // State for the new modal
     const [newRoomName, setNewRoomName] = useState('');
     const [newRoomCourse, setNewRoomCourse] = useState('');
     const [newRoomLimit, setNewRoomLimit] = useState(5);
     const [roomFilter, setRoomFilter] = useState<'myUniversity' | 'all'>('myUniversity');
     const [isLoading, setIsLoading] = useState(true);
     
+    // ... (useEffect and handleCreateRoom remain the same) ...
     useEffect(() => {
         const fetchData = async () => {
             setIsLoading(true);
@@ -179,7 +181,7 @@ const CommunityTab: React.FC = () => {
             }
         }
     }
-    
+
     const filteredRooms = rooms.filter(room => {
         if (roomFilter === 'all') return true;
         if (roomFilter === 'myUniversity') return room.university === currentUser?.university;
@@ -187,94 +189,84 @@ const CommunityTab: React.FC = () => {
     });
 
     return (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-2 space-y-6">
-                <div className="flex justify-between items-center">
-                    <h2 className="text-2xl font-bold">Public Study Rooms</h2>
-                    <Button onClick={() => setIsModalOpen(true)}><PlusCircle size={16} className="mr-2"/> Create Room</Button>
-                </div>
-
-                <div className="flex items-center gap-2 p-1 bg-slate-900 rounded-lg">
-                    <button onClick={() => setRoomFilter('myUniversity')} className={`flex-1 py-1.5 text-sm font-semibold rounded-md transition-colors ${roomFilter === 'myUniversity' ? 'bg-violet-600 text-white' : 'text-slate-300 hover:bg-slate-700'}`}>
-                        My University
-                    </button>
-                    <button onClick={() => setRoomFilter('all')} className={`flex-1 py-1.5 text-sm font-semibold rounded-md transition-colors ${roomFilter === 'all' ? 'bg-violet-600 text-white' : 'text-slate-300 hover:bg-slate-700'}`}>
-                        All Rooms
-                    </button>
-                </div>
-                
-                <div className="space-y-4">
-                    {filteredRooms.map(room => (
-                        <div key={room.id} className="bg-slate-800 p-4 rounded-lg flex justify-between items-center">
-                            <div>
-                                <h3 className="font-bold text-white">{room.name}</h3>
-                                <div className="flex items-center gap-4 text-sm text-slate-400">
-                                    <span>{courses.find(c=>c.id === room.courseId)?.name}</span>
-                                    {room.university && (
-                                        <div className="flex items-center gap-1.5">
-                                            <Building size={14} />
-                                            <span>{room.university}</span>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                            <div className="flex items-center gap-6">
-                                <div className="flex items-center gap-2 text-sm">
-                                    <Users size={16} />
-                                    <span>{room.users.length} / {room.maxUsers}</span>
-                                </div>
-                                <Button onClick={() => navigate(`/study-room/${room.id}`)} disabled={room.users.length >= room.maxUsers} className="py-2 px-4 text-sm">
-                                    Join <ArrowRight size={14} className="ml-1"/>
-                                </Button>
-                            </div>
-                        </div>
-                    ))}
-                    {filteredRooms.length === 0 && (
-                        <p className="text-slate-400 text-center py-8">
-                            {roomFilter === 'myUniversity' ? "No rooms found for your university. Be the first to create one!" : "No public rooms available. Why not create one?"}
-                        </p>
-                    )}
-                </div>
-            </div>
-            <div>
-                 <h2 className="text-2xl font-bold mb-6">Leaderboard</h2>
-                 <div className="space-y-3">
-                    {leaderboard.map((user, index) => (
-                        <div key={user.email} className="bg-slate-800 p-3 rounded-lg flex items-center gap-4">
-                            <span className="font-bold text-slate-500 w-6 text-center">{index + 1}</span>
-                            <img src={`https://ui-avatars.com/api/?name=${user.displayName}&background=random`} alt="avatar" className="w-9 h-9 rounded-full"/>
-                            <div className="flex-1">
-                                <p className="font-semibold text-white truncate">{user.displayName}</p>
-                                <p className="text-xs text-slate-400">{Math.floor(user.studyTime / 60)} min studied</p>
-                            </div>
-                            <div className="text-right">
-                                <p className="font-mono text-violet-400 text-lg font-bold">{user.quizScore}%</p>
-                                <p className="text-xs text-slate-400">{user.quizCount} quizzes</p>
-                            </div>
-                        </div>
-                    ))}
-                 </div>
-            </div>
-             <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Create a New Study Room">
-                <form onSubmit={handleCreateRoom} className="space-y-4">
-                    <Input type="text" placeholder="Room Name" value={newRoomName} onChange={e => setNewRoomName(e.target.value)} required autoFocus />
-                    <select value={newRoomCourse} onChange={e => setNewRoomCourse(e.target.value)} className="w-full bg-slate-800 border border-slate-700 rounded-md py-3 px-4" required>
-                        <option disabled value="">Select a Course</option>
-                        {courses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                    </select>
-                    <div>
-                        <label className="text-sm text-slate-300">User Limit: {newRoomLimit}</label>
-                        <input type="range" min="2" max="5" value={newRoomLimit} onChange={e => setNewRoomLimit(parseInt(e.target.value))} className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer"/>
+        <>
+            <CreateRoomModal isOpen={isCreateModalOpen} onClose={() => setCreateModalOpen(false)} />
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div className="lg:col-span-2 space-y-6">
+                    <div className="flex justify-between items-center">
+                        <h2 className="text-2xl font-bold">Public Study Rooms</h2>
+                        <Button onClick={() => setCreateModalOpen(true)}><PlusCircle size={16} className="mr-2"/> Create Room</Button>
                     </div>
-                    <Button type="submit" className="w-full">Create and Join</Button>
-                </form>
-            </Modal>
-        </div>
+
+                    {/* ... (rest of the CommunityTab JSX) ... */}
+                    <div className="flex items-center gap-2 p-1 bg-slate-900 rounded-lg">
+                        <button onClick={() => setRoomFilter('myUniversity')} className={`flex-1 py-1.5 text-sm font-semibold rounded-md transition-colors ${roomFilter === 'myUniversity' ? 'bg-violet-600 text-white' : 'text-slate-300 hover:bg-slate-700'}`}>
+                            My University
+                        </button>
+                        <button onClick={() => setRoomFilter('all')} className={`flex-1 py-1.5 text-sm font-semibold rounded-md transition-colors ${roomFilter === 'all' ? 'bg-violet-600 text-white' : 'text-slate-300 hover:bg-slate-700'}`}>
+                            All Rooms
+                        </button>
+                    </div>
+                    
+                    <div className="space-y-4">
+                        {filteredRooms.map(room => (
+                            <div key={room.id} className="bg-slate-800 p-4 rounded-lg flex justify-between items-center">
+                                <div>
+                                    <h3 className="font-bold text-white">{room.name}</h3>
+                                    <div className="flex items-center gap-4 text-sm text-slate-400">
+                                        <span>{courses.find(c=>c.id === room.courseId)?.name}</span>
+                                        {room.university && (
+                                            <div className="flex items-center gap-1.5">
+                                                <Building size={14} />
+                                                <span>{room.university}</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-6">
+                                    <div className="flex items-center gap-2 text-sm">
+                                        <Users size={16} />
+                                        <span>{room.users.length} / {room.maxUsers}</span>
+                                    </div>
+                                    <Button onClick={() => navigate(`/study-room/${room.id}`)} disabled={room.users.length >= room.maxUsers} className="py-2 px-4 text-sm">
+                                        Join <ArrowRight size={14} className="ml-1"/>
+                                    </Button>
+                                </div>
+                            </div>
+                        ))}
+                        {filteredRooms.length === 0 && (
+                            <p className="text-slate-400 text-center py-8">
+                                {roomFilter === 'myUniversity' ? "No rooms found for your university. Be the first to create one!" : "No public rooms available. Why not create one?"}
+                            </p>
+                        )}
+                    </div>
+                </div>
+                <div>
+                     <h2 className="text-2xl font-bold mb-6">Leaderboard</h2>
+                     <div className="space-y-3">
+                        {leaderboard.map((user, index) => (
+                            <div key={user.email} className="bg-slate-800 p-3 rounded-lg flex items-center gap-4">
+                                <span className="font-bold text-slate-500 w-6 text-center">{index + 1}</span>
+                                <img src={`https://ui-avatars.com/api/?name=${user.displayName}&background=random`} alt="avatar" className="w-9 h-9 rounded-full"/>
+                                <div className="flex-1">
+                                    <p className="font-semibold text-white truncate">{user.displayName}</p>
+                                    <p className="text-xs text-slate-400">{Math.floor(user.studyTime / 60)} min studied</p>
+                                </div>
+                                <div className="text-right">
+                                    <p className="font-mono text-violet-400 text-lg font-bold">{user.quizScore}%</p>
+                                    <p className="text-xs text-slate-400">{user.quizCount} quizzes</p>
+                                </div>
+                            </div>
+                        ))}
+                     </div>
+                </div>
+            </div>
+        </>
     );
 };
 
 
-// --- Main Component ---
+// ... (Main Insights component remains the same) ...
 const Insights: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'performance' | 'community'>('performance');
 
