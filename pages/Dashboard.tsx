@@ -75,13 +75,6 @@ const ProductivityInsights: React.FC = () => {
                 </div>
                 <span className="font-mono text-white">{report.quizAccuracy}%</span>
             </div>
-             <div className="flex justify-between items-center text-sm bg-slate-800 p-3 rounded-lg">
-                <div className="flex items-center gap-2">
-                    <Timer size={16} className="text-slate-400" />
-                    <span className="font-medium text-slate-300">Focus Sessions</span>
-                </div>
-                <span className="font-mono text-white">{report.completedPomodoros}</span>
-            </div>
         </div>
         )}
         <Link to="/insights">
@@ -238,101 +231,6 @@ const ToolsGrid: React.FC = () => (
     </div>
 );
 
-const PomodoroTimer: React.FC = () => {
-  const [minutes, setMinutes] = useState(25);
-  const [seconds, setSeconds] = useState(0);
-  const [isActive, setIsActive] = useState(false);
-  const [isBreak, setIsBreak] = useState(false);
-  const [timer, setTimer] = useState<ReturnType<typeof setInterval> | null>(null);
-  const [breakSuggestion, setBreakSuggestion] = useState('');
-
-  useEffect(() => {
-    if (isActive) {
-      const newTimer = setInterval(() => {
-        if (seconds > 0) {
-          setSeconds(s => s - 1);
-        } else if (minutes > 0) {
-          setMinutes(m => m - 1);
-          setSeconds(59);
-        } else {
-          // Timer finished
-          if (timer) clearInterval(timer);
-          setIsActive(false);
-           if (!isBreak) {
-             recordPomodoroCycle();
-           }
-          const nextIsBreak = !isBreak;
-          setIsBreak(nextIsBreak);
-          setMinutes(nextIsBreak ? 5 : 25);
-          setSeconds(0);
-          if (Notification.permission === "granted") {
-            new Notification(nextIsBreak ? "Time for a break!" : "Time to focus!");
-          }
-          if (nextIsBreak) {
-            setBreakSuggestion(getBreakActivitySuggestion());
-          }
-        }
-      }, 1000);
-      setTimer(newTimer);
-    } else {
-      if (timer) clearInterval(timer);
-    }
-
-    return () => { if (timer) clearInterval(timer) };
-  }, [isActive, seconds, minutes, isBreak, timer]);
-
-  const toggleTimer = () => {
-    if (Notification.permission === 'default') {
-       Notification.requestPermission();
-    }
-    setIsActive(!isActive);
-  };
-
-  const resetTimer = () => {
-    if (timer) clearInterval(timer);
-    setIsActive(false);
-    setIsBreak(false);
-    setMinutes(25);
-    setSeconds(0);
-  };
-
-  const timeDisplay = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-
-  return (
-    <>
-        <div className={`bg-slate-800/50 rounded-xl p-6 ring-1 ring-slate-700 ${isBreak ? 'ring-sky-500' : 'ring-violet-500'}`}>
-            <div className="flex items-center justify-between mb-4">
-                <h3 className="text-xl font-bold text-slate-100 flex items-center"><Timer className="w-6 h-6 mr-3 text-violet-400" /> Pomodoro Timer</h3>
-                <span className={`text-sm font-semibold px-3 py-1 rounded-full ${isBreak ? 'bg-sky-900/70 text-sky-300' : 'bg-violet-900/70 text-violet-300'}`}>
-                    {isBreak ? 'Break Time' : 'Focus Session'}
-                </span>
-            </div>
-            <div className="text-center my-6">
-                <p className="text-7xl font-bold font-mono tracking-tighter text-slate-100">{timeDisplay}</p>
-            </div>
-            <div className="flex items-center justify-center space-x-4">
-                <button onClick={resetTimer} className="p-3 bg-slate-700/50 hover:bg-slate-700 rounded-full text-slate-300 transition-colors">
-                    <RefreshCw className="w-6 h-6" />
-                </button>
-                <button onClick={toggleTimer} className={`p-4 rounded-full text-white transition-all duration-300 ${isActive ? 'bg-amber-600 hover:bg-amber-700' : 'bg-violet-600 hover:bg-violet-700'}`}>
-                    {isActive ? <Pause className="w-8 h-8" /> : <Play className="w-8 h-8" />}
-                </button>
-                <div className="w-12 h-12"></div>
-            </div>
-        </div>
-        <Modal isOpen={!!breakSuggestion} onClose={() => setBreakSuggestion('')} title="Break Time Suggestion">
-            <div className="text-center">
-                <Lightbulb className="mx-auto h-12 w-12 text-yellow-400 mb-4" />
-                <p className="text-slate-300 text-lg my-4">{breakSuggestion}</p>
-                <Button onClick={() => setBreakSuggestion('')} className="w-full mt-2">
-                    Got it!
-                </Button>
-            </div>
-      </Modal>
-    </>
-  );
-};
-
 
 
 
@@ -407,7 +305,6 @@ const StudyHub: React.FC = () => {
           <MyGoals />
           <ProductivityInsights />
           <MyCourses />
-          <PomodoroTimer />
         </div>
       </div>
     </div>
