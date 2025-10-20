@@ -128,6 +128,12 @@ const MyCourses: React.FC = () => {
                 <BookOpen className="w-6 h-6 mr-3 text-violet-400" /> My Courses
             </h3>
             <div className="space-y-2">
+                {isLoading && <p className="text-slate-400 text-center">Loading courses...</p>}
+                {!isLoading && courses.length === 0 && !isAdding && (
+                    <div className="text-center py-4">
+                        <p className="text-slate-400 mb-4">You haven't added any courses yet. Add one to get started!</p>
+                    </div>
+                )}
                 {courses.map(course => (
                     <div key={course.id} className="group flex items-center justify-between bg-slate-800 p-3 rounded-lg">
                         <div className="flex items-center">

@@ -98,6 +98,7 @@ const StudyRoom: React.FC = () => {
     const chatEndRef = useRef<HTMLDivElement>(null);
     const aiChatEndRef = useRef<HTMLDivElement>(null);
     const prevParticipantsRef = useRef<StudyRoomType['users']>([]);
+    const welcomeMessageSent = useRef(false);
 
     useEffect(() => {
         if (room) {
@@ -212,7 +213,7 @@ const StudyRoom: React.FC = () => {
             postSystemMessage(welcomeMessage);
             welcomeMessageSent.current = true;
         }
-    }, [room]);
+    }, [room, postSystemMessage]);
 
     // --- Pomodoro Timer Effect ---
     useEffect(() => {
@@ -257,7 +258,10 @@ const StudyRoom: React.FC = () => {
         setIsCameraOn(prev => !prev);
     };
 
-    const handleHangUp = () => {
+    const handleHangUp = async () => {
+        if (roomId && currentUser) {
+            await leaveRoom(roomId, currentUser);
+        }
         localStream?.getTracks().forEach(track => track.stop());
         navigate('/study-lobby');
     };
@@ -348,7 +352,7 @@ const StudyRoom: React.FC = () => {
         setChatInput('');
     };
 
-     const postSystemMessage = async (text: string) => {
+     const postSystemMessage = useCallback(async (text: string) => {
         if (!roomId) return;
         const systemMessage: ChatMessage = {
             role: 'model',
@@ -356,7 +360,7 @@ const StudyRoom: React.FC = () => {
             user: { displayName: 'Focus Bot', email: 'system@nexus.ai' },
         };
         await saveRoomMessages(roomId, [systemMessage]);
-    };
+    }, [roomId]);
 
     // --- Pomodoro Handlers ---
     const handleStartTimer = async () => {

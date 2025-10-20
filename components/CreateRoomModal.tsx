@@ -27,6 +27,7 @@ const CreateRoomModal: React.FC<CreateRoomModalProps> = ({ isOpen, onClose }) =>
     const [userLimit, setUserLimit] = useState(5);
     const [selectedTechnique, setSelectedTechnique] = useState(techniques[0].name);
     const [topic, setTopic] = useState('');
+    const [isCreatingRoom, setIsCreatingRoom] = useState(false);
 
     const handleModeSelect = (mode: RoomMode) => {
         setSelectedMode(mode);
@@ -42,17 +43,19 @@ const CreateRoomModal: React.FC<CreateRoomModalProps> = ({ isOpen, onClose }) =>
     };
 
     const handleCreateRoom = async (mode: RoomMode, maxUsers: number) => {
-        if (!currentUser?.email) {
+        if (!currentUser?.email || isCreatingRoom) {
             return;
         }
+        setIsCreatingRoom(true);
 
         const roomName = `${currentUser.displayName}'s ${mode} Room`;
-        const newRoom = await addRoom(roomName, 'general', maxUsers, currentUser.email, currentUser.university);
+        const newRoom = await addRoom(roomName, 'general', maxUsers, currentUser.email, currentUser.university, selectedTechnique, topic);
         
         if (newRoom) {
             navigate(`/study-room/${newRoom.id}`);
         }
         handleClose();
+        setIsCreatingRoom(false);
     };
     
     const handleClose = () => {
@@ -127,7 +130,7 @@ const CreateRoomModal: React.FC<CreateRoomModalProps> = ({ isOpen, onClose }) =>
                 placeholder="Enter your topic (e.g., Photosynthesis)"
             />
             
-            <Button onClick={handleTechniqueSelect} disabled={!topic.trim()} className="w-full">
+            <Button onClick={handleTechniqueSelect} disabled={!topic.trim() || (isCreatingRoom && selectedMode === 'Solo')} className="w-full" isLoading={isCreatingRoom && selectedMode === 'Solo'}>
                 Next
             </Button>
         </div>
@@ -160,7 +163,7 @@ const CreateRoomModal: React.FC<CreateRoomModalProps> = ({ isOpen, onClose }) =>
                 </div>
             </div>
 
-            <Button onClick={() => handleCreateRoom(selectedMode!, userLimit)} className="w-full">
+            <Button onClick={() => handleCreateRoom(selectedMode!, userLimit)} className="w-full" isLoading={isCreatingRoom}>
                 Create and Join Room
             </Button>
         </div>
