@@ -21,14 +21,23 @@ const StatCard: React.FC<{ icon: React.ReactNode; label: string; value: string; 
     </div>
 );
 
-const BarChart: React.FC<{ data: { label: string; value: number }[]; color: string }> = ({ data, color }) => {
+const TopicMasteryChart: React.FC<{ data: { label: string; value: number }[]; onFindRoom: (topic: string) => void }> = ({ data, onFindRoom }) => {
     const maxValue = Math.max(...data.map(d => d.value), 1);
     return (
-        <div className="flex justify-around items-end h-48 p-4 bg-slate-800 rounded-lg">
+        <div className="space-y-2">
             {data.map(d => (
-                <div key={d.label} className="flex flex-col items-center w-1/4">
-                    <div className="w-8 rounded-t-md" style={{ height: `${(d.value / maxValue) * 100}%`, backgroundColor: color }}></div>
-                    <p className="text-xs text-slate-400 mt-2 truncate">{d.label}</p>
+                <div key={d.label} className="flex items-center gap-2 p-2 bg-slate-800 rounded-lg">
+                    <div className="w-1/3 text-xs text-slate-400 truncate">{d.label}</div>
+                    <div className="w-2/3 bg-slate-700 rounded-full h-2.5">
+                        <div className="bg-sky-500 h-2.5 rounded-full" style={{ width: `${d.value}%` }}></div>
+                    </div>
+                    <div className="w-16 text-right text-xs font-mono">{d.value}%</div>
+                    {d.value < 60 && (
+                        <Button size="sm" variant="outline" onClick={() => onFindRoom(d.label)}>
+                            <Users size={14} className="mr-1" />
+                            Find Room
+                        </Button>
+                    )}
                 </div>
             ))}
         </div>
@@ -44,7 +53,7 @@ const PerformanceTab: React.FC = () => {
     const [suggestions, setSuggestions] = useState('');
     const [isLoading, setIsLoading] = useState(true);
     const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
-    const [suggestionsError, setSuggestionsError] = useState<string | null>(null);
+    const navigate = useNavigate();
 
     useEffect(() => {
         const fetchCourses = async () => {
@@ -128,7 +137,7 @@ const PerformanceTab: React.FC = () => {
                 </div>
                 <div>
                     <h3 className="font-bold mb-2">Topic Mastery</h3>
-                    <BarChart data={topicData} color="#38bdf8" />
+                    <TopicMasteryChart data={topicData} onFindRoom={(topic) => navigate('/study-lobby', { state: { topic } })} />
                 </div>
              </div>
         </div>

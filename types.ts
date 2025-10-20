@@ -1,6 +1,22 @@
 
 
 
+export interface Flashcard {
+    id: string;
+    front: string;
+    back: string;
+    bucket: number;
+    lastReview: number; // timestamp
+}
+
+export interface Quiz {
+    id: string;
+    question: string;
+    options: string[];
+    correctOptionIndex: number;
+    answers: { userId: string, displayName: string, answerIndex: number }[];
+}
+
 export interface ChatMessage {
   role: 'user' | 'model';
   parts: { text: string }[];

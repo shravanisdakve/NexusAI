@@ -6,7 +6,7 @@ import CourseSelector from '../components/CourseSelector';
 import { type ChatMessage } from '../types';
 import { streamChat, generateQuizQuestion } from '../services/geminiService';
 import { trackToolUsage } from '../services/personalizationService';
-import { startSession, endSession, recordQuizResult } from '../services/analyticsService';
+import { startSession, endSession, recordQuizResult, getProductivityReport } from '../services/analyticsService';
 import { Bot, User, Send, Mic, Volume2, VolumeX, Lightbulb } from 'lucide-react';
 
 interface Quiz {
@@ -50,7 +50,7 @@ const ChatItem: React.FC<{ message: ChatMessage; onSpeak: (text: string) => void
 
 const AiTutor: React.FC = () => {
     const [messages, setMessages] = useState<ChatMessage[]>([
-        { role: 'model', parts: [{ text: "Hello! I'm your AI Tutor. What subject are we diving into today?" }] }
+        { role: 'model', parts: [{ text: "Hello! I'm your AI Tutor. Analyzing your recent performance..." }] }
     ]);
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -70,6 +70,7 @@ const AiTutor: React.FC = () => {
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const location = useLocation();
     const navigate = useNavigate();
+    const proactiveMessageSent = useRef(false);
 
     useEffect(() => {
         trackToolUsage('tutor');
@@ -87,6 +88,21 @@ const AiTutor: React.FC = () => {
     }, [selectedCourse]);
 
     useEffect(() => {
+        const checkForProactiveMessage = async () => {
+            if (proactiveMessageSent.current) return;
+
+            const report = await getProductivityReport();
+            let initialPrompt = "Hello! I'm your AI Tutor. What subject are we diving into today?";
+
+            if (report && report.weaknesses && report.weaknesses.length > 0) {
+                const weakestTopic = report.weaknesses[0];
+                initialPrompt = `Hello! I'm your AI Tutor. I noticed your quiz accuracy in '${weakestTopic.topic}' is around ${weakestTopic.accuracy}%. Would you like to review it? We could try the Feynman Technique, or I can quiz you to practice active recall.`;
+            }
+            
+            setMessages([{ role: 'model', parts: [{ text: initialPrompt }] }]);
+            proactiveMessageSent.current = true;
+        };
+
         if (location.state?.technique && location.state?.topic) {
             const { technique, topic } = location.state;
             let initialPrompt = '';
@@ -106,7 +122,16 @@ const AiTutor: React.FC = () => {
             if (initialPrompt) {
                 setMessages([{ role: 'model', parts: [{ text: initialPrompt }] }]);
                 navigate(location.pathname, { replace: true, state: {} });
+                proactiveMessageSent.current = true;
             }
+        } else if (location.state?.noteContent) {
+            const { noteContent } = location.state;
+            const initialPrompt = `I see you want to study this note:\n\n---\n${noteContent}\n---\n\nWhat would you like to do? We can summarize it, I can quiz you on it, or you can ask me questions.`;
+            setMessages([{ role: 'model', parts: [{ text: initialPrompt }] }]);
+            navigate(location.pathname, { replace: true, state: {} });
+            proactiveMessageSent.current = true;
+        } else {
+            checkForProactiveMessage();
         }
     }, [location.state, navigate]);
 

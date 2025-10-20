@@ -1,4 +1,4 @@
-import { type StudyRoom, type ChatMessage, type PomodoroState } from '../types';
+import { type StudyRoom, type ChatMessage, type PomodoroState, type Quiz } from '../types';
 import { db, auth, storage } from '../firebase';
 import {
     collection,
@@ -279,4 +279,45 @@ export const onResourcesUpdate = (roomId: string, callback: (resources: any[]) =
     getRoomResources(roomId).then(callback);
 
     return () => clearInterval(interval);
+};
+
+// --- Shared Quiz Management ---
+
+const getQuizDoc = (roomId: string) => {
+    if (!db) throw new Error("Firestore not initialized");
+    return doc(db, `rooms/${roomId}/quiz`, 'current_quiz');
+}
+
+export const onQuizUpdate = (roomId: string, callback: (quiz: Quiz | null) => void) => {
+    if (!db) return () => {};
+    return onSnapshot(getQuizDoc(roomId), (snapshot) => {
+        if (snapshot.exists()) {
+            callback(snapshot.data() as Quiz);
+        } else {
+            callback(null);
+        }
+    });
+};
+
+export const saveQuiz = async (roomId: string, quizData: Omit<Quiz, 'id' | 'answers'>) => {
+    if (!db) return;
+    const quiz: Quiz = {
+        ...quizData,
+        id: `quiz_${Date.now()}`,
+        answers: [],
+    };
+    await setDoc(getQuizDoc(roomId), quiz);
+};
+
+export const saveQuizAnswer = async (roomId: string, userId: string, displayName: string, answerIndex: number) => {
+    if (!db) return;
+    const answer = { userId, displayName, answerIndex, timestamp: serverTimestamp() };
+    await updateDoc(getQuizDoc(roomId), {
+        answers: arrayUnion(answer)
+    });
+};
+
+export const clearQuiz = async (roomId: string) => {
+    if (!db) return;
+    await deleteDoc(getQuizDoc(roomId));
 };

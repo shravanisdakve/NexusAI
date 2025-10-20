@@ -1,9 +1,12 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { PageHeader, Button, Input } from '../components/ui';
 import { useAuth } from '../contexts/AuthContext';
 import { ArrowRight, PlusCircle, Users } from 'lucide-react';
 import CreateRoomModal from '../components/CreateRoomModal'; // Import the new modal
+import { getRooms } from '../services/communityService';
+import { getCourses } from '../services/courseService';
+import { type StudyRoom, type Course } from '../types';
 
 const StudyLobby: React.FC = () => {
     const navigate = useNavigate();
@@ -11,6 +14,29 @@ const StudyLobby: React.FC = () => {
     const [joinId, setJoinId] = useState('');
     const [error, setError] = useState('');
     const [isCreateModalOpen, setCreateModalOpen] = useState(false); // State for the modal
+    const [rooms, setRooms] = useState<StudyRoom[]>([]);
+    const [filteredRooms, setFilteredRooms] = useState<StudyRoom[]>([]);
+    const [courses, setCourses] = useState<Course[]>([]);
+    const location = useLocation();
+
+    useEffect(() => {
+        const fetchRooms = async () => {
+            const allRooms = await getRooms();
+            const allCourses = await getCourses();
+            setRooms(allRooms);
+            setCourses(allCourses);
+
+            const topic = location.state?.topic;
+            if (topic) {
+                const courseIds = allCourses.filter(c => c.name.toLowerCase().includes(topic.toLowerCase())).map(c => c.id);
+                const filtered = allRooms.filter(r => courseIds.includes(r.courseId));
+                setFilteredRooms(filtered);
+            } else {
+                setFilteredRooms(allRooms);
+            }
+        };
+        fetchRooms();
+    }, [location.state]);
 
     const handleJoinRoom = (e: React.FormEvent) => {
         e.preventDefault();
@@ -57,15 +83,31 @@ const StudyLobby: React.FC = () => {
                     </div>
 
                     {error && <p className="text-red-400 mt-6">{error}</p>}
-                    
-                     <div className="mt-12 p-4 bg-slate-800 rounded-lg">
-                        <h4 className="font-semibold text-slate-200">How to use:</h4>
-                        <ul className="text-sm text-slate-400 list-disc list-inside mt-2 text-left space-y-1">
-                            <li>Click "Create Room" to generate a new room and automatically join it.</li>
-                            <li>Use the "Copy ID" button inside the room to share the link with friends.</li>
-                            <li>Your friends can paste the ID on this page to join your session.</li>
-                            <li>Use the integrated AI to look up concepts or quiz yourselves as a group!</li>
-                        </ul>
+
+                    <div className="mt-12">
+                        <h3 className="text-2xl font-bold text-white mb-4">Public Study Rooms</h3>
+                        <div className="space-y-4">
+                            {filteredRooms.map(room => (
+                                <div key={room.id} className="bg-slate-800 p-4 rounded-lg flex justify-between items-center">
+                                    <div>
+                                        <h4 className="font-bold text-white">{room.name}</h4>
+                                        <p className="text-sm text-slate-400">{courses.find(c => c.id === room.courseId)?.name}</p>
+                                    </div>
+                                    <div className="flex items-center gap-4">
+                                        <div className="flex items-center gap-2 text-sm">
+                                            <Users size={16} />
+                                            <span>{room.users.length} / {room.maxUsers}</span>
+                                        </div>
+                                        <Button onClick={() => navigate(`/study-room/${room.id}`)} disabled={room.users.length >= room.maxUsers} className="py-2 px-4 text-sm">
+                                            Join <ArrowRight size={14} className="ml-1"/>
+                                        </Button>
+                                    </div>
+                                </div>
+                            ))}
+                            {filteredRooms.length === 0 && (
+                                <p className="text-slate-400 text-center py-8">No public rooms available for this topic.</p>
+                            )}
+                        </div>
                     </div>
                 </div>
             </div>

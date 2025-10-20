@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { type ChatMessage, type StudyRoom as StudyRoomType, type PomodoroState } from '../types';
+import { type ChatMessage, type StudyRoom as StudyRoomType, type PomodoroState, type Quiz as SharedQuiz } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import {
     onRoomUpdate,
@@ -16,6 +16,10 @@ import {
     uploadResource,
     deleteResource,
     onResourcesUpdate,
+    onQuizUpdate,
+    saveQuiz,
+    saveQuizAnswer,
+    clearQuiz,
 } from '../services/communityService';
 import { streamStudyBuddyChat, generateQuizQuestion, extractTextFromFile } from '../services/geminiService';
 import { startSession, endSession, recordQuizResult } from '../services/analyticsService';
@@ -82,6 +86,10 @@ const StudyRoom: React.FC = () => {
     const [isAiLoading, setIsAiLoading] = useState(false);
     const [isExtracting, setIsExtracting] = useState(false);
     const [quiz, setQuiz] = useState<Quiz | null>(null);
+
+    // Shared Quiz State
+    const [sharedQuiz, setSharedQuiz] = useState<SharedQuiz | null>(null);
+    const [showLeaderboard, setShowLeaderboard] = useState(false);
 
     // Pomodoro Timer State
     const [timeLeft, setTimeLeft] = useState(FOCUS_DURATION);
@@ -172,6 +180,12 @@ const StudyRoom: React.FC = () => {
         const unsubNotes = onNotesUpdate(roomId, setNotes);
         const unsubUserNotes = onUserNotesUpdate(roomId, setUserNotes);
         const unsubResources = onResourcesUpdate(roomId, setResources);
+        const unsubQuiz = onQuizUpdate(roomId, (quiz) => {
+            setSharedQuiz(quiz);
+            if (quiz && quiz.answers.length === participants.length) {
+                setShowLeaderboard(true);
+            }
+        });
 
         return () => {
             unsubRoom();
@@ -179,6 +193,7 @@ const StudyRoom: React.FC = () => {
             unsubNotes();
             unsubUserNotes();
             unsubResources();
+            unsubQuiz();
             if (currentUser) {
                 leaveRoom(roomId, currentUser);
             }
@@ -393,7 +408,7 @@ const StudyRoom: React.FC = () => {
         await updateRoomPomodoroState(roomId, newState);
     };
 
-    // --- AI Buddy Handlers ---
+    // --- AI Buddy & Quiz Handlers ---
      const handleSendAiMessage = useCallback(async () => {
         if (!aiInput.trim() || isAiLoading) return;
         
@@ -401,7 +416,6 @@ const StudyRoom: React.FC = () => {
         setAiMessages(prev => [...prev, newUserMessage]);
         setAiInput('');
         setIsAiLoading(true);
-        setQuiz(null);
 
         try {
             const stream = await streamStudyBuddyChat(aiInput, notes);
@@ -429,33 +443,33 @@ const StudyRoom: React.FC = () => {
         }
     }, [aiInput, isAiLoading, notes]);
     
-     const handleQuizMe = async () => {
-        if (isAiLoading || !notes.trim()) return;
+    const handleGenerateQuiz = async () => {
+        if (isAiLoading || !notes.trim() || !roomId) return;
         setIsAiLoading(true);
-        setQuiz(null);
-        setAiMessages(prev => [...prev, { role: 'model', parts: [{ text: "Generating a quiz..." }] }]);
+        postSystemMessage(`${currentUser?.displayName} is generating a quiz for the group!`);
 
         try {
             const quizJsonString = await generateQuizQuestion(notes);
             const parsedQuiz = JSON.parse(quizJsonString);
-            setQuiz(parsedQuiz);
+            await saveQuiz(roomId, parsedQuiz);
         } catch (err) {
-            setAiMessages(prev => [...prev, { role: 'model', parts: [{ text: "Couldn't generate a quiz. Try adding more notes." }] }]);
+            postSystemMessage("Sorry, I couldn't generate a quiz. Please try again.");
         } finally {
             setIsAiLoading(false);
         }
     };
 
     const handleAnswerQuiz = async (selectedIndex: number) => {
-        if (!quiz) return;
-        const isCorrect = selectedIndex === quiz.correctOptionIndex;
-        await recordQuizResult(quiz.topic, isCorrect, room?.courseId);
-        
-        const feedbackMessage = isCorrect ? `Correct! Well done.` : `Not quite. The correct answer was: "${quiz.options[quiz.correctOptionIndex]}"`;
-        setAiMessages(prev => [...prev, { role: 'model', parts: [{ text: feedbackMessage }] }]);
-        setQuiz(prev => prev ? { ...prev, userAnswerIndex: selectedIndex } : null);
-        setTimeout(() => setQuiz(null), 4000);
+        if (!sharedQuiz || !roomId || !currentUser?.email || !currentUser.displayName) return;
+        await saveQuizAnswer(roomId, currentUser.email, currentUser.displayName, selectedIndex);
     };
+
+    const handleClearQuiz = async () => {
+        if (!roomId) return;
+        setShowLeaderboard(false);
+        await clearQuiz(roomId);
+    };
+
 
     const handleNotesFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
@@ -512,6 +526,15 @@ const StudyRoom: React.FC = () => {
             {showMusicPlayer && <MusicPlayer onClose={() => setShowMusicPlayer(false)} />}
             {showShareModal && <ShareModal roomId={roomId || ''} onClose={() => setShowShareModal(false)} />}
             
+            {sharedQuiz && (
+                <div className="absolute inset-0 bg-slate-900/90 z-20 flex items-center justify-center p-8 backdrop-blur-sm">
+                    {showLeaderboard ? 
+                        <Leaderboard quiz={sharedQuiz} participants={participants} onClear={handleClearQuiz} /> :
+                        <QuizDisplay quiz={sharedQuiz} onAnswer={handleAnswerQuiz} currentUser={currentUser} />
+                    }
+                </div>
+            )}
+
             <div className="flex-1 flex overflow-hidden">
                 {/* Main Video Grid */}
                 <main className="flex-1 flex flex-col p-4">
@@ -632,6 +655,62 @@ const StudyRoom: React.FC = () => {
 
 // --- Sub-Components for Panels ---
 
+const QuizDisplay: React.FC<{ quiz: SharedQuiz, onAnswer: (index: number) => void, currentUser: any }> = ({ quiz, onAnswer, currentUser }) => {
+    const hasAnswered = quiz.answers.some(a => a.userId === currentUser?.email);
+
+    return (
+        <div className="w-full max-w-2xl bg-slate-800 rounded-2xl p-8 ring-1 ring-violet-600 shadow-2xl shadow-violet-500/20 animate-in fade-in-50 zoom-in-95">
+            <p className="text-sm font-semibold text-violet-400 uppercase tracking-wider">Group Quiz</p>
+            <h2 className="text-2xl font-bold text-white mt-2 mb-6">{quiz.question}</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {quiz.options.map((option, index) => (
+                    <button 
+                        key={index} 
+                        onClick={() => onAnswer(index)} 
+                        disabled={hasAnswered}
+                        className={`p-4 text-left rounded-lg transition-all duration-200 text-base 
+                            ${hasAnswered ? 'bg-slate-700/50 opacity-70' : 'bg-slate-700 hover:bg-violet-600 hover:ring-2 hover:ring-violet-400'}`}>
+                        {option}
+                    </button>
+                ))}
+            </div>
+            {hasAnswered && <p className="text-center mt-6 text-sky-300">Your answer is locked in! Waiting for others...</p>}
+        </div>
+    );
+};
+
+const Leaderboard: React.FC<{ quiz: SharedQuiz, participants: any[], onClear: () => void }> = ({ quiz, participants, onClear }) => {
+    const scores = participants.map(p => {
+        const answer = quiz.answers.find(a => a.userId === p.email);
+        const isCorrect = answer ? answer.answerIndex === quiz.correctOptionIndex : false;
+        return { ...p, score: isCorrect ? 1 : 0 };
+    }).sort((a, b) => b.score - a.score);
+
+    return (
+        <div className="w-full max-w-md bg-slate-800 rounded-2xl p-8 ring-1 ring-violet-600 shadow-2xl shadow-violet-500/20 animate-in fade-in-50 zoom-in-95">
+            <h2 className="text-2xl font-bold text-center text-white mb-2">Quiz Over!</h2>
+            <p className="text-center text-slate-400 mb-6">Here are the results:</p>
+            <div className="space-y-3">
+                {scores.map((p, index) => (
+                    <div key={p.email} className="flex items-center justify-between bg-slate-700 p-3 rounded-lg">
+                        <div className="flex items-center gap-3">
+                            <span className="font-bold text-slate-400 w-6 text-center">{index + 1}</span>
+                            <img src={`https://ui-avatars.com/api/?name=${p.displayName}&background=random`} alt="avatar" className="w-9 h-9 rounded-full"/>
+                            <span className="font-medium text-slate-200">{p.displayName}</span>
+                        </div>
+                        <span className={`font-bold text-lg ${p.score > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                            {p.score > 0 ? 'Correct' : 'Incorrect'}
+                        </span>
+                    </div>
+                ))}
+            </div>
+            <Button onClick={onClear} className="w-full mt-8">Close</Button>
+        </div>
+    );
+};
+
+// --- Sub-Components for Panels ---
+
 const TabButton: React.FC<{id: ActiveTab, activeTab: ActiveTab, setActiveTab: (tab: ActiveTab) => void, icon: React.ElementType, label: string, count?: number}> = ({ id, activeTab, setActiveTab, icon: Icon, label, count }) => (
     <button onClick={() => setActiveTab(id)} className={`flex-1 flex justify-center items-center gap-2 py-3 text-sm font-medium transition-colors ${activeTab === id ? 'bg-slate-700 text-violet-400' : 'text-slate-400 hover:bg-slate-700/50 hover:text-white'}`}>
         <Icon size={16} /> {label} {count !== undefined && <span className="text-xs bg-slate-600 rounded-full px-1.5">{count}</span>}
@@ -689,7 +768,7 @@ const ParticipantsPanel: React.FC<{participants: { email: string; displayName: s
     </div>
 );
 
-const AiPanel: React.FC<any> = ({ messages, input, setInput, onSend, notes, isExtracting, onUploadClick, quiz, onAnswerQuiz, onQuizMe, chatEndRef, isLoading }) => (
+const AiPanel: React.FC<any> = ({ messages, input, setInput, onSend, notes, isExtracting, onUploadClick, onQuizMe, chatEndRef, isLoading, sharedQuiz }) => (
     <div className="flex flex-col flex-1 overflow-hidden p-4">
         <div className="relative">
             <Textarea value={notes} placeholder="Upload a file to set the AI context for everyone..." rows={6} className="resize-none bg-slate-700/80" readOnly />
@@ -704,29 +783,12 @@ const AiPanel: React.FC<any> = ({ messages, input, setInput, onSend, notes, isEx
                 </div>
              ))}
               {isLoading && <div className="flex justify-center"><Spinner /></div>}
-              {quiz && (
-                    <div className="my-2 p-3 bg-slate-900/50 rounded-xl ring-1 ring-violet-600/50">
-                        <p className="font-bold text-slate-100 text-sm">{quiz.question}</p>
-                        <div className="grid grid-cols-1 gap-1.5 mt-3">
-                            {quiz.options.map((option: string, index: number) => {
-                                const isSelected = quiz.userAnswerIndex === index, isCorrect = quiz.correctOptionIndex === index;
-                                let btnClass = 'bg-slate-700 hover:bg-slate-600';
-                                if (quiz.userAnswerIndex !== undefined) {
-                                    if (isCorrect) btnClass = 'bg-green-500/80 ring-1 ring-green-400';
-                                    else if (isSelected) btnClass = 'bg-red-500/80';
-                                    else btnClass = 'bg-slate-800/50 opacity-60';
-                                }
-                                return <button key={index} onClick={() => onAnswerQuiz(index)} disabled={quiz.userAnswerIndex !== undefined} className={`p-2 text-left text-xs rounded-lg transition-all ${btnClass}`}>{option}</button>
-                            })}
-                        </div>
-                    </div>
-                )}
              <div ref={chatEndRef}></div>
         </div>
         <div className="mt-auto flex gap-2">
-            <Input value={input} onChange={e => setInput(e.target.value)} onKeyPress={e => e.key === 'Enter' && onSend()} placeholder="Ask the AI..." className="flex-1" disabled={isExtracting || !!quiz}/>
-            <Button onClick={onQuizMe} disabled={isExtracting || !!quiz || !notes.trim()} className="px-3" title="Quiz Me"><Lightbulb size={16}/></Button>
-            <Button onClick={onSend} disabled={!input.trim() || isExtracting || !!quiz} className="px-3"><Send size={16}/></Button>
+            <Input value={input} onChange={e => setInput(e.target.value)} onKeyPress={e => e.key === 'Enter' && onSend()} placeholder="Ask the AI..." className="flex-1" disabled={isExtracting || !!sharedQuiz}/>
+            <Button onClick={onQuizMe} disabled={isExtracting || !!sharedQuiz || !notes.trim()} className="px-3" title="Generate Group Quiz"><Lightbulb size={16}/></Button>
+            <Button onClick={onSend} disabled={!input.trim() || isExtracting || !!sharedQuiz} className="px-3"><Send size={16}/></Button>
         </div>
     </div>
 );
