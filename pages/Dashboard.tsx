@@ -136,7 +136,7 @@ const MyCourses: React.FC = () => {
                     </div>
                 )}
                 {courses.map(course => (
-                    <Link to={`/notes?courseId=${course.id}`} key={course.id} className="group flex items-center justify-between bg-slate-800 p-3 rounded-lg hover:bg-slate-700 transition-colors">
+                    <Link to="/notes" state={{ courseId: course.id }} key={course.id} className="group flex items-center justify-between bg-slate-800 p-3 rounded-lg hover:bg-slate-700 transition-colors">
                         <div className="flex items-center">
                             <span className="w-3 h-3 rounded-full mr-3" style={{ backgroundColor: course.color }}></span>
                             <span className="font-medium text-slate-300">{course.name}</span>
@@ -219,6 +219,8 @@ const MoodCheckin: React.FC<{ onMoodSelect: () => void }> = ({ onMoodSelect }) =
 
 const tools = [
   { key: 'tutor', name: 'AI Tutor', href: '/tutor', description: 'Practice concepts with your AI tutor.', icon: MessageSquare, color: 'text-sky-400', bgColor: 'bg-sky-900/50' },
+  { key: 'summaries', name: 'Summaries Generator', href: '/notes', description: 'Generate summaries from your notes.', icon: FileText, color: 'text-emerald-400', bgColor: 'bg-emerald-900/50' },
+  { key: 'quizzes', name: 'Quizzes & Practice', href: '/insights', description: 'Test your knowledge with practice quizzes.', icon: Brain, color: 'text-rose-400', bgColor: 'bg-rose-900/50' },
 ];
 
 const ToolCard: React.FC<typeof tools[0]> = ({ name, href, description, icon: Icon, color, bgColor }) => {
