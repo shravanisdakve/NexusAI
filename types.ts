@@ -62,3 +62,14 @@ export interface Assignment {
     dueDate: string;
     status: 'To Do' | 'In Progress' | 'Done';
 }
+
+export interface Note {
+  id: string;
+  courseId: string;
+  title: string;
+  content?: string; // For text notes
+  fileUrl?: string; // For file notes
+  fileName?: string;
+  fileType?: string;
+  createdAt: number;
+}
