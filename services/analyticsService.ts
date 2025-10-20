@@ -75,15 +75,32 @@ export const getProductivityReport = async (courseId: string | null = null) => {
     const correctQuizzes = userQuizzes.filter(q => q.correct).length;
     const quizAccuracy = totalQuizzes > 0 ? Math.round((correctQuizzes / totalQuizzes) * 100) : 0;
 
-    // ... (strength/weakness calculation - can be added later for more detail)
+    // --- FIX: Added logic to calculate topic mastery ---
+    const topicStats: { [topic: string]: { correct: number, total: number } } = {};
+    userQuizzes.forEach(quiz => {
+        const normalizedTopic = quiz.topic.trim().toLowerCase();
+        if (!topicStats[normalizedTopic]) topicStats[normalizedTopic] = { correct: 0, total: 0 };
+        topicStats[normalizedTopic].total++;
+        if (quiz.correct) topicStats[normalizedTopic].correct++;
+    });
+
+    const topicPerformance = Object.entries(topicStats).map(([topic, stats]) => ({
+        topic,
+        accuracy: Math.round((stats.correct / stats.total) * 100),
+        count: stats.total,
+    }));
+
+    const strengths = topicPerformance.filter(t => t.accuracy >= 80 && t.count > 1).sort((a, b) => b.accuracy - a.accuracy).slice(0, 3);
+    const weaknesses = topicPerformance.filter(t => t.accuracy < 60 && t.count > 1).sort((a, b) => a.accuracy - b.accuracy).slice(0, 3);
+    // --- END FIX ---
 
     return {
         totalStudyTime,
         quizAccuracy,
         totalQuizzes,
         correctQuizzes,
-        strengths: [], 
-        weaknesses: [],
+        strengths, 
+        weaknesses,
         completedPomodoros: userPomodoros.length,
         sessions: userSessions,
     };
