@@ -92,7 +92,9 @@ const MyCourses: React.FC = () => {
     useEffect(() => {
         const fetchCourses = async () => {
             setIsLoading(true);
+            console.log("MyCourses: Fetching courses...");
             const fetchedCourses = await getCourses();
+            console.log("MyCourses: Fetched courses:", fetchedCourses);
             setCourses(fetchedCourses);
             setIsLoading(false);
         };
@@ -102,8 +104,10 @@ const MyCourses: React.FC = () => {
     const handleAddCourse = async (e: React.FormEvent) => {
         e.preventDefault();
         if(newCourseName.trim()) {
+            console.log("MyCourses: Adding course:", newCourseName);
             const newCourse = await addCourse(newCourseName.trim());
             if (newCourse) {
+                console.log("MyCourses: Added course:", newCourse);
                 setCourses(prev => [...prev, newCourse]);
             }
             setNewCourseName('');
@@ -112,8 +116,10 @@ const MyCourses: React.FC = () => {
     }
     
     const handleDeleteCourse = async (id: string) => {
+        console.log("MyCourses: Deleting course:", id);
         await deleteCourse(id);
         setCourses(prev => prev.filter(c => c.id !== id));
+        console.log("MyCourses: Deleted course:", id);
     }
 
     return (

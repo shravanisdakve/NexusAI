@@ -1,15 +1,23 @@
 import { type Course } from '../types';
-import { db, auth } from '../firebase';
-import {
-    collection,
-    getDocs,
-    addDoc,
-    deleteDoc,
-    doc,
-    query,
-    where,
-    Timestamp,
-} from 'firebase/firestore';
+
+// Mock database with localStorage persistence
+const getMockCourses = (): Course[] => {
+    try {
+        const courses = localStorage.getItem('mockCourses');
+        return courses ? JSON.parse(courses) : [];
+    } catch (error) {
+        console.error("Error reading courses from localStorage", error);
+        return [];
+    }
+};
+
+const setMockCourses = (courses: Course[]) => {
+    try {
+        localStorage.setItem('mockCourses', JSON.stringify(courses));
+    } catch (error) {
+        console.error("Error saving courses to localStorage", error);
+    }
+};
 
 const generateColor = (existingColors: string[] = []): string => {
     const colors = ['#8b5cf6', '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#ec4899'];
@@ -17,49 +25,31 @@ const generateColor = (existingColors: string[] = []): string => {
     return availableColors.length > 0 ? availableColors[0] : colors[Math.floor(Math.random() * colors.length)];
 }
 
-const getCoursesCollection = () => {
-    const userId = auth.currentUser?.uid;
-    if (!userId) throw new Error("User not authenticated");
-    return collection(db, `users/${userId}/courses`);
-}
-
 export const getCourses = async (): Promise<Course[]> => {
-    if (!auth.currentUser || !db) return [];
-    try {
-        const coursesCollection = getCoursesCollection();
-        const snapshot = await getDocs(coursesCollection);
-        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Course));
-    } catch (error) {
-        console.error("Error getting courses: ", error);
-        return [];
-    }
+    console.log("Fetching courses from mock service...");
+    return Promise.resolve(getMockCourses());
 };
 
 export const addCourse = async (name: string): Promise<Course | null> => {
-    if (!auth.currentUser || !db) return null;
-    try {
-        const existingCourses = await getCourses();
-        const existingColors = existingCourses.map(c => c.color);
-        const newCourseData = {
-            name,
-            color: generateColor(existingColors),
-            createdAt: Timestamp.now(),
-        };
-        const coursesCollection = getCoursesCollection();
-        const docRef = await addDoc(coursesCollection, newCourseData);
-        return { id: docRef.id, ...newCourseData } as Course;
-    } catch (error) {
-        console.error("Error adding course: ", error);
-        return null;
-    }
+    console.log("Adding course to mock service:", name);
+    const mockCourses = getMockCourses();
+    const existingColors = mockCourses.map(c => c.color);
+    const newCourse: Course = {
+        id: `mock_course_${Date.now()}`,
+        name,
+        color: generateColor(existingColors),
+    };
+    const updatedCourses = [...mockCourses, newCourse];
+    setMockCourses(updatedCourses);
+    console.log("Added course to mock service:", newCourse);
+    return Promise.resolve(newCourse);
 };
 
 export const deleteCourse = async (id: string): Promise<void> => {
-    if (!auth.currentUser || !db) return;
-    try {
-        const courseDoc = doc(getCoursesCollection(), id);
-        await deleteDoc(courseDoc);
-    } catch (error) {
-        console.error("Error deleting course: ", error);
-    }
+    console.log("Deleting course from mock service:", id);
+    const mockCourses = getMockCourses();
+    const updatedCourses = mockCourses.filter(c => c.id !== id);
+    setMockCourses(updatedCourses);
+    console.log("Deleted course from mock service:", id);
+    return Promise.resolve();
 };
