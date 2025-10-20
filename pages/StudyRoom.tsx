@@ -442,6 +442,8 @@ const StudyRoom: React.FC = () => {
     const handleNotesFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
         if (!file || !roomId) return;
+
+        // Reset input to allow re-uploading the same file
         event.target.value = '';
 
         const MAX_FILE_SIZE = 4 * 1024 * 1024; // 4 MB
@@ -449,35 +451,40 @@ const StudyRoom: React.FC = () => {
             setAiMessages([{ role: 'model', parts: [{ text: `File is too large. Please upload a file smaller than ${MAX_FILE_SIZE / 1024 / 1024}MB.` }] }]);
             return;
         }
-        
+
         setIsExtracting(true);
         setNotes(`Extracting text from ${file.name}...`);
         setAiMessages([{ role: 'model', parts: [{ text: "Analyzing your document..." }] }]);
 
         try {
-            const reader = new FileReader();
-            reader.onload = async (e) => {
-                try {
-                    const base64Data = (e.target?.result as string).split(',')[1];
-                    const extracted = await extractTextFromFile(base64Data, file.type);
-                    
-                    await saveRoomAINotes(roomId, extracted);
+            const base64Data = await new Promise<string>((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => {
+                    const result = reader.result as string;
+                    if (!result || !result.includes(',')) {
+                        return reject(new Error("Invalid file data"));
+                    }
+                    const base64 = result.split(',')[1];
+                    resolve(base64);
+                };
+                reader.onerror = (error) => reject(error);
+                reader.readAsDataURL(file);
+            });
 
-                    setAiMessages([{ role: 'model', parts: [{ text: "Great, I've reviewed the notes. The AI context is now updated for everyone in the room." }] }]);
+            const extracted = await extractTextFromFile(base64Data, file.type);
+            
+            await saveRoomAINotes(roomId, extracted);
 
-                    await postSystemMessage(`${currentUser?.displayName} updated the study notes with the file: ${file.name}`);
+            setAiMessages([{ role: 'model', parts: [{ text: "Great, I've reviewed the notes. The AI context is now updated for everyone in the room." }] }]);
 
-                } catch (err) { 
-                    await saveRoomAINotes(roomId, '');
-                    setAiMessages([{ role: 'model', parts: [{ text: "Sorry, I couldn't read that file. It might be an unsupported format or corrupted. Please try another one." }] }]);
-                } 
-                finally { setIsExtracting(false); }
-            };
-            reader.readAsDataURL(file);
-        } catch (error) {
-             await saveRoomAINotes(roomId, '');
-             setAiMessages([{ role: 'model', parts: [{ text: "Sorry, I couldn't read that file. Please try another one." }] }]);
-             setIsExtracting(false);
+            await postSystemMessage(`${currentUser?.displayName} updated the study notes with the file: ${file.name}`);
+
+        } catch (err) {
+            console.error("File upload and processing failed:", err);
+            await saveRoomAINotes(roomId, ''); // Clear notes on failure
+            setAiMessages([{ role: 'model', parts: [{ text: "Sorry, I couldn't read that file. It might be an unsupported format or corrupted. Please try another one." }] }]);
+        } finally {
+            setIsExtracting(false);
         }
     };
 
