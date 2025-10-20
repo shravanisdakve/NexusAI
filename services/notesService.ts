@@ -1,153 +1,121 @@
 import { type Note, type Flashcard } from '../types';
-import { db, auth, storage } from '../firebase';
-import {
-    collection,
-    getDocs,
-    addDoc,
-    deleteDoc,
-    doc,
-    query,
-    where,
-    Timestamp,
-    writeBatch,
-    updateDoc,
-} from 'firebase/firestore';
-import {
-    ref,
-    uploadBytes,
-    getDownloadURL,
-    deleteObject,
-} from 'firebase/storage';
 
-const getNotesCollection = (courseId: string) => {
-    const userId = auth.currentUser?.uid;
-    if (!userId) throw new Error("User not authenticated");
-    return collection(db, `users/${userId}/courses/${courseId}/notes`);
-}
-
-const getFlashcardsCollection = (courseId: string) => {
-    const userId = auth.currentUser?.uid;
-    if (!userId) throw new Error("User not authenticated");
-    return collection(db, `users/${userId}/courses/${courseId}/flashcards`);
-}
-
-export const getNotes = async (courseId: string): Promise<Note[]> => {
-    if (!auth.currentUser || !db) return [];
+// Mock database with localStorage persistence
+const getMockNotes = (courseId: string): Note[] => {
     try {
-        const notesCollection = getNotesCollection(courseId);
-        const snapshot = await getDocs(notesCollection);
-        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Note));
+        const notes = localStorage.getItem(`mockNotes_${courseId}`);
+        return notes ? JSON.parse(notes) : [];
     } catch (error) {
-        console.error("Error getting notes: ", error);
+        console.error("Error reading notes from localStorage", error);
         return [];
     }
 };
 
-export const addTextNote = async (courseId: string, title: string, content: string): Promise<Note | null> => {
-    if (!auth.currentUser || !db) return null;
+const setMockNotes = (courseId: string, notes: Note[]) => {
     try {
-        const newNoteData = {
-            courseId,
-            title,
-            content,
-            createdAt: Timestamp.now(),
-        };
-        const notesCollection = getNotesCollection(courseId);
-        const docRef = await addDoc(notesCollection, newNoteData);
-        return { id: docRef.id, ...newNoteData } as Note;
+        localStorage.setItem(`mockNotes_${courseId}`, JSON.stringify(notes));
     } catch (error) {
-        console.error("Error adding text note: ", error);
-        return null;
+        console.error("Error saving notes to localStorage", error);
     }
+};
+
+const getMockFlashcards = (courseId: string): Flashcard[] => {
+    try {
+        const flashcards = localStorage.getItem(`mockFlashcards_${courseId}`);
+        return flashcards ? JSON.parse(flashcards) : [];
+    } catch (error) {
+        console.error("Error reading flashcards from localStorage", error);
+        return [];
+    }
+};
+
+const setMockFlashcards = (courseId: string, flashcards: Flashcard[]) => {
+    try {
+        localStorage.setItem(`mockFlashcards_${courseId}`, JSON.stringify(flashcards));
+    } catch (error) {
+        console.error("Error saving flashcards to localStorage", error);
+    }
+};
+
+export const getNotes = async (courseId: string): Promise<Note[]> => {
+    console.log("Fetching notes from mock service...");
+    return Promise.resolve(getMockNotes(courseId));
+};
+
+export const addTextNote = async (courseId: string, title: string, content: string): Promise<Note | null> => {
+    console.log("Adding text note to mock service:", title);
+    const mockNotes = getMockNotes(courseId);
+    const newNote: Note = {
+        id: `mock_note_${Date.now()}`,
+        courseId,
+        title,
+        content,
+        createdAt: Date.now(),
+    };
+    const updatedNotes = [...mockNotes, newNote];
+    setMockNotes(courseId, updatedNotes);
+    console.log("Added text note to mock service:", newNote);
+    return Promise.resolve(newNote);
 };
 
 export const uploadNoteFile = async (courseId: string, title: string, file: File): Promise<Note | null> => {
-    if (!auth.currentUser || !db || !storage) return null;
-    try {
-        const userId = auth.currentUser.uid;
-        const filePath = `users/${userId}/courses/${courseId}/notes/${file.name}`;
-        const fileRef = ref(storage, filePath);
-        await uploadBytes(fileRef, file);
-        const fileUrl = await getDownloadURL(fileRef);
-
-        const newNoteData = {
-            courseId,
-            title,
-            fileUrl,
-            fileName: file.name,
-            fileType: file.type,
-            createdAt: Timestamp.now(),
-        };
-
-        const notesCollection = getNotesCollection(courseId);
-        const docRef = await addDoc(notesCollection, newNoteData);
-        return { id: docRef.id, ...newNoteData } as Note;
-    } catch (error) {
-        console.error("Error uploading note file: ", error);
-        return null;
-    }
+    console.log("Uploading note file to mock service:", title);
+    const mockNotes = getMockNotes(courseId);
+    const newNote: Note = {
+        id: `mock_note_${Date.now()}`,
+        courseId,
+        title,
+        fileName: file.name,
+        fileType: file.type,
+        fileUrl: URL.createObjectURL(file),
+        createdAt: Date.now(),
+    };
+    const updatedNotes = [...mockNotes, newNote];
+    setMockNotes(courseId, updatedNotes);
+    console.log("Uploaded note file to mock service:", newNote);
+    return Promise.resolve(newNote);
 };
 
 export const deleteNote = async (courseId: string, note: Note): Promise<void> => {
-    if (!auth.currentUser || !db) return;
-    try {
-        const noteDoc = doc(getNotesCollection(courseId), note.id);
-        await deleteDoc(noteDoc);
-
-        if (note.fileUrl && storage) {
-            const fileRef = ref(storage, note.fileUrl);
-            await deleteObject(fileRef);
-        }
-    } catch (error) {
-        console.error("Error deleting note: ", error);
-    }
+    console.log("Deleting note from mock service:", note.id);
+    const mockNotes = getMockNotes(courseId);
+    const updatedNotes = mockNotes.filter(n => n.id !== note.id);
+    setMockNotes(courseId, updatedNotes);
+    console.log("Deleted note from mock service:", note.id);
+    return Promise.resolve();
 };
 
 // --- Flashcard Management ---
 
 export const getFlashcards = async (courseId: string): Promise<Flashcard[]> => {
-    if (!auth.currentUser || !db) return [];
-    try {
-        const flashcardsCollection = getFlashcardsCollection(courseId);
-        const snapshot = await getDocs(flashcardsCollection);
-        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Flashcard));
-    } catch (error) {
-        console.error("Error getting flashcards: ", error);
-        return [];
-    }
+    console.log("Fetching flashcards from mock service...");
+    return Promise.resolve(getMockFlashcards(courseId));
 };
 
 export const addFlashcards = async (courseId: string, flashcards: Omit<Flashcard, 'id'>[]): Promise<void> => {
-    if (!auth.currentUser || !db) return;
-    try {
-        const flashcardsCollection = getFlashcardsCollection(courseId);
-        const batch = writeBatch(db);
-        flashcards.forEach(flashcard => {
-            const docRef = doc(flashcardsCollection);
-            batch.set(docRef, flashcard);
-        });
-        await batch.commit();
-    } catch (error) {
-        console.error("Error adding flashcards: ", error);
-    }
+    console.log("Adding flashcards to mock service...");
+    const mockFlashcards = getMockFlashcards(courseId);
+    const newFlashcards = flashcards.map(f => ({ ...f, id: `mock_flashcard_${Date.now()}` }));
+    const updatedFlashcards = [...mockFlashcards, ...newFlashcards];
+    setMockFlashcards(courseId, updatedFlashcards);
+    console.log("Added flashcards to mock service:", newFlashcards);
+    return Promise.resolve();
 };
 
 export const updateFlashcard = async (courseId: string, flashcardId: string, updates: Partial<Flashcard>): Promise<void> => {
-    if (!auth.currentUser || !db) return;
-    try {
-        const flashcardDoc = doc(getFlashcardsCollection(courseId), flashcardId);
-        await updateDoc(flashcardDoc, updates);
-    } catch (error) {
-        console.error("Error updating flashcard: ", error);
-    }
+    console.log("Updating flashcard in mock service:", flashcardId);
+    const mockFlashcards = getMockFlashcards(courseId);
+    const updatedFlashcards = mockFlashcards.map(f => f.id === flashcardId ? { ...f, ...updates } : f);
+    setMockFlashcards(courseId, updatedFlashcards);
+    console.log("Updated flashcard in mock service:", flashcardId);
+    return Promise.resolve();
 };
 
 export const deleteFlashcard = async (courseId: string, flashcardId: string): Promise<void> => {
-    if (!auth.currentUser || !db) return;
-    try {
-        const flashcardDoc = doc(getFlashcardsCollection(courseId), flashcardId);
-        await deleteDoc(flashcardDoc);
-    } catch (error) {
-        console.error("Error deleting flashcard: ", error);
-    }
+    console.log("Deleting flashcard from mock service:", flashcardId);
+    const mockFlashcards = getMockFlashcards(courseId);
+    const updatedFlashcards = mockFlashcards.filter(f => f.id !== flashcardId);
+    setMockFlashcards(courseId, updatedFlashcards);
+    console.log("Deleted flashcard from mock service:", flashcardId);
+    return Promise.resolve();
 };

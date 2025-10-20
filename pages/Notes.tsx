@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { getCourses } from '../services/courseService';
-import { getFlashcards, addFlashcards, updateFlashcard } from '../services/notesService';
+import { getNotes, addTextNote, uploadNoteFile, deleteNote, getFlashcards, addFlashcards, updateFlashcard } from '../services/notesService';
 import { type Note, type Course, type Flashcard } from '../types';
 import { PageHeader, Button, Input, Textarea, Select } from '../components/ui';
 import { PlusCircle, Trash2, Upload, FileText, BookOpen, Layers, X } from 'lucide-react';
@@ -9,6 +9,8 @@ import { generateFlashcards } from '../services/geminiService';
 
 import { Brain } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+
+import { addCourse } from '../services/courseService';
 
 const Notes: React.FC = () => {
   const navigate = useNavigate();
@@ -35,6 +37,17 @@ const Notes: React.FC = () => {
       getFlashcards(selectedCourse).then(setFlashcards);
     }
   }, [selectedCourse]);
+
+  const handleAddCourse = async () => {
+    const courseName = prompt("Enter the name of the new course:");
+    if (courseName) {
+      const newCourse = await addCourse(courseName);
+      if (newCourse) {
+        setCourses(prev => [...prev, newCourse]);
+        setSelectedCourse(newCourse.id);
+      }
+    }
+  };
 
   const handleAddNote = async () => {
     if (!selectedCourse) return;
@@ -110,6 +123,7 @@ const Notes: React.FC = () => {
                 <option key={course.id} value={course.id}>{course.name}</option>
               ))}
             </Select>
+            <Button onClick={handleAddCourse} className="ml-2"><PlusCircle size={16} /></Button>
         </div>
 
         {selectedCourse && (
