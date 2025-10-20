@@ -6,7 +6,6 @@ import { useAuth } from '../contexts/AuthContext';
 const navigation = [
   { name: 'Study Hub', href: '/', icon: LayoutDashboard },
   { name: 'Insights', href: '/insights', icon: BarChart2 },
-  { name: 'Assignments', href: '/assignments', icon: ClipboardList },
   { name: 'AI Tutor', href: '/tutor', icon: MessageSquare },
   { name: 'Study Room', href: '/study-lobby', icon: Users },
 ];
