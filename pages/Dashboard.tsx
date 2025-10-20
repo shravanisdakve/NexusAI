@@ -13,7 +13,6 @@ import {
     Play, Pause, RefreshCw, PlusCircle, Trash2, User, Users, Star,
     BarChart, Clock, Brain, TrendingUp, TrendingDown, Edit3, Repeat
 } from 'lucide-react';
-import MyGoals from '../components/MyGoals';
 
 const formatSeconds = (seconds: number) => {
     if (seconds < 60) return `${seconds}s`;
@@ -302,7 +301,6 @@ const StudyHub: React.FC = () => {
 
         <div className="space-y-8">
           {showMoodCheckin && <MoodCheckin onMoodSelect={handleMoodSelected} />}
-          <MyGoals />
           <ProductivityInsights />
           <MyCourses />
         </div>
