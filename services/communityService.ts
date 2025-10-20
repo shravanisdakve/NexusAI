@@ -20,6 +20,18 @@ import {
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL, listAll, deleteObject, getMetadata } from 'firebase/storage';
 
+const mockChatMessages: Record<string, ChatMessage[]> = {
+    'mock_course_1': [
+        { senderId: 'user1', senderName: 'Alice', text: 'Welcome to the Introduction to AI community!', timestamp: Timestamp.fromDate(new Date(Date.now() - 3600000)) },
+        { senderId: 'user2', senderName: 'Bob', text: 'Hey everyone, looking forward to discussing the latest AI trends.', timestamp: Timestamp.fromDate(new Date(Date.now() - 1800000)) },
+        { senderId: 'user1', senderName: 'Alice', text: 'Does anyone have good resources for neural networks?', timestamp: Timestamp.fromDate(new Date(Date.now() - 600000)) },
+    ],
+    'mock_course_2': [
+        { senderId: 'user3', senderName: 'Charlie', text: "Hi, I'm struggling with linked lists. Any tips?", timestamp: Timestamp.fromDate(new Date(Date.now() - 7200000)) },
+        { senderId: 'user4', senderName: 'Diana', text: 'Try visualizing the pointers! It helps a lot.', timestamp: Timestamp.fromDate(new Date(Date.now() - 3600000)) },
+    ],
+};
+
 // --- Room Management ---
 
 export const getRooms = async (): Promise<StudyRoom[]> => {
@@ -119,31 +131,25 @@ export const updateRoomPomodoroState = async (roomId: string, pomodoroState: Pom
 // --- Message Management (using a subcollection) ---
 
 export const getRoomMessages = async (roomId: string): Promise<ChatMessage[]> => {
-    if (!db) return [];
-    try {
-        const messagesCollection = collection(db, `rooms/${roomId}/messages`);
-        const q = query(messagesCollection, orderBy("timestamp", "asc"));
-        const snapshot = await getDocs(q);
-        return snapshot.docs.map(doc => doc.data() as ChatMessage);
-    } catch (error) {
-        console.error("Error getting messages: ", error);
-        return [];
-    }
+    // if (!db) return []; // Firebase disabled, use mock
+    return Promise.resolve(mockChatMessages[roomId] || []);
 };
 
 export const saveRoomMessages = async (roomId: string, messages: ChatMessage[]) => {
-    if (!db) return;
-    try {
-        const messagesCollection = collection(db, `rooms/${roomId}/messages`);
-        // This is not efficient. In a real app, you would add one message at a time.
-        // For this migration, we'll just add the last message.
-        const lastMessage = messages[messages.length - 1];
-        if (lastMessage) {
-            await addDoc(messagesCollection, { ...lastMessage, timestamp: serverTimestamp() });
-        }
-    } catch (error) {
-        console.error("Error saving messages: ", error);
+    // This function is deprecated in favor of sendChatMessage for mock
+    console.warn("saveRoomMessages is deprecated for mock. Use sendChatMessage.");
+};
+
+export const sendChatMessage = async (roomId: string, message: Omit<ChatMessage, 'timestamp'>) => {
+    // if (!db) return; // Firebase disabled, use mock
+    if (!mockChatMessages[roomId]) {
+        mockChatMessages[roomId] = [];
     }
+    const fullMessage: ChatMessage = { ...message, timestamp: Timestamp.fromDate(new Date()) };
+    mockChatMessages[roomId].push(fullMessage);
+    // Simulate real-time update for any active listeners
+    // In a real app, this would trigger onSnapshot listeners
+    console.log(`Mock message sent to ${roomId}:`, fullMessage);
 };
 
 // --- Shared AI Notes Management (using a subcollection with a single document) ---
@@ -188,13 +194,12 @@ export const onRoomUpdate = (roomId: string, callback: (room: StudyRoom | null) 
 };
 
 export const onMessagesUpdate = (roomId: string, callback: (messages: ChatMessage[]) => void) => {
-    if (!db) return () => {};
-    const messagesCollection = collection(db, `rooms/${roomId}/messages`);
-    const q = query(messagesCollection, orderBy("timestamp", "asc"));
-    return onSnapshot(q, (snapshot) => {
-        const messages = snapshot.docs.map(doc => doc.data() as ChatMessage);
-        callback(messages);
-    });
+    // if (!db) return () => {}; // Firebase disabled, use mock
+    // Simulate initial load
+    callback(mockChatMessages[roomId] || []);
+
+    // For mock, we don't have a real-time listener. The component will poll getRoomMessages.
+    return () => {}; // Return an empty unsubscribe function
 };
 
 export const onNotesUpdate = (roomId: string, callback: (notes: string) => void) => {

@@ -11,6 +11,7 @@ import StudyRoom from './pages/StudyRoom';
 import StudyLobby from './pages/StudyLobby';
 import Insights from './pages/Insights';
 import Notes from './pages/Notes';
+import CourseCommunity from './pages/CourseCommunity';
 import { useAuth } from './contexts/AuthContext';
 import { Spinner } from './components/ui';
 
@@ -71,6 +72,7 @@ const App: React.FC = () => {
             <Route path="study-room/:id" element={<StudyRoom />} />
             <Route path="insights" element={<Insights />} />
             <Route path="notes" element={<Notes />} />
+            <Route path="community/:courseId" element={<CourseCommunity />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
         ) : (

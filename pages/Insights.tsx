@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { PageHeader, Button, Modal, Input, Spinner } from '../components/ui';
 import { getProductivityReport, getLeaderboardData } from '../services/analyticsService';
 import { getStudySuggestions } from '../services/geminiService';
@@ -44,8 +44,23 @@ const TopicMasteryChart: React.FC<{ data: { label: string; value: number }[]; on
     );
 };
 
+const BarChart: React.FC<{ data: { label: string; value: number }[]; color: string }> = ({ data, color }) => {
+    const maxValue = Math.max(...data.map(d => d.value), 1);
+    return (
+        <div className="space-y-2">
+            {data.map(d => (
+                <div key={d.label} className="flex items-center gap-2">
+                    <div className="w-16 text-sm text-slate-400 truncate">{d.label}</div>
+                    <div className="flex-1 bg-slate-700 rounded-full h-2.5">
+                        <div className="h-2.5 rounded-full" style={{ width: `${(d.value / maxValue) * 100}%`, backgroundColor: color }}></div>
+                    </div>
+                    <div className="w-10 text-right text-xs font-mono">{d.value}m</div>
+                </div>
+            ))}
+        </div>
+    );
+};
 
-// ... (PerformanceTab component remains the same) ...
 const PerformanceTab: React.FC = () => {
     const [courses, setCourses] = useState<Course[]>([]);
     const [selectedCourse, setSelectedCourse] = useState<string | null>(null);
@@ -53,35 +68,52 @@ const PerformanceTab: React.FC = () => {
     const [suggestions, setSuggestions] = useState('');
     const [isLoading, setIsLoading] = useState(true);
     const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
+    const [suggestionsError, setSuggestionsError] = useState<string | null>(null);
     const navigate = useNavigate();
 
     useEffect(() => {
         const fetchCourses = async () => {
-            const fetchedCourses = await getCourses();
-            setCourses(fetchedCourses);
+            console.log("PerformanceTab: Starting course fetch...");
+            try {
+                const fetchedCourses = await getCourses();
+                setCourses(fetchedCourses);
+                console.log("PerformanceTab: Courses fetched successfully.", fetchedCourses);
+            } catch (error) {
+                console.error("PerformanceTab: Error fetching courses:", error);
+            }
         };
         fetchCourses();
     }, []);
 
     useEffect(() => {
         const fetchReport = async () => {
+            console.log("PerformanceTab: Starting report fetch...");
             setIsLoading(true);
-            const r = await getProductivityReport(selectedCourse);
-            setReport(r);
-            setIsLoading(false);
+            let r: Awaited<ReturnType<typeof getProductivityReport>> | null = null; // Declare r here
+            try {
+                r = await getProductivityReport(selectedCourse);
+                setReport(r);
+                console.log("PerformanceTab: Report fetched successfully.", r);
 
-            setSuggestions('');
-            setSuggestionsError(null);
-            if (r.totalStudyTime > 60 || r.totalQuizzes > 2) {
-                setIsLoadingSuggestions(true);
-                const reportForAI = { totalStudyTime: r.totalStudyTime, quizAccuracy: r.quizAccuracy, strengths: r.strengths, weaknesses: r.weaknesses };
-                getStudySuggestions(JSON.stringify(reportForAI))
-                    .then(setSuggestions)
-                    .catch(err => {
-                        console.error("Failed to get AI suggestions:", err);
-                        setSuggestionsError("Couldn't load AI suggestions. Please try again later.");
-                    })
-                    .finally(() => setIsLoadingSuggestions(false));
+                setSuggestions('');
+                setSuggestionsError(null);
+                if (r && (r.totalStudyTime > 60 || r.totalQuizzes > 2)) {
+                    setIsLoadingSuggestions(true);
+                    const reportForAI = { totalStudyTime: r.totalStudyTime, quizAccuracy: r.quizAccuracy, strengths: r.strengths, weaknesses: r.weaknesses };
+                    getStudySuggestions(JSON.stringify(reportForAI))
+                        .then(setSuggestions)
+                        .catch(err => {
+                            console.error("Failed to get AI suggestions:", err);
+                            setSuggestionsError("Couldn't load AI suggestions. Please try again later.");
+                        })
+                        .finally(() => setIsLoadingSuggestions(false));
+                }
+            } catch (error) {
+                console.error("PerformanceTab: Error fetching report:", error);
+                setSuggestionsError("Failed to load productivity report. Please try again.");
+            } finally {
+                setIsLoading(false);
+                console.log("PerformanceTab: Finished report fetch, isLoading set to false.");
             }
         };
         fetchReport();
@@ -161,19 +193,27 @@ const CommunityTab: React.FC = () => {
     // ... (useEffect and handleCreateRoom remain the same) ...
     useEffect(() => {
         const fetchData = async () => {
+            console.log("CommunityTab: Starting data fetch...");
             setIsLoading(true);
-            const [leaderboardData, roomsData, coursesData] = await Promise.all([
-                getLeaderboardData(),
-                getRooms(),
-                getCourses()
-            ]);
-            setLeaderboard(leaderboardData);
-            setRooms(roomsData);
-            setCourses(coursesData);
-            if (coursesData.length > 0) {
-                setNewRoomCourse(coursesData[0].id);
+            try {
+                const [leaderboardData, roomsData, coursesData] = await Promise.all([
+                    getLeaderboardData(),
+                    getRooms(),
+                    getCourses()
+                ]);
+                setLeaderboard(leaderboardData);
+                setRooms(roomsData);
+                setCourses(coursesData);
+                if (coursesData.length > 0) {
+                    setNewRoomCourse(coursesData[0].id);
+                }
+                console.log("CommunityTab: Data fetched successfully.", { leaderboardData, roomsData, coursesData });
+            } catch (error) {
+                console.error("CommunityTab: Error fetching data:", error);
+            } finally {
+                setIsLoading(false);
+                console.log("CommunityTab: Finished data fetch, isLoading set to false.");
             }
-            setIsLoading(false);
         };
         fetchData();
     }, []);
@@ -277,7 +317,10 @@ const CommunityTab: React.FC = () => {
 
 // ... (Main Insights component remains the same) ...
 const Insights: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'performance' | 'community'>('performance');
+  const location = useLocation();
+  const queryParams = new URLSearchParams(location.search);
+  const initialTab = queryParams.get('tab') === 'community' ? 'community' : 'performance';
+  const [activeTab, setActiveTab] = useState<'performance' | 'community'>(initialTab);
 
   const tabs = [
     { id: 'performance', label: 'My Performance', icon: BarChart2 },

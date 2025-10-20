@@ -4,7 +4,17 @@ import { type Course } from '../types';
 const getMockCourses = (): Course[] => {
     try {
         const courses = localStorage.getItem('mockCourses');
-        return courses ? JSON.parse(courses) : [];
+        if (courses) {
+            return JSON.parse(courses);
+        } else {
+            const defaultCourses: Course[] = [
+                { id: 'mock_course_1', name: 'Introduction to AI', color: '#8b5cf6' },
+                { id: 'mock_course_2', name: 'Data Structures', color: '#3b82f6' },
+                { id: 'mock_course_3', name: 'Web Development', color: '#10b981' },
+            ];
+            setMockCourses(defaultCourses);
+            return defaultCourses;
+        }
     } catch (error) {
         console.error("Error reading courses from localStorage", error);
         return [];
@@ -28,6 +38,13 @@ const generateColor = (existingColors: string[] = []): string => {
 export const getCourses = async (): Promise<Course[]> => {
     console.log("Fetching courses from mock service...");
     return Promise.resolve(getMockCourses());
+};
+
+export const getCourse = async (id: string): Promise<Course | null> => {
+    console.log("Fetching course from mock service:", id);
+    const mockCourses = getMockCourses();
+    const course = mockCourses.find(c => c.id === id);
+    return Promise.resolve(course || null);
 };
 
 export const addCourse = async (name: string): Promise<Course | null> => {
