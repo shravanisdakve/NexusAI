@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { PageHeader, Modal, Button, Input } from '../components/ui';
 import { useAuth } from '../contexts/AuthContext';
@@ -7,6 +7,7 @@ import { type Course, type Mood as MoodType } from '../types';
 import { getTimeOfDayGreeting, getMostUsedTool, getBreakActivitySuggestion, recordMood } from '../services/personalizationService';
 import { getProductivityReport, recordPomodoroCycle } from '../services/analyticsService';
 import { getCourses, addCourse, deleteCourse } from '../services/courseService';
+import GoalsWidget from '../components/GoalsWidget';
 import { 
     MessageSquare, Share2, FileText, Code, ArrowRight,
     Target, Lightbulb, Timer, Zap, BookOpen,
@@ -135,15 +136,15 @@ const MyCourses: React.FC = () => {
                     </div>
                 )}
                 {courses.map(course => (
-                    <div key={course.id} className="group flex items-center justify-between bg-slate-800 p-3 rounded-lg">
+                    <Link to={`/notes?courseId=${course.id}`} key={course.id} className="group flex items-center justify-between bg-slate-800 p-3 rounded-lg hover:bg-slate-700 transition-colors">
                         <div className="flex items-center">
                             <span className="w-3 h-3 rounded-full mr-3" style={{ backgroundColor: course.color }}></span>
                             <span className="font-medium text-slate-300">{course.name}</span>
                         </div>
-                        <button onClick={() => handleDeleteCourse(course.id)} className="text-slate-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button onClick={(e) => { e.preventDefault(); handleDeleteCourse(course.id); }} className="text-slate-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity">
                             <Trash2 size={16} />
                         </button>
-                    </div>
+                    </Link>
                 ))}
             </div>
             {isAdding ? (
@@ -220,21 +221,29 @@ const tools = [
   { key: 'tutor', name: 'AI Tutor', href: '/tutor', description: 'Practice concepts with your AI tutor.', icon: MessageSquare, color: 'text-sky-400', bgColor: 'bg-sky-900/50' },
 ];
 
-const ToolCard: React.FC<typeof tools[0]> = ({ name, href, description, icon: Icon, color, bgColor }) => (
-    <Link to={href} className="group block p-6 bg-slate-800 rounded-xl hover:bg-slate-700/80 transition-all duration-300 ring-1 ring-slate-700 hover:ring-violet-500">
-        <div className="flex items-center space-x-4">
-            <div className={`p-3 rounded-lg ${bgColor}`}>
-                <Icon className={`w-6 h-6 ${color}`} />
+const ToolCard: React.FC<typeof tools[0]> = ({ name, href, description, icon: Icon, color, bgColor }) => {
+    const handleToolClick = () => {
+        if (name === 'AI Tutor') {
+            localStorage.setItem('lastAITutorSession', JSON.stringify({ name, href }));
+        }
+    };
+
+    return (
+        <Link to={href} onClick={handleToolClick} className="group block p-6 bg-slate-800 rounded-xl hover:bg-slate-700/80 transition-all duration-300 ring-1 ring-slate-700 hover:ring-violet-500">
+            <div className="flex items-center space-x-4">
+                <div className={`p-3 rounded-lg ${bgColor}`}>
+                    <Icon className={`w-6 h-6 ${color}`} />
+                </div>
+                <h3 className="text-lg font-bold text-slate-100">{name}</h3>
             </div>
-            <h3 className="text-lg font-bold text-slate-100">{name}</h3>
-        </div>
-        <p className="mt-3 text-sm text-slate-400">{description}</p>
-        <div className="mt-4 flex items-center text-sm font-semibold text-violet-400 group-hover:text-violet-300">
-            <span>Start Session</span>
-            <ArrowRight className="ml-2 w-4 h-4 transition-transform duration-300 group-hover:translate-x-1" />
-        </div>
-    </Link>
-);
+            <p className="mt-3 text-sm text-slate-400">{description}</p>
+            <div className="mt-4 flex items-center text-sm font-semibold text-violet-400 group-hover:text-violet-300">
+                <span>Start Session</span>
+                <ArrowRight className="ml-2 w-4 h-4 transition-transform duration-300 group-hover:translate-x-1" />
+            </div>
+        </Link>
+    );
+};
 
 const ToolsGrid: React.FC = () => (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
@@ -245,11 +254,18 @@ const ToolsGrid: React.FC = () => (
 
 
 
+const taglines = [
+    "Ready to make today a productive one?",
+    "Let's get started on your goals.",
+    "Your central hub for accelerated learning. Let's get started."
+];
+
 const StudyHub: React.FC = () => {
   const { currentUser } = useAuth();
   const navigate = useNavigate();
   const [mostUsedToolKey, setMostUsedToolKey] = useState<string | null>(null);
   const [showMoodCheckin, setShowMoodCheckin] = useState(true);
+  const [lastAITutorSession, setLastAITutorSession] = useState<{ name: string; href: string } | null>(null);
   
   useEffect(() => {
     const fetchMostUsedTool = async () => {
@@ -261,6 +277,11 @@ const StudyHub: React.FC = () => {
     if (sessionStorage.getItem('moodCheckedIn')) {
         setShowMoodCheckin(false);
     }
+
+    const storedSession = localStorage.getItem('lastAITutorSession');
+    if (storedSession) {
+        setLastAITutorSession(JSON.parse(storedSession));
+    }
   }, []);
 
   const handleMoodSelected = () => {
@@ -269,10 +290,12 @@ const StudyHub: React.FC = () => {
 
   const greeting = getTimeOfDayGreeting();
   const mostUsedTool = tools.find(t => t.key === mostUsedToolKey);
+  const firstName = currentUser?.displayName?.split(' ')[0] || 'Student';
+  const tagline = useMemo(() => taglines[Math.floor(Math.random() * taglines.length)], []);
 
   return (
     <div className="space-y-8">
-      <PageHeader title={`${greeting}, ${currentUser?.displayName || 'Student'}!`} subtitle="Your central hub for accelerated learning. Let's get started." />
+      <PageHeader title={`${greeting}, ${firstName}!`} subtitle={tagline} />
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-8">
@@ -289,6 +312,23 @@ const StudyHub: React.FC = () => {
             </div>
              
             <div>
+                 {lastAITutorSession && (
+                    <div className="mb-8">
+                        <h2 className="text-2xl font-bold text-slate-100 mb-4 flex items-center"><Repeat className="w-6 h-6 mr-3 text-blue-400" /> Resume Last Activity</h2>
+                        <Link to={lastAITutorSession.href} className="group block p-6 bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl hover:bg-slate-700/80 transition-all duration-300 ring-2 ring-blue-500 shadow-lg shadow-blue-500/10">
+                            <div className="flex items-center space-x-4">
+                                <div className={`p-3 rounded-lg bg-blue-900/50`}>
+                                    <MessageSquare className={`w-6 h-6 text-blue-400`} />
+                                </div>
+                                <div>
+                                    <h3 className="text-lg font-bold text-slate-100">Resume your AI Tutor session on {lastAITutorSession.name}</h3>
+                                    <p className="mt-1 text-sm text-slate-400">Click to jump back in!</p>
+                                </div>
+                                <ArrowRight className="ml-auto w-5 h-5 text-slate-400 transition-transform duration-300 group-hover:translate-x-1 group-hover:text-blue-400" />
+                            </div>
+                        </Link>
+                    </div>
+                )}
                  {mostUsedTool && (
                     <div className="mb-8">
                         <h2 className="text-2xl font-bold text-slate-100 mb-4 flex items-center"><Star className="w-6 h-6 mr-3 text-yellow-400" /> Quick Access</h2>
@@ -312,6 +352,7 @@ const StudyHub: React.FC = () => {
         </div>
 
         <div className="space-y-8">
+          <GoalsWidget />
           {showMoodCheckin && <MoodCheckin onMoodSelect={handleMoodSelected} />}
           <ProductivityInsights />
           <MyCourses />

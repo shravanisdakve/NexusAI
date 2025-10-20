@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { BrainCircuit } from 'lucide-react';
+import { BrainCircuit, Eye, EyeOff } from 'lucide-react';
 import { Button, Input } from '../components/ui';
 
 const Signup: React.FC = () => {
@@ -11,12 +11,33 @@ const Signup: React.FC = () => {
   const [displayName, setDisplayName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [university, setUniversity] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-     if (!displayName || !email || !password || !university) {
+
+    if (password !== confirmPassword) {
+        setError('Passwords do not match.');
+        return;
+    }
+
+    const passwordRegex = /^(?=.*[0-9])(?=.*[!@#$%^&*])[a-zA-Z0-9!@#$%^&*]{8,}$/;
+    if (!passwordRegex.test(password)) {
+        setError("Password must be at least 8 characters long and include at least one number and one special character.");
+        return;
+    }
+
+    if (!agreedToTerms) {
+        setError('You must agree to the Terms of Service and Privacy Policy.');
+        return;
+    }
+
+    if (!displayName || !email || !password || !university) {
         setError('Please fill in all fields.');
         return;
     }
@@ -88,17 +109,71 @@ const Signup: React.FC = () => {
         </div>
         <div>
             <label htmlFor="password-signup" className="block text-sm font-medium text-slate-300 mb-2">Password</label>
-            <Input
-                id="password-signup"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                required
-                disabled={loading}
-            />
+            <div className="relative">
+                <Input
+                    id="password-signup"
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    required
+                    disabled={loading}
+                />
+                <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-200"
+                >
+                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                </button>
+            </div>
+            <p className="text-xs text-slate-500 mt-2">Must be at least 8 characters and include a number and a special character.</p>
         </div>
-        <Button type="submit" isLoading={loading} className="w-full">
+        <div>
+            <label htmlFor="confirm-password-signup" className="block text-sm font-medium text-slate-300 mb-2">Confirm Password</label>
+            <div className="relative">
+                <Input
+                    id="confirm-password-signup"
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="••••••••"
+                    required
+                    disabled={loading}
+                />
+                <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-200"
+                >
+                    {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                </button>
+            </div>
+        </div>
+
+        <div className="flex items-center">
+            <input
+                id="terms"
+                name="terms"
+                type="checkbox"
+                checked={agreedToTerms}
+                onChange={(e) => setAgreedToTerms(e.target.checked)}
+                className="h-4 w-4 text-violet-600 focus:ring-violet-500 border-gray-300 rounded"
+            />
+            <label htmlFor="terms" className="ml-2 block text-sm text-slate-400">
+                I agree to the{' '}
+                <Link to="/terms" className="font-medium text-violet-400 hover:text-violet-300">
+                    Terms of Service
+                </Link>{' '}
+                and{' '}
+                <Link to="/privacy" className="font-medium text-violet-400 hover:text-violet-300">
+                    Privacy Policy
+                </Link>
+                .
+            </label>
+        </div>
+
+        <Button type="submit" isLoading={loading} disabled={loading || !agreedToTerms} className="w-full">
           Create Account
         </Button>
       </form>

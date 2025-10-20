@@ -63,7 +63,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     await new Promise(resolve => setTimeout(resolve, 500));
     setCurrentUser({
       uid: 'mock-uid',
-      displayName: 'Mock User',
+      displayName: email.split('@')[0] || 'Mock User',
       email,
     });
     setLoading(false);
