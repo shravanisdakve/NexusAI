@@ -28,10 +28,10 @@ import MusicPlayer from '../components/MusicPlayer';
 import ShareModal from '../components/ShareModal';
 import EditableNotes from '../components/EditableNotes';
 import FlashcardGenerator from '../components/FlashcardGenerator';
-import ResourcePanel from '../components/ResourcePanel';
+import ConsolidatedNotes from '../components/ConsolidatedNotes';
 
 // --- Helper Types & Constants ---
-type ActiveTab = 'chat' | 'participants' | 'ai' | 'timer' | 'notes' | 'resources';
+type ActiveTab = 'chat' | 'participants' | 'ai' | 'timer' | 'notes';
 const FOCUS_DURATION = 25 * 60;
 const BREAK_DURATION = 5 * 60;
 
@@ -89,7 +89,24 @@ const StudyRoom: React.FC = () => {
     const notesFileInputRef = useRef<HTMLInputElement>(null);
     const chatEndRef = useRef<HTMLDivElement>(null);
     const aiChatEndRef = useRef<HTMLDivElement>(null);
-    const welcomeMessageSent = useRef(false);
+    const prevParticipantsRef = useRef<StudyRoomType['users']>([]);
+
+    useEffect(() => {
+        if (room) {
+            const prevEmails = prevParticipantsRef.current.map(p => p.email);
+            const currentEmails = room.users.map(p => p.email);
+
+            const newUsers = room.users.filter(p => !prevEmails.includes(p.email) && p.email !== currentUser?.email);
+            const leftUsers = prevParticipantsRef.current.filter(p => !currentEmails.includes(p.email));
+            if (leftUsers.length > 0) {
+                leftUsers.forEach(user => {
+                    postSystemMessage(`${user.displayName} has left the room.`);
+                });
+            }
+
+            prevParticipantsRef.current = room.users;
+        }
+    }, [room, currentUser]);
 
     // --- Effects for Setup and Teardown ---
     const getMedia = useCallback(async () => {
@@ -294,6 +311,7 @@ const StudyRoom: React.FC = () => {
         if (!roomId || !currentUser) return;
         setIsUploading(true);
         await uploadResource(roomId, file, { displayName: currentUser.displayName });
+        postSystemMessage(`${currentUser.displayName} uploaded a new resource: ${file.name}`);
         setIsUploading(false);
     };
 
@@ -535,8 +553,7 @@ const StudyRoom: React.FC = () => {
                         <TabButton id="participants" activeTab={activeTab} setActiveTab={setActiveTab} icon={Users} label="Participants" count={participants.length} />
                         <TabButton id="ai" activeTab={activeTab} setActiveTab={setActiveTab} icon={Brain} label="AI Buddy" />
                         <TabButton id="timer" activeTab={activeTab} setActiveTab={setActiveTab} icon={Timer} label="Timer" />
-                        <TabButton id="notes" activeTab={activeTab} setActiveTab={setActiveTab} icon={FileText} label="Notes & Cards" />
-                        <TabButton id="resources" activeTab={activeTab} setActiveTab={setActiveTab} icon={FolderOpen} label="Resources" />
+                        <TabButton id="notes" activeTab={activeTab} setActiveTab={setActiveTab} icon={FileText} label="Notes" />
                     </div>
                     
                     {activeTab === 'chat' && (
@@ -576,21 +593,17 @@ const StudyRoom: React.FC = () => {
                         />
                     )}
                     {activeTab === 'notes' && (
-                        <div className="p-4 space-y-4">
-                            <EditableNotes 
-                                initialNotes={userNotes}
-                                onSave={handleSaveUserNotes}
-                                isSaving={isSavingUserNotes}
-                            />
-                            <FlashcardGenerator notes={userNotes} />
-                        </div>
-                    )}
-                    {activeTab === 'resources' && (
-                        <ResourcePanel 
+                        <ConsolidatedNotes
+                            initialUserNotes={userNotes}
+                            onSaveUserNotes={handleSaveUserNotes}
+                            isSaving={isSavingUserNotes}
                             resources={resources}
-                            onUpload={handleUploadResource}
-                            onDelete={handleDeleteResource}
+                            onUploadResource={handleUploadResource}
+                            onDeleteResource={handleDeleteResource}
                             isUploading={isUploading}
+                            aiNotes={notes}
+                            isExtracting={isExtracting}
+                            onUploadAINotesClick={() => notesFileInputRef.current?.click()}
                         />
                     )}
                 </aside>
