@@ -31,7 +31,7 @@ const Sidebar: React.FC = () => {
            <BrainCircuit className="w-7 h-7 text-white" />
         </div>
         <h1 className="text-2xl font-bold ml-3 bg-gradient-to-r from-violet-400 to-cyan-400 text-transparent bg-clip-text">
-          NexusAi
+          NexusAI
         </h1>
       </div>
       <nav className="flex-1 space-y-2">
@@ -73,7 +73,7 @@ const Sidebar: React.FC = () => {
               Logout
             </button>
         </div>
-        <p className="text-center text-xs text-slate-500 mt-4">&copy; 2024 NexusAi. All rights reserved.</p>
+        <p className="text-center text-xs text-slate-500 mt-4">&copy; 2024 NexusAI. All rights reserved.</p>
       </div>
     </aside>
   );

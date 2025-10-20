@@ -1,8 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { BrainCircuit } from 'lucide-react';
+import { BrainCircuit, Eye, EyeOff } from 'lucide-react';
 import { Button, Input } from '../components/ui';
+
+const taglines = [
+    "Unlock your smarter study session.",
+    "Let's pick up where you left off.",
+    "Your AI-powered study partner awaits.",
+    "Log in to continue your progress."
+];
 
 const Login: React.FC = () => {
   const { login } = useAuth();
@@ -10,7 +17,10 @@ const Login: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
+
+  const tagline = useMemo(() => taglines[Math.floor(Math.random() * taglines.length)], []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,11 +48,11 @@ const Login: React.FC = () => {
             <BrainCircuit className="w-8 h-8 text-white" />
           </div>
           <h1 className="text-3xl font-bold ml-3 bg-gradient-to-r from-violet-400 to-cyan-400 text-transparent bg-clip-text">
-            NexusAi
+            NexusAI
           </h1>
         </div>
         <h2 className="text-2xl font-bold text-white">Welcome Back!</h2>
-        <p className="mt-2 text-slate-400">Sign in to access your Study Hub.</p>
+        <p className="mt-2 text-slate-400">{tagline}</p>
       </div>
       
       {error && <p className="text-red-400 text-sm text-center bg-red-500/10 p-3 rounded-md">{error}</p>}
@@ -62,16 +72,32 @@ const Login: React.FC = () => {
         </div>
         <div>
             <label htmlFor="password-login" className="block text-sm font-medium text-slate-300 mb-2">Password</label>
-            <Input
-                id="password-login"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                required
-                disabled={loading}
-            />
+            <div className="relative">
+                <Input
+                    id="password-login"
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    required
+                    disabled={loading}
+                />
+                <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-200"
+                >
+                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                </button>
+            </div>
         </div>
+        
+        <div className="text-right">
+            <Link to="/forgot-password" className="text-sm font-medium text-violet-400 hover:text-violet-300">
+                Forgot Password?
+            </Link>
+        </div>
+
         <Button type="submit" isLoading={loading} className="w-full">
          Log In
         </Button>

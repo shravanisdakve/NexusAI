@@ -8,7 +8,7 @@ interface ShareModalProps {
 
 const ShareModal: React.FC<ShareModalProps> = ({ roomId, onClose }) => {
   const [copied, setCopied] = useState(false);
-  const shareText = `Join my NexusAi study room! ID: ${roomId}`;
+  const shareText = `Join my NexusAI study room! ID: ${roomId}`;
   const encodedText = encodeURIComponent(shareText);
 
   const handleCopy = () => {

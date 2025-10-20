@@ -40,11 +40,11 @@ const Signup: React.FC = () => {
             <BrainCircuit className="w-8 h-8 text-white" />
           </div>
           <h1 className="text-3xl font-bold ml-3 bg-gradient-to-r from-violet-400 to-cyan-400 text-transparent bg-clip-text">
-            NexusAi
+            NexusAI
           </h1>
         </div>
         <h2 className="text-2xl font-bold text-white">Create your Account</h2>
-        <p className="mt-2 text-slate-400">Join NexusAi to supercharge your studies.</p>
+        <p className="mt-2 text-slate-400">Join NexusAI to supercharge your studies.</p>
       </div>
       
       {error && <p className="text-red-400 text-sm text-center bg-red-500/10 p-3 rounded-md">{error}</p>}
