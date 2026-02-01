@@ -1,102 +1,128 @@
-import React, { useContext, useState, useEffect, createContext, ReactNode } from 'react';
-
-interface User {
-  uid: string;
-  displayName: string | null;
-  email: string | null;
-  university?: string;
-}
+import React, { createContext, useState, useEffect, useContext, ReactNode } from 'react';
+import axios from 'axios';
+import { User } from '../types'; // Import User from types/index.ts
 
 interface AuthContextType {
-  currentUser: User | null;
+  user: User | null;
   loading: boolean;
-  signup: (displayName: string, email: string, university: string, password: string) => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
-  logout: () => Promise<void>;
-  updateUserProfile: (updates: Partial<User>) => Promise<void>;
+  signup: (displayName: string, email: string, university: string, password: string) => Promise<void>;
+  logout: () => void;
+  isAuthenticated: boolean;
+  updateUserProfile: (updates: Partial<User>) => Promise<void>; // Added from original file
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const useAuth = (): AuthContextType => {
+export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  // Set the default base URL for axios
+  axios.defaults.baseURL = 'http://localhost:5000'; // Or your production URL
+
+  // Check for existing token on mount
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      validateToken(token);
+    } else {
+      setLoading(false);
+    }
+  }, []);
+
+  const validateToken = async (token: string) => {
+    try {
+      // Verify token with backend
+      const response = await axios.get('/api/auth/verify', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      if (response.data.success) {
+        setUser(response.data.user);
+      } else {
+        localStorage.removeItem('token');
+      }
+    } catch (error) {
+      console.error('Token validation failed:', error);
+      localStorage.removeItem('token');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const login = async (email: string, password: string) => {
+    try {
+      const response = await axios.post('/api/auth/login', {
+        email,
+        password
+      });
+
+      if (response.data.success) {
+        localStorage.setItem('token', response.data.token);
+        setUser(response.data.user);
+      } else {
+        throw new Error(response.data.message || 'Login failed');
+      }
+    } catch (error: any) {
+      // Re-throw the error with the message from the backend
+      throw new Error(error.response?.data?.message || 'Login failed due to a server error.');
+    }
+  };
+
+  const signup = async (displayName: string, email: string, university: string, password: string) => {
+    try {
+      const response = await axios.post('/api/auth/signup', {
+        displayName,
+        email,
+        university,
+        password
+      });
+
+      if (response.data.success) {
+        localStorage.setItem('token', response.data.token);
+        setUser(response.data.user);
+      } else {
+        throw new Error(response.data.message || 'Signup failed');
+      }
+    } catch (error: any) {
+       throw new Error(error.response?.data?.message || 'Signup failed due to a server error.');
+    }
+  };
+
+  const logout = () => {
+    localStorage.removeItem('token');
+    setUser(null);
+  };
+
+  // Kept from original file
+  const updateUserProfile = async (updates: Partial<User>) => {
+    if (!user) return;
+    // Here you would typically make an API call to update the user profile
+    console.log('Updating profile (mock):', updates);
+    setUser({ ...user, ...updates });
+  };
+
+
+  return (
+    <AuthContext.Provider value={{
+      user,
+      loading,
+      login,
+      signup,
+      logout,
+      isAuthenticated: !!user,
+      updateUserProfile
+    }}>
+      {children}
+    </AuthContext.Provider>
+  );
+};
+
+export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
-};
-
-export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    // Simulate checking for a user session
-    const timer = setTimeout(() => {
-      // To test the logged-in state, you can uncomment the following lines:
-      // setCurrentUser({
-      //   uid: 'mock-uid',
-      //   displayName: 'Mock User',
-      //   email: 'user@example.com',
-      // });
-      setLoading(false);
-    }, 1000);
-
-    return () => clearTimeout(timer);
-  }, []);
-
-  const signup = async (displayName: string, email: string, university: string, password: string) => {
-    setLoading(true);
-    // Mock signup
-    await new Promise(resolve => setTimeout(resolve, 500));
-    setCurrentUser({
-      uid: 'mock-uid',
-      displayName,
-      email,
-      university,
-    });
-    setLoading(false);
-  };
-
-  const login = async (email: string, password: string) => {
-    setLoading(true);
-    // Mock login
-    await new Promise(resolve => setTimeout(resolve, 500));
-    setCurrentUser({
-      uid: 'mock-uid',
-      displayName: email.split('@')[0] || 'Mock User',
-      email,
-    });
-    setLoading(false);
-  };
-
-  const logout = async () => {
-    setLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 500));
-    setCurrentUser(null);
-    setLoading(false);
-  };
-
-  const updateUserProfile = async (updates: Partial<User>) => {
-    if (!currentUser) return;
-    setLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 500));
-    setCurrentUser({ ...currentUser, ...updates });
-    setLoading(false);
-  };
-
-  const value = {
-    currentUser,
-    loading,
-    signup,
-    login,
-    logout,
-    updateUserProfile,
-  };
-
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  );
 };

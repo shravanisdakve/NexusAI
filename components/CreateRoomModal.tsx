@@ -13,8 +13,8 @@ import { useAuth } from '../contexts/AuthContext';
 
 
 interface CreateRoomModalProps {
-  isOpen: boolean;
-  onClose: () => void;
+    isOpen: boolean;
+    onClose: () => void;
 }
 
 type ModalStep = 'selectMode' | 'selectTechnique' | 'configureRoom';
@@ -28,7 +28,7 @@ const techniques = [
 
 const CreateRoomModal: React.FC<CreateRoomModalProps> = ({ isOpen, onClose }) => {
     const navigate = useNavigate();
-    const { currentUser } = useAuth();
+    const { user } = useAuth();
     const [modalStep, setModalStep] = useState<ModalStep>('selectMode');
     const [selectedMode, setSelectedMode] = useState<RoomMode | null>(null);
     const [userLimit, setUserLimit] = useState(5);
@@ -51,26 +51,26 @@ const CreateRoomModal: React.FC<CreateRoomModalProps> = ({ isOpen, onClose }) =>
     }, [selectedMode]);
 
     // --- FIX: Fetch courses when modal opens or college mode is selected ---
-     useEffect(() => {
+    useEffect(() => {
         const fetchCourses = async () => {
             setIsLoadingCourses(true);
             try {
                 const fetchedCourses = await getCourses();
                 setCourses(fetchedCourses);
             } catch (error) {
-                 console.error("Failed to fetch courses for modal:", error);
+                console.error("Failed to fetch courses for modal:", error);
             } finally {
-                 setIsLoadingCourses(false);
+                setIsLoadingCourses(false);
             }
         };
 
         // Fetch courses if the modal is open, needed for the dropdown
         if (isOpen) {
-             fetchCourses();
+            fetchCourses();
         }
 
-     }, [isOpen]); // Re-fetch if modal re-opens
-     // --- END FIX ---
+    }, [isOpen]); // Re-fetch if modal re-opens
+    // --- END FIX ---
 
     const handleModeSelect = (mode: RoomMode) => {
         setSelectedMode(mode);
@@ -82,35 +82,43 @@ const CreateRoomModal: React.FC<CreateRoomModalProps> = ({ isOpen, onClose }) =>
     };
 
     const handleCreateRoom = async () => {
-        if (!currentUser?.email || isCreatingRoom || !selectedMode) {
+        if (!user?.email || isCreatingRoom || !selectedMode) {
             return;
         }
         setIsCreatingRoom(true);
 
-        // --- FIX: Refine courseId logic and validation ---
         let finalCourseId: string;
         if (selectedMode === 'College') {
-            if (!courseId) { // Check if courseId state is null/empty
+            if (!courseId) {
                 alert("Please select a course for College Mode, or choose 'General / University Wide'.");
                 setIsCreatingRoom(false);
                 return;
             }
-             finalCourseId = courseId; // Use the selected courseId from state
+            finalCourseId = courseId;
         } else {
-            finalCourseId = 'general'; // Default for Group mode
+            finalCourseId = 'general';
         }
-        // --- END FIX ---
 
+        const safeName = user.displayName || 'Guest';
+        const roomName = `${safeName}'s ${selectedMode} Room${topic ? ` (${topic})` : ''}`;
 
-        const roomName = `${currentUser.displayName}'s ${selectedMode} Room${topic ? ` (${topic})` : ''}`;
+        try {
+            // The new addRoom function expects an object for the creator
+            const createdBy = { email: user.email, displayName: user.displayName };
 
-        const newRoom = await addRoom(roomName, finalCourseId, userLimit, currentUser.email, currentUser.university, selectedTechnique, topic);
+            const newRoom = await addRoom(roomName, finalCourseId, userLimit, createdBy, user.university, selectedTechnique, topic);
 
-        if (newRoom) {
-            navigate(`/study-room/${newRoom.id}`);
+            if (newRoom) {
+                console.log("Room created successfully, navigating to:", newRoom.id);
+                navigate(`/study-room/${newRoom.id}`);
+            }
+        } catch (error) {
+            console.error("Failed to create room in Modal:", error);
+            alert(`Failed to create room: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        } finally {
+            setIsCreatingRoom(false);
+            handleClose();
         }
-        // handleClose will reset state after navigation
-        handleClose();
     };
 
     const handleClose = () => {
@@ -129,7 +137,7 @@ const CreateRoomModal: React.FC<CreateRoomModalProps> = ({ isOpen, onClose }) =>
     };
 
     // ... (renderSelectMode and renderSelectTechnique remain the same) ...
-     const renderSelectMode = () => (
+    const renderSelectMode = () => (
         <div className="space-y-4">
             <p className="text-sm text-slate-400 text-center">Choose a mode that best fits your study session.</p>
 
@@ -151,14 +159,14 @@ const CreateRoomModal: React.FC<CreateRoomModalProps> = ({ isOpen, onClose }) =>
         </div>
     );
 
-     const renderSelectTechnique = () => (
+    const renderSelectTechnique = () => (
         <div className="space-y-4">
             <button onClick={() => setModalStep('selectMode')} className="flex items-center text-sm text-slate-400 hover:text-white">
                 <ArrowLeft size={16} className="mr-1" /> Back to modes
             </button>
-             <div className="text-center">
-                 <h3 className="text-lg font-bold text-white flex items-center justify-center gap-2"><Target /> Targeted Learning ({selectedMode})</h3>
-                 <p className="text-sm text-slate-400">Optionally choose a technique and topic to focus your session.</p>
+            <div className="text-center">
+                <h3 className="text-lg font-bold text-white flex items-center justify-center gap-2"><Target /> Targeted Learning ({selectedMode})</h3>
+                <p className="text-sm text-slate-400">Optionally choose a technique and topic to focus your session.</p>
             </div>
 
             <div className="space-y-2">
@@ -177,7 +185,10 @@ const CreateRoomModal: React.FC<CreateRoomModalProps> = ({ isOpen, onClose }) =>
                 ))}
             </div>
 
+            <label htmlFor="topic-input" className="sr-only">Study Topic</label>
             <Input
+                id="topic-input"
+                name="topic"
                 value={topic}
                 onChange={(e) => setTopic(e.target.value)}
                 placeholder="Enter study topic (e.g., Photosynthesis)"
@@ -195,20 +206,22 @@ const CreateRoomModal: React.FC<CreateRoomModalProps> = ({ isOpen, onClose }) =>
         const maxLimit = selectedMode === 'College' ? 60 : 5;
         const minLimit = 2;
 
-         return (
-             <div className="space-y-6">
-                 <button onClick={() => setModalStep('selectTechnique')} className="flex items-center text-sm text-slate-400 hover:text-white">
+        return (
+            <div className="space-y-6">
+                <button onClick={() => setModalStep('selectTechnique')} className="flex items-center text-sm text-slate-400 hover:text-white">
                     <ArrowLeft size={16} className="mr-1" /> Back to topic & technique
                 </button>
                 <div className="text-center">
-                     <h3 className="text-lg font-bold text-white">{selectedMode} Mode Settings</h3>
-                     <p className="text-sm text-slate-400">Set the maximum number of participants.</p>
+                    <h3 className="text-lg font-bold text-white">{selectedMode} Mode Settings</h3>
+                    <p className="text-sm text-slate-400">Set the maximum number of participants.</p>
                 </div>
 
                 {/* Participant Limit Slider */}
                 <div>
-                    <label className="block text-center text-4xl font-bold text-white mb-4">{userLimit}</label>
+                    <label htmlFor="limit-slider" className="block text-center text-4xl font-bold text-white mb-4">{userLimit}</label>
                     <input
+                        id="limit-slider"
+                        name="userLimit"
                         type="range"
                         min={minLimit}
                         max={maxLimit}
@@ -216,30 +229,31 @@ const CreateRoomModal: React.FC<CreateRoomModalProps> = ({ isOpen, onClose }) =>
                         onChange={(e) => setUserLimit(parseInt(e.target.value, 10))}
                         className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-violet-500"
                     />
-                     <div className="flex justify-between text-xs text-slate-400 mt-1">
+                    <div className="flex justify-between text-xs text-slate-400 mt-1">
                         <span>{minLimit}</span>
                         <span>{maxLimit}</span>
                     </div>
                 </div>
 
                 {/* --- FIX: Add Course Selection Dropdown for College Mode --- */}
-                 {selectedMode === 'College' && (
-                     <div>
-                         <label htmlFor="course-select" className="block text-sm font-medium text-slate-300 mb-2">Select Course</label>
-                         <Select
-                             id="course-select"
-                             value={courseId ?? ''} // Use empty string for the default option
-                             onChange={(e) => setCourseId(e.target.value || null)} // Set to null if default is selected
-                             disabled={isLoadingCourses}
-                         >
+                {selectedMode === 'College' && (
+                    <div>
+                        <label htmlFor="course-select" className="block text-sm font-medium text-slate-300 mb-2">Select Course</label>
+                        <Select
+                            id="course-select"
+                            name="courseId"
+                            value={courseId ?? ''} // Use empty string for the default option
+                            onChange={(e) => setCourseId(e.target.value || null)} // Set to null if default is selected
+                            disabled={isLoadingCourses}
+                        >
                             {/* Add a default/general option */}
-                             <option value="">General / University Wide</option>
-                             {courses.map(course => <option key={course.id} value={course.id}>{course.name}</option>)}
-                         </Select>
-                         {isLoadingCourses && <p className="text-xs text-slate-400 mt-1">Loading courses...</p>}
-                     </div>
-                 )}
-                 {/* --- END FIX --- */}
+                            <option value="">General / University Wide</option>
+                            {courses.map(course => <option key={course.id} value={course.id}>{course.name}</option>)}
+                        </Select>
+                        {isLoadingCourses && <p className="text-xs text-slate-400 mt-1">Loading courses...</p>}
+                    </div>
+                )}
+                {/* --- END FIX --- */}
 
                 <Button onClick={handleCreateRoom} className="w-full" isLoading={isCreatingRoom}>
                     Create and Join Room

@@ -1,6 +1,14 @@
 
 
 
+export interface User {
+    id: string; // Or whatever ID system you use
+    displayName: string;
+    email: string;
+    university?: string;
+    // Add other fields as necessary
+}
+
 export interface Flashcard {
     id: string;
     front: string;
@@ -18,16 +26,16 @@ export interface Quiz {
 }
 
 export interface ChatMessage {
-  role: 'user' | 'model';
-  parts: { text: string }[];
-  // For group chat simulation
-  user?: { displayName:string | null, email: string | null };
-  timestamp?: number;
-  attachment?: {
-      name: string;
-      type: string;
-      size: number;
-  }
+    role: 'user' | 'model';
+    parts: { text: string }[];
+    // For group chat simulation
+    user?: { displayName: string | null, email: string | null };
+    timestamp?: number;
+    attachment?: {
+        name: string;
+        type: string;
+        size: number;
+    }
 }
 
 export interface Course {
@@ -45,7 +53,7 @@ export interface Mood {
 
 
 export interface StudyRoom {
-    id:string;
+    id: string;
     name: string;
     courseId: string;
     maxUsers: number;
@@ -76,12 +84,48 @@ export interface Assignment {
 }
 
 export interface Note {
-  id: string;
-  courseId: string;
-  title: string;
-  content?: string; // For text notes
-  fileUrl?: string; // For file notes
-  fileName?: string;
-  fileType?: string;
-  createdAt: number;
+    id: string;
+    courseId: string;
+    title: string;
+    content?: string; // For text notes
+    fileUrl?: string; // For file notes
+    fileName?: string;
+    fileType?: string;
+    createdAt: number;
+}
+
+export interface GeminiRequest {
+    message?: string;
+    notes?: string;
+    prompt?: string;
+    aspectRatio?: string;
+    text?: string;
+    base64Data?: string;
+    mimeType?: string;
+    language?: string;
+    context?: string;
+    reportJson?: string;
+    mood?: string;
+    goalTitle?: string;
+}
+
+export interface GeminiResponse {
+    error?: string;
+    image?: string;
+    summary?: string;
+    code?: string;
+    text?: string;
+    question?: string;
+    suggestions?: string;
+    flashcards?: string;
+    suggestion?: string;
+    breakdown?: string;
+}
+
+export interface PomodoroState {
+    timeLeft: number;
+    isActive: boolean;
+    isBreak: boolean;
+    mode: 'focus' | 'shortBreak' | 'longBreak';
+    startTime: number | null;
 }

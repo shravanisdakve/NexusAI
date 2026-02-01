@@ -10,7 +10,7 @@ import { type StudyRoom, type Course } from '../types';
 
 const StudyLobby: React.FC = () => {
     const navigate = useNavigate();
-    const { currentUser } = useAuth();
+    const { user } = useAuth();
     const [joinId, setJoinId] = useState('');
     const [error, setError] = useState('');
     const [isCreateModalOpen, setCreateModalOpen] = useState(false); // State for the modal
@@ -52,7 +52,7 @@ const StudyLobby: React.FC = () => {
                 <div className="w-full max-w-2xl text-center">
                     <Users size={48} className="mx-auto text-violet-400 mb-4" />
                     <PageHeader title="Study Room" subtitle="Collaborate with friends in a real-time video room with a shared AI assistant." />
-                    
+
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-10">
                         {/* Create Room Card */}
                         <div className="bg-slate-800/50 p-8 rounded-xl ring-1 ring-slate-700 flex flex-col items-center text-center">
@@ -69,6 +69,8 @@ const StudyLobby: React.FC = () => {
                             <p className="text-slate-400 mb-6 flex-1">Enter the ID of an existing room to join the study session.</p>
                             <form onSubmit={handleJoinRoom} className="w-full flex gap-2">
                                 <Input
+                                    id="join-room-id"
+                                    name="joinId"
                                     type="text"
                                     value={joinId}
                                     onChange={(e) => setJoinId(e.target.value)}
@@ -99,7 +101,7 @@ const StudyLobby: React.FC = () => {
                                             <span>{room.users.length} / {room.maxUsers}</span>
                                         </div>
                                         <Button onClick={() => navigate(`/study-room/${room.id}`)} disabled={room.users.length >= room.maxUsers} className="py-2 px-4 text-sm">
-                                            Join <ArrowRight size={14} className="ml-1"/>
+                                            Join <ArrowRight size={14} className="ml-1" />
                                         </Button>
                                     </div>
                                 </div>

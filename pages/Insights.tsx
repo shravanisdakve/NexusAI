@@ -20,6 +20,15 @@ const StatCard = ({ title, value, icon: Icon }: any) => (
   </div>
 );
 
+// Helper function to format time
+const formatTime = (seconds: number): string => {
+  if (!seconds || isNaN(seconds)) return '0 sec';
+  
+  if (seconds < 60) return `${seconds} sec`;
+  if (seconds < 3600) return `${Math.floor(seconds / 60)} min`;
+  return `${Math.floor(seconds / 3600)} hr ${Math.floor((seconds % 3600) / 60)} min`;
+};
+
 // -------------------- MAIN PAGE --------------------
 const Insights: React.FC = () => {
   const [activity, setActivity] = useState<GameActivity[]>([]);
@@ -72,7 +81,7 @@ const Insights: React.FC = () => {
         />
         <StatCard
           title="Total Time Spent"
-          value={`${totalTime} sec`}
+          value={formatTime(totalTime)}
           icon={Clock}
         />
         <StatCard
@@ -110,7 +119,7 @@ const Insights: React.FC = () => {
                   <span>
                     {item.game.toUpperCase()} — Score {item.score}
                   </span>
-                  <span>{item.timeSpent} sec</span>
+                  <span>{formatTime(item.timeSpent)}</span>
                 </li>
               ))}
           </ul>

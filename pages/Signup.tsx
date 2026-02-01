@@ -2,11 +2,11 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { BrainCircuit, Eye, EyeOff } from 'lucide-react';
-import { Button, Input } from '../components/ui';
+import { Input } from '../components/ui';
 
 const Signup: React.FC = () => {
   const { signup } = useAuth();
-  const [error, setError] = useState('');
+  const [apiError, setApiError] = useState(''); // Renamed to apiError to distinguish from form validation errors
   const [loading, setLoading] = useState(false);
   const [displayName, setDisplayName] = useState('');
   const [email, setEmail] = useState('');
@@ -18,36 +18,77 @@ const Signup: React.FC = () => {
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const navigate = useNavigate();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // State for form validation errors
+  const [errors, setErrors] = useState({
+    displayName: '',
+    email: '',
+    password: '',
+    confirmPassword: '',
+    terms: ''
+  });
 
-    if (password !== confirmPassword) {
-        setError('Passwords do not match.');
-        return;
+  const validateForm = () => {
+    const newErrors = { displayName: '', email: '', password: '', confirmPassword: '', terms: '' };
+    let isValid = true;
+
+    if (displayName.length < 2) {
+      newErrors.displayName = 'Name must be at least 2 characters';
+      isValid = false;
     }
-
-    const passwordRegex = /^(?=.*[0-9])(?=.*[!@#$%^&*])[a-zA-Z0-9!@#$%^&*]{8,}$/;
-    if (!passwordRegex.test(password)) {
-        setError("Password must be at least 8 characters long and include at least one number and one special character.");
-        return;
+    
+    if (!/\S+@\S+\.\S+/.test(email)) {
+      newErrors.email = 'Please enter a valid email address';
+      isValid = false;
+    }
+    
+    // Password strength validation: 8+ chars, at least one number, one special character
+    if (password.length < 8) {
+      newErrors.password = 'Password must be at least 8 characters long';
+      isValid = false;
+    } else if (!/\d/.test(password)) {
+      newErrors.password = 'Password must contain at least one number';
+      isValid = false;
+    } else if (!/[!@#$%^&*()]/.test(password)) { // Expanded special characters for clarity
+      newErrors.password = 'Password must contain at least one special character (!@#$%^&*())';
+      isValid = false;
+    }
+    
+    if (password !== confirmPassword) {
+      newErrors.confirmPassword = 'Passwords do not match';
+      isValid = false;
     }
 
     if (!agreedToTerms) {
-        setError('You must agree to the Terms of Service and Privacy Policy.');
+        newErrors.terms = 'You must agree to the Terms of Service and Privacy Policy.';
+        isValid = false;
+    }
+    
+    setErrors(newErrors);
+    return isValid;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setApiError(''); // Clear previous API errors
+    setErrors({ displayName: '', email: '', password: '', confirmPassword: '', terms: '' }); // Clear previous form errors
+    
+    if (!validateForm()) {
+      return; // Stop if form validation fails
+    }
+
+    // University field is required but not part of the snippet's validation.
+    // If it's empty, we'll set a general API error or handle it here.
+    if (!university) {
+        setApiError('Please fill in all fields including University Name.'); 
         return;
     }
 
-    if (!displayName || !email || !password || !university) {
-        setError('Please fill in all fields.');
-        return;
-    }
-    setError('');
     setLoading(true);
     try {
       await signup(displayName, email, university, password);
       navigate('/');
     } catch (err: any) {
-      setError('Failed to create an account. Please try again.');
+      setApiError(err.message || 'Failed to create an account. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -68,7 +109,11 @@ const Signup: React.FC = () => {
         <p className="mt-2 text-slate-400">Join NexusAI to supercharge your studies.</p>
       </div>
       
-      {error && <p className="text-red-400 text-sm text-center bg-red-500/10 p-3 rounded-md">{error}</p>}
+      {(apiError || errors.terms) && ( // Display general API errors or terms error at the top
+        <div className="mb-4 p-3 bg-red-500/10 border border-red-500 rounded-lg text-red-500 text-sm">
+          <p>{apiError || errors.terms}</p>
+        </div>
+      )}
       
       <form onSubmit={handleSubmit} className="space-y-6">
         <div>
@@ -77,11 +122,12 @@ const Signup: React.FC = () => {
                 id="displayName"
                 type="text"
                 value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
+                onChange={(e) => { setDisplayName(e.target.value); setErrors(prev => ({ ...prev, displayName: '' })); }}
                 placeholder="John Doe"
                 required
                 disabled={loading}
             />
+            {errors.displayName && <p className="text-red-400 text-xs mt-1">{errors.displayName}</p>}
         </div>
         <div>
             <label htmlFor="university" className="block text-sm font-medium text-slate-300 mb-2">University Name</label>
@@ -101,11 +147,12 @@ const Signup: React.FC = () => {
                 id="email-signup"
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => { setEmail(e.target.value); setErrors(prev => ({ ...prev, email: '' })); }}
                 placeholder="you@example.com"
                 required
                 disabled={loading}
             />
+            {errors.email && <p className="text-red-400 text-xs mt-1">{errors.email}</p>}
         </div>
         <div>
             <label htmlFor="password-signup" className="block text-sm font-medium text-slate-300 mb-2">Password</label>
@@ -114,7 +161,7 @@ const Signup: React.FC = () => {
                     id="password-signup"
                     type={showPassword ? 'text' : 'password'}
                     value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    onChange={(e) => { setPassword(e.target.value); setErrors(prev => ({ ...prev, password: '' })); }}
                     placeholder="••••••••"
                     required
                     disabled={loading}
@@ -127,6 +174,7 @@ const Signup: React.FC = () => {
                     {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                 </button>
             </div>
+            {errors.password && <p className="text-red-400 text-xs mt-1">{errors.password}</p>}
             <p className="text-xs text-slate-500 mt-2">Must be at least 8 characters and include a number and a special character.</p>
         </div>
         <div>
@@ -136,7 +184,7 @@ const Signup: React.FC = () => {
                     id="confirm-password-signup"
                     type={showConfirmPassword ? 'text' : 'password'}
                     value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    onChange={(e) => { setConfirmPassword(e.target.value); setErrors(prev => ({ ...prev, confirmPassword: '' })); }}
                     placeholder="••••••••"
                     required
                     disabled={loading}
@@ -149,6 +197,7 @@ const Signup: React.FC = () => {
                     {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                 </button>
             </div>
+            {errors.confirmPassword && <p className="text-red-400 text-xs mt-1">{errors.confirmPassword}</p>}
         </div>
 
         <div className="flex items-center">
@@ -157,7 +206,7 @@ const Signup: React.FC = () => {
                 name="terms"
                 type="checkbox"
                 checked={agreedToTerms}
-                onChange={(e) => setAgreedToTerms(e.target.checked)}
+                onChange={(e) => { setAgreedToTerms(e.target.checked); setErrors(prev => ({ ...prev, terms: '' })); }}
                 className="h-4 w-4 text-violet-600 focus:ring-violet-500 border-gray-300 rounded"
             />
             <label htmlFor="terms" className="ml-2 block text-sm text-slate-400">
@@ -173,9 +222,22 @@ const Signup: React.FC = () => {
             </label>
         </div>
 
-        <Button type="submit" isLoading={loading} disabled={loading || !agreedToTerms} className="w-full">
-          Create Account
-        </Button>
+        <button
+          type="submit"
+          disabled={loading || !agreedToTerms}
+          className="w-full py-3 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 
+                     disabled:cursor-not-allowed text-white rounded-lg transition-colors
+                     flex items-center justify-center gap-2"
+        >
+          {loading ? (
+            <>
+              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+              <span>Creating Account...</span>
+            </>
+          ) : (
+            'Create Account'
+          )}
+        </button>
       </form>
 
       <p className="text-sm text-center text-slate-400">

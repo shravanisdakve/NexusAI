@@ -1,10 +1,10 @@
 
 
 import React from 'react';
-import { HashRouter, Routes, Route, Outlet, Navigate } from 'react-router-dom';
+import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Sidebar from './components/Sidebar';
-import StudyHub from './pages/Dashboard';
-import AiTutor from './pages/AiChat';
+import Dashboard from './pages/Dashboard'; // Renamed StudyHub to Dashboard
+import AITutor from './pages/AiChat'; // Renamed AiTutor to AITutor
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import StudyRoom from './pages/StudyRoom';
@@ -12,89 +12,71 @@ import StudyLobby from './pages/StudyLobby';
 import Insights from './pages/Insights';
 import Notes from './pages/Notes';
 import CourseCommunity from './pages/CourseCommunity';
-import QuizPractice from './pages/QuizPractice'; // <-- IMPORT NEW PAGE
-import { useAuth } from './contexts/AuthContext';
-import { Spinner } from './components/ui';
+import Quizzes from './pages/QuizPractice'; // Renamed QuizPractice to Quizzes
 import InterviewQuiz from './pages/InterviewQuiz';
 import SudokuGame from './pages/SudokuGame';
 import ZipGame from './pages/ZipGame';
 import SpeedMathGame from './pages/SpeedMathGame';
-
-
-const AuthLayout: React.FC = () => (
-  <div className="flex items-center justify-center min-h-screen bg-slate-900">
-    <Outlet />
-  </div>
-);
-
-const MainLayout: React.FC = () => (
-  <div className="flex h-screen bg-slate-900 text-slate-200">
-    <Sidebar />
-    <main className="flex-1 overflow-y-auto">
-      <div className="p-4 sm:p-6 lg:p-8 h-full">
-        <Outlet />
-      </div>
-    </main>
-  </div>
-);
+import ForgotPassword from './pages/ForgotPassword';
+import Terms from './pages/Terms';
+import Privacy from './pages/Privacy';
+import { useAuth } from './contexts/AuthContext';
+import { Spinner } from './components/ui';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { currentUser, loading } = useAuth();
+  const { isAuthenticated, loading } = useAuth(); // Using isAuthenticated and loading from useAuth
+
   if (loading) {
     return (
-      <div className="w-full h-screen flex items-center justify-center">
-        <Spinner />
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500"></div>
       </div>
     );
   }
-  return currentUser ? <>{children}</> : <Navigate to="/login" replace />;
+
+  return isAuthenticated ? (
+    <div className="flex h-screen bg-slate-900 text-slate-200">
+      <Sidebar />
+      <main className="flex-1 overflow-y-auto">
+        <div className="p-4 sm:p-6 lg:p-8 h-full">
+          {children}
+        </div>
+      </main>
+    </div>
+  ) : (
+    <Navigate to="/login" replace />
+  );
 };
 
 const App: React.FC = () => {
-  const { currentUser, loading } = useAuth();
-  
-  if (loading) {
-    return (
-       <div className="w-full h-screen flex items-center justify-center bg-slate-900">
-        <Spinner />
-      </div>
-    )
-  }
-
   return (
-    <HashRouter>
+    <Router>
       <Routes>
-        {currentUser ? (
-          <Route 
-            path="/*" 
-            element={
-              <MainLayout />
-            }
-          >
-            <Route index element={<StudyHub />} />
-            <Route path="tutor" element={<AiTutor />} />
-            <Route path="study-lobby" element={<StudyLobby />} />
-            <Route path="study-room/:id" element={<StudyRoom />} />
-            <Route path="insights" element={<Insights />} />
-            <Route path="notes" element={<Notes />} />
-            <Route path="community/:courseId" element={<CourseCommunity />} />
-            <Route path="quizzes" element={<QuizPractice />} /> {/* <-- ADD ROUTE */}
-            <Route path="interview" element={<InterviewQuiz />} />
-            <Route path="*" element={<Navigate to="/" replace />} />
-            <Route path="sudoku" element={<SudokuGame />} />
-            <Route path="zip" element={<ZipGame />} />
-            <Route path="speed-math" element={<SpeedMathGame />} />
+        {/* Public Routes */}
+        <Route path="/login" element={<Login />} />
+        <Route path="/signup" element={<Signup />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/terms" element={<Terms />} />
+        <Route path="/privacy" element={<Privacy />} />
 
-          </Route>
-        ) : (
-          <Route element={<AuthLayout />}>
-            <Route path="/login" element={<Login />} />
-            <Route path="/signup" element={<Signup />} />
-            <Route path="*" element={<Navigate to="/login" replace />} />
-          </Route>
-        )}
+        {/* Protected Routes */}
+        <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+        <Route path="/insights" element={<ProtectedRoute><Insights /></ProtectedRoute>} />
+        <Route path="/notes" element={<ProtectedRoute><Notes /></ProtectedRoute>} />
+        <Route path="/tutor" element={<ProtectedRoute><AITutor /></ProtectedRoute>} />
+        <Route path="/study-lobby" element={<ProtectedRoute><StudyLobby /></ProtectedRoute>} />
+        <Route path="/study-room/:id" element={<ProtectedRoute><StudyRoom /></ProtectedRoute>} />
+        <Route path="/quizzes" element={<ProtectedRoute><Quizzes /></ProtectedRoute>} />
+        <Route path="/community/:courseId" element={<ProtectedRoute><CourseCommunity /></ProtectedRoute>} />
+        <Route path="/interview" element={<ProtectedRoute><InterviewQuiz /></ProtectedRoute>} />
+        <Route path="/sudoku" element={<ProtectedRoute><SudokuGame /></ProtectedRoute>} />
+        <Route path="/zip" element={<ProtectedRoute><ZipGame /></ProtectedRoute>} />
+        <Route path="/speed-math" element={<ProtectedRoute><SpeedMathGame /></ProtectedRoute>} />
+
+        {/* Fallback */}
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-    </HashRouter>
+    </Router>
   );
 };
 
