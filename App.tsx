@@ -20,6 +20,9 @@ import SpeedMathGame from './pages/SpeedMathGame';
 import ForgotPassword from './pages/ForgotPassword';
 import Terms from './pages/Terms';
 import Privacy from './pages/Privacy';
+import ResourceLibrary from './pages/ResourceLibrary'; // Import the new page
+import GPACalculator from './pages/GPACalculator';
+import ProjectGenerator from './pages/ProjectGenerator';
 import { useAuth } from './contexts/AuthContext';
 import { Spinner } from './components/ui';
 
@@ -61,6 +64,9 @@ const App: React.FC = () => {
 
         {/* Protected Routes */}
         <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+        <Route path="/resources" element={<ProtectedRoute><ResourceLibrary /></ProtectedRoute>} />
+        <Route path="/gpa-calculator" element={<ProtectedRoute><GPACalculator /></ProtectedRoute>} />
+        <Route path="/project-generator" element={<ProtectedRoute><ProjectGenerator /></ProtectedRoute>} />
         <Route path="/insights" element={<ProtectedRoute><Insights /></ProtectedRoute>} />
         <Route path="/notes" element={<ProtectedRoute><Notes /></ProtectedRoute>} />
         <Route path="/tutor" element={<ProtectedRoute><AITutor /></ProtectedRoute>} />

@@ -6,10 +6,10 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  signup: (displayName: string, email: string, university: string, password: string) => Promise<void>;
+  signup: (displayName: string, email: string, password: string, college: string, branch: string, year: number) => Promise<void>;
   logout: () => void;
   isAuthenticated: boolean;
-  updateUserProfile: (updates: Partial<User>) => Promise<void>; // Added from original file
+  updateUserProfile: (updates: Partial<User>) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -70,20 +70,20 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  const signup = async (displayName: string, email: string, university: string, password: string) => {
+  const signup = async (displayName: string, email: string, password: string, college: string, branch: string, year: number) => {
     try {
       const response = await axios.post('/api/auth/signup', {
         displayName,
         email,
-        university,
-        password
+        password,
+        college,
+        branch,
+        year,
       });
 
       if (response.data.success) {
         localStorage.setItem('token', response.data.token);
         setUser(response.data.user);
-      } else {
-        throw new Error(response.data.message || 'Signup failed');
       }
     } catch (error: any) {
        throw new Error(error.response?.data?.message || 'Signup failed due to a server error.');

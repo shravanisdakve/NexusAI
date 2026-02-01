@@ -22,10 +22,10 @@ const validatePassword = (password) => {
 // --- SIGNUP ENDPOINT ---
 router.post("/signup", async (req, res) => {
   try {
-    const { email, password, displayName, university } = req.body;
+    const { email, password, displayName, branch, year, college } = req.body;
 
-    if (!email || !password || !displayName) {
-      return res.status(400).json({ success: false, message: "Email, password, and display name are required" });
+    if (!email || !password || !displayName || !branch || !year || !college) {
+      return res.status(400).json({ success: false, message: "All fields are required" });
     }
 
     const passwordError = validatePassword(password);
@@ -39,11 +39,13 @@ router.post("/signup", async (req, res) => {
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    const newUser = new User({ 
-      email: email.toLowerCase(), 
+    const newUser = new User({
+      email: email.toLowerCase(),
       password: hashedPassword,
       displayName,
-      university
+      branch,
+      year,
+      college,
     });
 
     await newUser.save();
@@ -61,7 +63,9 @@ router.post("/signup", async (req, res) => {
         id: newUser._id,
         email: newUser.email,
         displayName: newUser.displayName,
-        university: newUser.university
+        branch: newUser.branch,
+        year: newUser.year,
+        college: newUser.college,
       }
     });
 
@@ -103,7 +107,9 @@ router.post('/login', async (req, res) => {
         id: user._id,
         email: user.email,
         displayName: user.displayName,
-        university: user.university
+        branch: user.branch,
+        year: user.year,
+        college: user.college,
       }
     });
 

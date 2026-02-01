@@ -271,8 +271,31 @@ export const breakDownGoal = async (goalTitle: string): Promise<string> => {
     }
 
     const data: GeminiResponse = await response.json();
-    if (!data.breakdown) {
-        throw new Error('Goal breakdown not found in response');
-    }
     return data.breakdown;
 };
+
+// --- PROJECT IDEA GENERATOR SERVICE ---
+export const generateProjectIdeas = async (branch: string, interest: string, difficulty: string): Promise<string> => {
+    const requestBody: GeminiRequest = { branch, interest, difficulty };
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/gemini/generateProjectIdeas`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody),
+    });
+
+    if (!response.ok) {
+        const errorData: GeminiResponse = await response.json();
+        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+    }
+
+    const data: GeminiResponse = await response.json();
+    if (!data.ideas) {
+        throw new Error('Project ideas not found in response');
+    }
+    return data.ideas;
+};
+
+
+

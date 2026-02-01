@@ -294,4 +294,33 @@ router.post('/breakDownGoal', async (req, res) => {
 });
 
 
+// --- PROJECT IDEA GENERATOR SERVICE ---
+router.post('/generateProjectIdeas', async (req, res) => {
+    try {
+        const { branch, interest, difficulty } = req.body;
+        const model = genAI.getGenerativeModel({
+            model: "gemini-2.5-flash",
+            generationConfig: { responseMimeType: "application/json" }
+        });
+
+        const prompt = `Generate 3 unique and innovative engineering project ideas.
+        Branch: ${branch}
+        Area of Interest: ${interest}
+        Difficulty Level: ${difficulty}
+
+        Return ONLY a JSON array of objects.
+        Schema:
+        [
+            { "title": "string", "description": "string", "techStack": ["string", "string"] }
+        ]`;
+
+        const result = await model.generateContent(prompt);
+        res.json({ ideas: result.response.text() });
+    } catch (error) {
+        console.error("Error in generateProjectIdeas:", error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+
 module.exports = router;

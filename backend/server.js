@@ -35,6 +35,7 @@ app.use('/api/gemini', require('./routes/gemini'));
 app.use('/api/notes', require('./routes/notes'));
 app.use('/api/courses', require('./routes/courses'));
 app.use('/api/games', require('./routes/games'));
+app.use('/api/resources', require('./routes/resources'));
 
 // 6. Health Check Route
 app.get('/api/health', (req, res) => {
