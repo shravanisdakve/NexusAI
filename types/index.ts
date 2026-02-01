@@ -14,29 +14,36 @@ export interface AuthResponse {
 }
 
 export interface GeminiRequest {
-  prompt: string;
+  prompt?: string; // made optional
+  message?: string; // for chat
   courseContext?: string;
-  aspectRatio?: string; // Add aspectRatio for generateImage
-  base64Data?: string; // For summarizeAudioFromBase64, extractTextFromFile
-  mimeType?: string; // For summarizeAudioFromBase64, extractTextFromFile
-  language?: string; // For generateCode
-  reportJson?: string; // For getStudySuggestions
-  mood?: string; // For getSuggestionForMood
-  goalTitle?: string; // For breakDownGoal
-  notes?: string; // For streamStudyBuddyChat
-  context?: string; // For generateQuizQuestion, generateFlashcards
+  aspectRatio?: string;
+  base64Data?: string;
+  mimeType?: string;
+  language?: string;
+  reportJson?: string;
+  mood?: string;
+  goalTitle?: string;
+  notes?: string;
+  context?: string;
+  branch?: string; // Added
+  interest?: string; // Added
+  difficulty?: string; // Added
+  text?: string; // for summarizeText
 }
 
 export interface GeminiResponse {
-  success: boolean;
+  success?: boolean; // made optional as often error is returned directly
   response?: string;
   error?: string;
-  image?: string; // For generateImage
-  summary?: string; // For summarization services
-  code?: string; // For generateCode
-  text?: string; // For extractTextFromFile
-  question?: string; // For generateQuizQuestion
-  suggestions?: string; // For getStudySuggestions
-  flashcards?: string; // For generateFlashcards
-  breakdown?: string; // For breakDownGoal
+  image?: string;
+  summary?: string;
+  code?: string;
+  text?: string;
+  question?: string;
+  suggestions?: string;
+  suggestion?: string; // Added singular
+  flashcards?: string;
+  breakdown?: string;
+  ideas?: string; // Added
 }

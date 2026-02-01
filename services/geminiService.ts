@@ -277,6 +277,12 @@ export const breakDownGoal = async (goalTitle: string): Promise<string> => {
 // --- PROJECT IDEA GENERATOR SERVICE ---
 export const generateProjectIdeas = async (branch: string, interest: string, difficulty: string): Promise<string> => {
     const requestBody: GeminiRequest = { branch, interest, difficulty };
+    // Enhanced prompt handled in backend, passing context in request potentially?
+    // Actually, let's update the backend prompt in gemini.js instead as that's where the prompt is constructed.
+    // But for this service, we just pass the params.
+    // Wait, I should verify backend/routes/gemini.js for the prompt update.
+    // Let's assume I will update the backend route.
+
     const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/gemini/generateProjectIdeas`, {
         method: 'POST',
         headers: {

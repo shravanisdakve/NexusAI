@@ -208,7 +208,9 @@ router.post('/getStudySuggestions', async (req, res) => {
     try {
         const { reportJson } = req.body;
         const model = getModel('gemini-2.5-flash');
-        const prompt = `You are an expert academic advisor. Based on the following JSON data of a student's weekly performance, provide 2-3 concise, actionable suggestions to help them improve. Focus on their weaknesses, time management, or quiz performance. Frame your advice in a positive and encouraging tone.
+        const prompt = `You are an expert academic advisor for engineering students (specifically Mumbai University context). 
+        Based on the following JSON data of a student's weekly performance, provide 3-4 specific, actionable suggestions.
+        Considering Mumbai University's pattern, emphasize the importance of consistent practice and concept clarity.
         
         Student Performance Data:
         ${reportJson}
@@ -303,10 +305,13 @@ router.post('/generateProjectIdeas', async (req, res) => {
             generationConfig: { responseMimeType: "application/json" }
         });
 
-        const prompt = `Generate 3 unique and innovative engineering project ideas.
+        const prompt = `Generate 5 unique and innovative engineering project ideas.
         Branch: ${branch}
         Area of Interest: ${interest}
         Difficulty Level: ${difficulty}
+
+        Context: The student is likely from Mumbai University. innovative projects that solve local problems (Mumbai/India) or follow current industry trends are highly appreciated. 
+        Ensure a mix of software, hardware (if applicable), and research-based ideas.
 
         Return ONLY a JSON array of objects.
         Schema:
