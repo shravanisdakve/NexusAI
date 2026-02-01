@@ -51,26 +51,26 @@ const EMOJIS = ['👍', '❤️', '😂', '🎉', '🤔', '🙏'];
 const SYSTEM_EMAIL = 'system@nexus.ai';
 
 const formatElapsedTime = (totalSeconds: number): string => {
-  const hours = Math.floor(totalSeconds / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const seconds = totalSeconds % 60;
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
 
-  const paddedSeconds = seconds.toString().padStart(2, '0');
-  const paddedMinutes = minutes.toString().padStart(2, '0');
+    const paddedSeconds = seconds.toString().padStart(2, '0');
+    const paddedMinutes = minutes.toString().padStart(2, '0');
 
-  if (hours > 0) {
-    const paddedHours = hours.toString().padStart(2, '0');
-    return `${paddedHours}:${paddedMinutes}:${paddedSeconds}`;
-  } else {
-    return `${paddedMinutes}:${paddedSeconds}`;
-  }
+    if (hours > 0) {
+        const paddedHours = hours.toString().padStart(2, '0');
+        return `${paddedHours}:${paddedMinutes}:${paddedSeconds}`;
+    } else {
+        return `${paddedMinutes}:${paddedSeconds}`;
+    }
 };
 
 
 // --- Main Component ---
 const StudyRoom: React.FC = () => {
     // ... (State, Refs, Handlers, Effects all remain the same) ...
-     const { id: roomId } = useParams<{ id: string }>();
+    const { id: roomId } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const { currentUser } = useAuth();
 
@@ -149,13 +149,13 @@ const StudyRoom: React.FC = () => {
         try {
             await saveRoomMessages(roomId, [newMessage]);
             setChatInput(''); // Clear input AFTER successful save
-             console.log("handleSendChatMessage: Message saved, input cleared.");
+            console.log("handleSendChatMessage: Message saved, input cleared.");
         } catch (error) {
-             console.error("handleSendChatMessage: Error saving message:", error);
+            console.error("handleSendChatMessage: Error saving message:", error);
         }
     };
 
-     const postSystemMessage = useCallback(async (text: string) => {
+    const postSystemMessage = useCallback(async (text: string) => {
         if (!roomId) return;
         const systemMessage: ChatMessage = {
             role: 'model',
@@ -233,7 +233,7 @@ const StudyRoom: React.FC = () => {
         // --- REMOVED: let sessionId: string | null = null; ---
 
         joinRoom(roomId, currentUser);
-        
+
         // --- FIX 2: Use the sessionIdRef ---
         startSession('study-room', roomId).then(id => {
             sessionIdRef.current = id; // Assign the ID to the ref
@@ -245,11 +245,11 @@ const StudyRoom: React.FC = () => {
         setElapsedTime(0); // Reset timer on join
         startTimeRef.current = Date.now();
         intervalRef.current = setInterval(() => {
-          if (startTimeRef.current) {
-            const now = Date.now();
-            const elapsed = Math.floor((now - startTimeRef.current) / 1000); // Elapsed seconds
-            setElapsedTime(elapsed);
-          }
+            if (startTimeRef.current) {
+                const now = Date.now();
+                const elapsed = Math.floor((now - startTimeRef.current) / 1000); // Elapsed seconds
+                setElapsedTime(elapsed);
+            }
         }, 1000);
         // --- End Start Timer ---
 
@@ -259,7 +259,7 @@ const StudyRoom: React.FC = () => {
                 navigate('/study-lobby');
                 return;
             }
-             console.log("Room updated:", updatedRoom);
+            console.log("Room updated:", updatedRoom);
             setRoom(updatedRoom);
             setParticipants(updatedRoom.users);
         });
@@ -270,8 +270,8 @@ const StudyRoom: React.FC = () => {
         const unsubResources = onResourcesUpdate(roomId, setResources);
         const unsubQuiz = onQuizUpdate(roomId, (quiz) => {
             setSharedQuiz(quiz);
-             setParticipants(currentParticipants => {
-                 if (quiz && quiz.answers.length > 0 && quiz.answers.length === currentParticipants.length) {
+            setParticipants(currentParticipants => {
+                if (quiz && quiz.answers.length > 0 && quiz.answers.length === currentParticipants.length) {
                     setShowLeaderboard(true);
                 }
                 return currentParticipants;
@@ -357,8 +357,8 @@ const StudyRoom: React.FC = () => {
 
     const handleToggleScreenShare = async () => {
         if (!localStreamRef.current && !isScreenSharing) {
-             setMediaError({ message: "Cannot share screen without media permissions. Please grant access and retry.", type: 'error' });
-             return;
+            setMediaError({ message: "Cannot share screen without media permissions. Please grant access and retry.", type: 'error' });
+            return;
         }
 
         if (isScreenSharing) {
@@ -370,15 +370,15 @@ const StudyRoom: React.FC = () => {
 
             if (cameraVideoTrackRef.current) {
                 try {
-                     cameraVideoTrackRef.current.enabled = true;
-                     localStreamRef.current?.addTrack(cameraVideoTrackRef.current);
-                     setIsCameraOn(true);
+                    cameraVideoTrackRef.current.enabled = true;
+                    localStreamRef.current?.addTrack(cameraVideoTrackRef.current);
+                    setIsCameraOn(true);
                 } catch (addTrackError) {
-                     console.error("Error re-adding camera track:", addTrackError);
-                     await getMedia();
+                    console.error("Error re-adding camera track:", addTrackError);
+                    await getMedia();
                 }
             } else {
-                 await getMedia();
+                await getMedia();
             }
             setIsScreenSharing(false);
         } else {
@@ -393,24 +393,24 @@ const StudyRoom: React.FC = () => {
                         setIsScreenSharing(false);
                         setIsCameraOn(true);
                     } else if (localStreamRef.current) {
-                         localStreamRef.current.removeTrack(screenTrack);
-                         setIsScreenSharing(false);
+                        localStreamRef.current.removeTrack(screenTrack);
+                        setIsScreenSharing(false);
                     }
                 };
 
                 if (localStreamRef.current) {
                     const currentVideoTrack = localStreamRef.current.getVideoTracks()[0];
-                     if (currentVideoTrack) {
+                    if (currentVideoTrack) {
                         localStreamRef.current.removeTrack(currentVideoTrack);
-                     }
+                    }
                     localStreamRef.current.addTrack(screenTrack);
                     setIsScreenSharing(true);
                     setIsCameraOn(true);
                 } else {
-                     localStreamRef.current = new MediaStream([screenTrack]);
-                     setLocalStream(localStreamRef.current);
-                     setIsScreenSharing(true);
-                     setIsCameraOn(true);
+                    localStreamRef.current = new MediaStream([screenTrack]);
+                    setLocalStream(localStreamRef.current);
+                    setIsScreenSharing(true);
+                    setIsCameraOn(true);
                 }
             } catch (err: any) {
                 console.error("Screen sharing failed:", err);
@@ -461,11 +461,11 @@ const StudyRoom: React.FC = () => {
     };
 
     // --- AI Buddy & Quiz Handlers ---
-     const handleSendAiMessage = useCallback(async () => {
+    const handleSendAiMessage = useCallback(async () => {
         if (!notes || notes.trim() === '' || notes.startsWith("Extracting text from")) {
-             setAiMessages(prev => [...prev, { role: 'model', parts: [{ text: "Please upload some notes first using the button above so I have context!" }] }]);
-             setAiInput('');
-             return;
+            setAiMessages(prev => [...prev, { role: 'model', parts: [{ text: "Please upload some notes first using the button above so I have context!" }] }]);
+            setAiInput('');
+            return;
         }
 
         if (!aiInput.trim() || isAiLoading) return;
@@ -480,30 +480,55 @@ const StudyRoom: React.FC = () => {
 
         try {
             const stream = await streamStudyBuddyChat(currentMessageText, notes);
+            if (!stream) throw new Error("Failed to start stream");
+
+            const reader = stream.getReader();
+            const decoder = new TextDecoder();
             let modelResponse = '';
+            let buffer = '';
             let streamedMessageStarted = false;
 
-            for await (const chunk of stream) {
-                modelResponse += chunk.text;
-                if (!streamedMessageStarted) {
-                    streamedMessageStarted = true;
-                    setAiMessages(prev => [...prev, { role: 'model', parts: [{ text: modelResponse }] }]);
-                } else {
-                    setAiMessages(prev => {
-                        const newMessages = [...prev];
-                        if (newMessages.length > 0 && newMessages[newMessages.length - 1].role === 'model') {
-                           newMessages[newMessages.length - 1].parts = [{ text: modelResponse }];
-                        } else {
-                           console.warn("Could not find previous model message to update, adding new one.");
-                           return [...prev, { role: 'model', parts: [{ text: modelResponse }] }];
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                const chunk = decoder.decode(value, { stream: true });
+                buffer += chunk;
+
+                const lines = buffer.split('\n\n');
+                buffer = lines.pop() || '';
+
+                for (const line of lines) {
+                    const trimmedLine = line.trim();
+                    if (trimmedLine.startsWith('data: ')) {
+                        try {
+                            const data = JSON.parse(trimmedLine.slice(6));
+                            if (data.text) {
+                                modelResponse += data.text;
+                                if (!streamedMessageStarted) {
+                                    streamedMessageStarted = true;
+                                    setAiMessages(prev => [...prev, { role: 'model', parts: [{ text: modelResponse }] }]);
+                                } else {
+                                    setAiMessages(prev => {
+                                        const newMessages = [...prev];
+                                        if (newMessages.length > 0 && newMessages[newMessages.length - 1].role === 'model') {
+                                            newMessages[newMessages.length - 1].parts = [{ text: modelResponse }];
+                                        } else {
+                                            return [...prev, { role: 'model', parts: [{ text: modelResponse }] }];
+                                        }
+                                        return newMessages;
+                                    });
+                                }
+                            }
+                        } catch (e) {
+                            console.error("Error parsing stream chunk", e);
                         }
-                        return newMessages;
-                    });
+                    }
                 }
             }
-             if (!streamedMessageStarted) {
+            if (!streamedMessageStarted) {
                 console.warn("AI stream finished without generating content.");
-             }
+            }
 
         } catch (err) {
             console.error("Error calling streamStudyBuddyChat:", err);
@@ -610,9 +635,9 @@ const StudyRoom: React.FC = () => {
             <div className="flex-1 flex overflow-hidden">
                 {/* Main Video Grid */}
                 <main className="flex-1 flex flex-col p-4 relative">
-                     {/* --- REMOVED Timer Display FROM HERE --- */}
+                    {/* --- REMOVED Timer Display FROM HERE --- */}
 
-                     {mediaError && (
+                    {mediaError && (
                         // ... (media error display) ...
                         <div className={`
                             p-3 rounded-lg text-sm mb-4 ring-1 flex justify-between items-center animate-in fade-in-50
@@ -622,7 +647,7 @@ const StudyRoom: React.FC = () => {
                             }
                         `}>
                             <div className="flex items-center gap-2">
-                                {mediaError.type === 'error' ? <AlertTriangle size={18}/> : <Info size={18}/>}
+                                {mediaError.type === 'error' ? <AlertTriangle size={18} /> : <Info size={18} />}
                                 <span className="font-medium">{mediaError.message}</span>
                             </div>
                             <button onClick={getMedia} className={`
@@ -639,7 +664,7 @@ const StudyRoom: React.FC = () => {
                     <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
                         <VideoTile stream={localStream} displayName={currentUser?.displayName || 'You'} isMuted={isMuted} isLocal={true} isScreenSharing={isScreenSharing} />
                         {participants.filter(p => p.email !== currentUser?.email).map(p => (
-                             <VideoTile key={p.email} displayName={p.displayName} isMuted={false} />
+                            <VideoTile key={p.email} displayName={p.displayName} isMuted={false} />
                         ))}
                     </div>
 
@@ -647,7 +672,7 @@ const StudyRoom: React.FC = () => {
 
                 {/* Side Panel */}
                 {/* ... (Side Panel Tabs and Content remain the same) ... */}
-                 <aside className="w-96 bg-slate-800/70 flex flex-col h-full">
+                <aside className="w-96 bg-slate-800/70 flex flex-col h-full">
                     <div className="flex border-b border-slate-700">
                         <TabButton id="chat" activeTab={activeTab} setActiveTab={setActiveTab} icon={MessageSquare} label="Chat" />
                         <TabButton id="ai" activeTab={activeTab} setActiveTab={setActiveTab} icon={Brain} label="AI Buddy" />
@@ -696,9 +721,9 @@ const StudyRoom: React.FC = () => {
 
             </div>
 
-             <input type="file" ref={notesFileInputRef} onChange={handleNotesFileUpload} accept=".txt,.md,.pdf,.pptx" style={{ display: 'none' }} />
+            <input type="file" ref={notesFileInputRef} onChange={handleNotesFileUpload} accept=".txt,.md,.pdf,.pptx" style={{ display: 'none' }} />
 
-             <RoomControls
+            <RoomControls
                 mediaReady={!!localStream}
                 isMuted={isMuted}
                 isCameraOn={isCameraOn}
@@ -733,15 +758,15 @@ const QuizDisplay: React.FC<{ quiz: SharedQuiz, onAnswer: (index: number) => voi
             <p className="font-bold text-slate-100 text-lg mb-4">{quiz.question}</p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {quiz.options.map((option, index) => {
-                     const isSelected = userAnswer?.answerIndex === index;
-                     const isCorrect = quiz.correctOptionIndex === index;
-                     let buttonClass = 'bg-slate-700 hover:bg-slate-600';
-                     if (userAnswer !== undefined) {
+                    const isSelected = userAnswer?.answerIndex === index;
+                    const isCorrect = quiz.correctOptionIndex === index;
+                    let buttonClass = 'bg-slate-700 hover:bg-slate-600';
+                    if (userAnswer !== undefined) {
                         if (isSelected) buttonClass = 'bg-sky-700 ring-2 ring-sky-500';
                         else buttonClass = 'bg-slate-800/50 opacity-60';
-                     }
+                    }
 
-                     return (
+                    return (
                         <button
                             key={index}
                             onClick={() => onAnswer(index)}
@@ -773,8 +798,8 @@ const Leaderboard: React.FC<{ quiz: SharedQuiz, participants: { email: string; d
     return (
         <div className="bg-slate-800 p-6 rounded-lg w-full max-w-md animate-in fade-in-50">
             <h3 className="text-xl font-bold text-center text-white mb-2">Quiz Results!</h3>
-             <p className="text-center text-slate-300 mb-1 text-sm">{quiz.question}</p>
-             <p className="text-center text-emerald-400 mb-4 text-sm font-medium">Correct Answer: {quiz.options[quiz.correctOptionIndex]}</p>
+            <p className="text-center text-slate-300 mb-1 text-sm">{quiz.question}</p>
+            <p className="text-center text-emerald-400 mb-4 text-sm font-medium">Correct Answer: {quiz.options[quiz.correctOptionIndex]}</p>
             <div className="space-y-2">
                 {scores.map((player, index) => (
                     <div key={player.displayName} className="flex justify-between items-center bg-slate-700 p-3 rounded-lg">
@@ -790,7 +815,7 @@ const Leaderboard: React.FC<{ quiz: SharedQuiz, participants: { email: string; d
     );
 };
 
-const TabButton: React.FC<{id: ActiveTab, activeTab: ActiveTab, setActiveTab: (tab: ActiveTab) => void, icon: React.ElementType, label: string, count?: number}> = ({ id, activeTab, setActiveTab, icon: Icon, label, count }) => (
+const TabButton: React.FC<{ id: ActiveTab, activeTab: ActiveTab, setActiveTab: (tab: ActiveTab) => void, icon: React.ElementType, label: string, count?: number }> = ({ id, activeTab, setActiveTab, icon: Icon, label, count }) => (
     <button onClick={() => setActiveTab(id)} className={`flex-1 flex justify-center items-center gap-2 py-3 text-sm font-medium transition-colors ${activeTab === id ? 'bg-slate-700 text-violet-400' : 'text-slate-400 hover:bg-slate-700/50 hover:text-white'}`}>
         <Icon size={16} /> {label} {count !== undefined && <span className="text-xs bg-slate-600 rounded-full px-1.5">{count}</span>}
     </button>
@@ -813,9 +838,9 @@ const ChatPanel: React.FC<any> = ({ messages, input, setInput, onSend, currentUs
         <div className="flex flex-col flex-1 overflow-hidden p-4">
             <div className="flex-1 overflow-y-auto pr-2">
                 {messages.map((msg: ChatMessage, i: number) => (
-                     <div key={i} className={`flex items-start gap-2.5 my-3 ${msg.user?.email === currentUser?.email ? 'flex-row-reverse' : ''}`}>
-                         <img src={`https://ui-avatars.com/api/?name=${msg.user?.displayName || '?'}&background=random`} alt="avatar" className="w-8 h-8 rounded-full" />
-                         <div className={`flex flex-col max-w-[80%] ${msg.user?.email === currentUser?.email ? 'items-end' : 'items-start'}`}>
+                    <div key={i} className={`flex items-start gap-2.5 my-3 ${msg.user?.email === currentUser?.email ? 'flex-row-reverse' : ''}`}>
+                        <img src={`https://ui-avatars.com/api/?name=${msg.user?.displayName || '?'}&background=random`} alt="avatar" className="w-8 h-8 rounded-full" />
+                        <div className={`flex flex-col max-w-[80%] ${msg.user?.email === currentUser?.email ? 'items-end' : 'items-start'}`}>
                             <span className="text-xs text-slate-400 mb-1 px-1">{msg.user?.displayName}</span>
                             <div className={`p-3 rounded-xl text-sm ${msg.user?.email === currentUser?.email ? 'bg-sky-600 text-white rounded-br-none' : 'bg-slate-700 rounded-bl-none'}`}>
                                 {msg.parts[0].text}
@@ -823,7 +848,7 @@ const ChatPanel: React.FC<any> = ({ messages, input, setInput, onSend, currentUs
                         </div>
                     </div>
                 ))}
-                 <div ref={chatEndRef}></div>
+                <div ref={chatEndRef}></div>
             </div>
             <div className="mt-auto flex gap-2 relative">
                 {showEmojis && (
@@ -833,7 +858,7 @@ const ChatPanel: React.FC<any> = ({ messages, input, setInput, onSend, currentUs
                         ))}
                     </div>
                 )}
-                <Button onClick={() => setShowEmojis(p => !p)} className="px-3 bg-slate-700 hover:bg-slate-600"><Smile size={16}/></Button>
+                <Button onClick={() => setShowEmojis(p => !p)} className="px-3 bg-slate-700 hover:bg-slate-600"><Smile size={16} /></Button>
                 <Input
                     value={input}
                     onChange={e => setInput(e.target.value)}
@@ -846,17 +871,17 @@ const ChatPanel: React.FC<any> = ({ messages, input, setInput, onSend, currentUs
                     placeholder="Type a message..."
                     className="flex-1"
                 />
-                <Button onClick={handleSend} disabled={!input.trim()} className="px-3"><Send size={16}/></Button>
+                <Button onClick={handleSend} disabled={!input.trim()} className="px-3"><Send size={16} /></Button>
             </div>
         </div>
     );
 }
 
-const ParticipantsPanel: React.FC<{participants: { email: string; displayName: string }[]}> = ({ participants }) => (
+const ParticipantsPanel: React.FC<{ participants: { email: string; displayName: string }[] }> = ({ participants }) => (
     <div className="p-4 space-y-3 overflow-y-auto">
         {participants.map(p => (
             <div key={p.email} className="flex items-center gap-3 bg-slate-700/50 p-2 rounded-lg">
-                <img src={`https://ui-avatars.com/api/?name=${p.displayName}&background=random`} alt="avatar" className="w-9 h-9 rounded-full"/>
+                <img src={`https://ui-avatars.com/api/?name=${p.displayName}&background=random`} alt="avatar" className="w-9 h-9 rounded-full" />
                 <span className="font-medium text-slate-200">{p.displayName}</span>
             </div>
         ))}
@@ -867,23 +892,23 @@ const AiPanel: React.FC<any> = ({ messages, input, setInput, onSend, notes, isEx
     <div className="flex flex-col flex-1 overflow-hidden p-4">
         <div className="relative">
             <Textarea value={notes} placeholder="Upload a file (.txt, .md, .pdf, .pptx) to set the AI context for everyone..." rows={6} className="resize-none bg-slate-700/80" readOnly />
-            <Button onClick={onUploadClick} disabled={isExtracting || isLoading} className="absolute bottom-2 right-2 px-2 py-1 text-xs bg-slate-600 hover:bg-slate-500"><UploadCloud size={14} className="mr-1"/> Upload Notes</Button>
+            <Button onClick={onUploadClick} disabled={isExtracting || isLoading} className="absolute bottom-2 right-2 px-2 py-1 text-xs bg-slate-600 hover:bg-slate-500"><UploadCloud size={14} className="mr-1" /> Upload Notes</Button>
             {isExtracting && <div className="absolute inset-0 bg-slate-800/80 flex items-center justify-center rounded-md"><Spinner /> <span className="ml-2 text-sm text-slate-300">Extracting text...</span></div>}
         </div>
         <div className="flex-1 overflow-y-auto pr-2 my-4 space-y-3">
-             {messages.map((msg: ChatMessage, i: number) => (
+            {messages.map((msg: ChatMessage, i: number) => (
                 <div key={i} className={`flex items-start gap-2.5 ${msg.role === 'model' ? '' : 'justify-end'}`}>
-                    {msg.role === 'model' && <div className="w-8 h-8 rounded-full bg-violet-600 flex items-center justify-center flex-shrink-0"><Bot size={18}/></div>}
-                     <div className={`p-3 rounded-xl text-sm max-w-[85%] ${msg.role === 'model' ? 'bg-slate-700 rounded-bl-none' : 'bg-sky-600 rounded-br-none text-white'}`} style={{ whiteSpace: 'pre-wrap' }}>{msg.parts[0].text}</div>
+                    {msg.role === 'model' && <div className="w-8 h-8 rounded-full bg-violet-600 flex items-center justify-center flex-shrink-0"><Bot size={18} /></div>}
+                    <div className={`p-3 rounded-xl text-sm max-w-[85%] ${msg.role === 'model' ? 'bg-slate-700 rounded-bl-none' : 'bg-sky-600 rounded-br-none text-white'}`} style={{ whiteSpace: 'pre-wrap' }}>{msg.parts[0].text}</div>
                 </div>
-             ))}
-              {isLoading && <div className="flex justify-center"><Spinner /></div>}
-             <div ref={chatEndRef}></div>
+            ))}
+            {isLoading && <div className="flex justify-center"><Spinner /></div>}
+            <div ref={chatEndRef}></div>
         </div>
         <div className="mt-auto flex gap-2">
-            <Input value={input} onChange={e => setInput(e.target.value)} onKeyPress={e => e.key === 'Enter' && onSend()} placeholder="Ask the AI..." className="flex-1" disabled={isExtracting || !!sharedQuiz || isLoading}/>
-            <Button onClick={onQuizMe} disabled={isExtracting || !!sharedQuiz || !notes.trim() || isLoading} className="px-3" title="Generate Group Quiz"><Lightbulb size={16}/></Button>
-            <Button onClick={onSend} disabled={!input.trim() || isExtracting || !!sharedQuiz || isLoading} className="px-3"><Send size={16}/></Button>
+            <Input value={input} onChange={e => setInput(e.target.value)} onKeyPress={e => e.key === 'Enter' && onSend()} placeholder="Ask the AI..." className="flex-1" disabled={isExtracting || !!sharedQuiz || isLoading} />
+            <Button onClick={onQuizMe} disabled={isExtracting || !!sharedQuiz || !notes.trim() || isLoading} className="px-3" title="Generate Group Quiz"><Lightbulb size={16} /></Button>
+            <Button onClick={onSend} disabled={!input.trim() || isExtracting || !!sharedQuiz || isLoading} className="px-3"><Send size={16} /></Button>
         </div>
     </div>
 );

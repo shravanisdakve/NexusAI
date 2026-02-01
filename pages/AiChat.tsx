@@ -28,16 +28,16 @@ const ChatItem: React.FC<{ message: ChatMessage; onSpeak: (text: string) => void
                 </div>
             )}
             <div className={`flex flex-col gap-2 max-w-xl`}>
-                 <div className={`p-4 rounded-2xl ${isModel ? 'bg-slate-800 rounded-tl-none' : 'bg-sky-600 text-white rounded-br-none'}`}>
+                <div className={`p-4 rounded-2xl ${isModel ? 'bg-slate-800 rounded-tl-none' : 'bg-sky-600 text-white rounded-br-none'}`}>
                     <div className="prose prose-invert prose-sm" style={{ whiteSpace: 'pre-wrap' }}>{text}</div>
                 </div>
                 {isModel && text && (
-                     <button onClick={() => onSpeak(text)} className="flex items-center gap-1 text-xs text-slate-400 hover:text-violet-400 transition-colors self-start ml-2">
+                    <button onClick={() => onSpeak(text)} className="flex items-center gap-1 text-xs text-slate-400 hover:text-violet-400 transition-colors self-start ml-2">
                         <Volume2 size={14} /> Listen
                     </button>
                 )}
             </div>
-             {!isModel && (
+            {!isModel && (
                 <div className="flex-shrink-0 w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center">
                     <User className="w-6 h-6 text-slate-300" />
                 </div>
@@ -64,7 +64,7 @@ const AiTutor: React.FC = () => {
             return false;
         }
     });
-    
+
     const recognitionRef = useRef<any | null>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const location = useLocation();
@@ -97,7 +97,7 @@ const AiTutor: React.FC = () => {
                 const weakestTopic = report.weaknesses[0];
                 initialPrompt = `Hello! I'm your AI Tutor. I noticed your quiz accuracy in '${weakestTopic.topic}' is around ${weakestTopic.accuracy}%. Would you like to review it? We could try the Feynman Technique, or I can quiz you to practice active recall.`;
             }
-            
+
             setMessages([{ role: 'model', parts: [{ text: initialPrompt }] }]);
             proactiveMessageSent.current = true;
         };
@@ -150,7 +150,7 @@ const AiTutor: React.FC = () => {
             console.error("Failed to save auto-speak setting to localStorage", error);
         }
     }, [isAutoSpeaking]);
-    
+
     const handleSpeak = (text: string) => {
         if (speechSynthesis.speaking) {
             speechSynthesis.cancel();
@@ -163,9 +163,9 @@ const AiTutor: React.FC = () => {
     const handleSend = useCallback(async (messageToSend?: string, isVoiceInput = false) => {
         const currentMessage = messageToSend || input;
         if (!currentMessage.trim() || isLoading) return;
-        
+
         speechSynthesis.cancel();
-        
+
         const newUserMessage: ChatMessage = { role: 'user', parts: [{ text: currentMessage }] };
         const newModelMessage: ChatMessage = { role: 'model', parts: [{ text: '' }] }; // Placeholder for model response
         setMessages(prev => [...prev, newUserMessage, newModelMessage]);
@@ -176,22 +176,49 @@ const AiTutor: React.FC = () => {
 
         try {
             const stream = await streamChat(currentMessage);
-            
+
+            if (!stream) throw new Error("Failed to start stream");
+
+            const reader = stream.getReader();
+            const decoder = new TextDecoder();
             let modelResponse = '';
-            for await (const chunk of stream) {
-                modelResponse += chunk.text;
-                setMessages(prev => {
-                    const newMessages = [...prev];
-                    const lastMessage = newMessages[newMessages.length - 1];
-                    if (lastMessage && lastMessage.role === 'model') {
-                        lastMessage.parts = [{ text: modelResponse }];
+            let buffer = '';
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                const chunk = decoder.decode(value, { stream: true });
+                buffer += chunk;
+
+                const lines = buffer.split('\n\n');
+                buffer = lines.pop() || '';
+
+                for (const line of lines) {
+                    const trimmedLine = line.trim();
+                    if (trimmedLine.startsWith('data: ')) {
+                        try {
+                            const data = JSON.parse(trimmedLine.slice(6));
+                            if (data.text) {
+                                modelResponse += data.text;
+                                setMessages(prev => {
+                                    const newMessages = [...prev];
+                                    const lastMessage = newMessages[newMessages.length - 1];
+                                    if (lastMessage && lastMessage.role === 'model') {
+                                        lastMessage.parts = [{ text: modelResponse }];
+                                    }
+                                    return newMessages;
+                                });
+                            }
+                        } catch (e) {
+                            console.error("Error parsing stream chunk", e);
+                        }
                     }
-                    return newMessages;
-                });
+                }
             }
-            
+
             setIsLoading(false); // Hide loading indicator once streaming is complete
-            
+
             if (modelResponse && (isAutoSpeaking || isVoiceInput)) {
                 handleSpeak(modelResponse);
             }
@@ -210,7 +237,7 @@ const AiTutor: React.FC = () => {
         setError(null);
         setIsLoading(true);
         setQuiz(null);
-        
+
         const context = messages.map(m => `${m.role}: ${m.parts.map(p => p.text).join('')}`).join('\n');
         setMessages(prev => [...prev, { role: 'model', parts: [{ text: "Of course! Here's a question for you..." }] }]);
 
@@ -225,20 +252,20 @@ const AiTutor: React.FC = () => {
             setIsLoading(false);
         }
     };
-    
+
     const handleAnswerQuiz = async (selectedIndex: number) => {
         if (!quiz) return;
-        
+
         const isCorrect = selectedIndex === quiz.correctOptionIndex;
         await recordQuizResult(quiz.topic, isCorrect, selectedCourse);
-        
+
         let feedbackMessage = '';
         if (isCorrect) {
             feedbackMessage = `Correct! Well done.`;
         } else {
             feedbackMessage = `Not quite. The correct answer was: "${quiz.options[quiz.correctOptionIndex]}"`;
         }
-        
+
         setMessages(prev => [...prev, { role: 'model', parts: [{ text: feedbackMessage }] }]);
         setQuiz(prev => prev ? { ...prev, userAnswerIndex: selectedIndex } : null);
         setTimeout(() => setQuiz(null), 3000); // Hide quiz after 3 seconds
@@ -268,7 +295,7 @@ const AiTutor: React.FC = () => {
             recognition.stop();
             return;
         }
-        
+
         setError(null);
 
         let finalTranscript = '';
@@ -284,7 +311,7 @@ const AiTutor: React.FC = () => {
             }
             setInput(finalTranscript + interimTranscript);
         };
-        
+
         recognition.onend = () => {
             setIsListening(false);
             if (finalTranscript.trim()) {
@@ -321,10 +348,10 @@ const AiTutor: React.FC = () => {
                     {messages.map((msg, index) => <ChatItem key={index} message={msg} onSpeak={handleSpeak} />)}
                     {isLoading && !quiz && (
                         <div className="flex items-start gap-4 my-4">
-                             <div className="flex-shrink-0 w-10 h-10 rounded-full bg-violet-600 flex items-center justify-center">
+                            <div className="flex-shrink-0 w-10 h-10 rounded-full bg-violet-600 flex items-center justify-center">
                                 <Bot className="w-6 h-6 text-white" />
                             </div>
-                             <div className="max-w-xl p-4 rounded-2xl bg-slate-800 rounded-tl-none">
+                            <div className="max-w-xl p-4 rounded-2xl bg-slate-800 rounded-tl-none">
                                 <div className="loading-dot">
                                     <span className="inline-block w-2 h-2 bg-slate-400 rounded-full"></span>
                                     <span className="inline-block w-2 h-2 bg-slate-400 rounded-full ml-1"></span>
@@ -333,7 +360,7 @@ const AiTutor: React.FC = () => {
                             </div>
                         </div>
                     )}
-                     {quiz && (
+                    {quiz && (
                         <div className="my-4 p-4 bg-slate-900/50 rounded-xl ring-1 ring-violet-600/50 animate-in fade-in-50">
                             <p className="font-semibold text-slate-200 text-base mb-1">Topic: <span className="capitalize font-light">{quiz.topic}</span></p>
                             <p className="font-bold text-slate-100 text-lg">{quiz.question}</p>
@@ -343,14 +370,14 @@ const AiTutor: React.FC = () => {
                                     const isCorrect = quiz.correctOptionIndex === index;
                                     let buttonClass = 'bg-slate-700 hover:bg-slate-600';
                                     if (quiz.userAnswerIndex !== undefined) {
-                                       if (isCorrect) buttonClass = 'bg-green-500/80 ring-2 ring-green-400';
-                                       else if (isSelected && !isCorrect) buttonClass = 'bg-red-500/80';
-                                       else buttonClass = 'bg-slate-800/50 opacity-60';
+                                        if (isCorrect) buttonClass = 'bg-green-500/80 ring-2 ring-green-400';
+                                        else if (isSelected && !isCorrect) buttonClass = 'bg-red-500/80';
+                                        else buttonClass = 'bg-slate-800/50 opacity-60';
                                     }
                                     return (
-                                        <button 
-                                            key={index} 
-                                            onClick={() => handleAnswerQuiz(index)} 
+                                        <button
+                                            key={index}
+                                            onClick={() => handleAnswerQuiz(index)}
                                             disabled={quiz.userAnswerIndex !== undefined}
                                             className={`p-3 text-left text-sm rounded-lg transition-all duration-200 ${buttonClass}`}
                                         >
@@ -366,6 +393,8 @@ const AiTutor: React.FC = () => {
                 {error && <p className="text-red-400 text-sm text-center my-2">{error}</p>}
                 <div className="mt-4 flex items-center gap-2">
                     <Input
+                        id="chat-input"
+                        name="chatInput"
                         type="text"
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
@@ -374,31 +403,31 @@ const AiTutor: React.FC = () => {
                         disabled={isLoading || !!quiz}
                         className="flex-1"
                     />
-                     <Button 
+                    <Button
                         onClick={handleQuizMe}
                         disabled={isLoading || !!quiz}
                         className="px-4 py-3 bg-slate-700 hover:bg-slate-600"
                         aria-label="Quiz me"
-                     >
+                    >
                         <Lightbulb className="w-5 h-5" />
                     </Button>
-                     <Button 
-                        onClick={handleListen} 
-                        disabled={isLoading || !!quiz} 
+                    <Button
+                        onClick={handleListen}
+                        disabled={isLoading || !!quiz}
                         className={`px-4 py-3 ${isListening ? 'bg-red-600 hover:bg-red-700' : 'bg-slate-700 hover:bg-slate-600'}`}
                         aria-label={isListening ? 'Stop listening' : 'Start listening'}
                     >
-                       <Mic className="w-5 h-5" />
+                        <Mic className="w-5 h-5" />
                     </Button>
-                     <Button
+                    <Button
                         onClick={() => setIsAutoSpeaking(prev => !prev)}
                         className={`px-4 py-3 ${isAutoSpeaking ? 'bg-violet-600 hover:bg-violet-700' : 'bg-slate-700 hover:bg-slate-600'}`}
                         aria-label={isAutoSpeaking ? 'Disable automatic speaking' : 'Enable automatic speaking'}
                     >
-                       {isAutoSpeaking ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
+                        {isAutoSpeaking ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
                     </Button>
                     <Button onClick={() => handleSend()} isLoading={isLoading} disabled={!input.trim() || !!quiz} className="px-4 py-3">
-                       {!isLoading && <Send className="w-5 h-5" />}
+                        {!isLoading && <Send className="w-5 h-5" />}
                     </Button>
                 </div>
             </div>
