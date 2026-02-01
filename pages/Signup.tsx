@@ -133,6 +133,7 @@ const Signup: React.FC = () => {
             <label htmlFor="university" className="block text-sm font-medium text-slate-300 mb-2">University Name</label>
             <Input
                 id="university"
+                name="university"
                 type="text"
                 value={university}
                 onChange={(e) => setUniversity(e.target.value)}
