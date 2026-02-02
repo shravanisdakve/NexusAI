@@ -19,6 +19,10 @@ import {
     saveQuiz,
     saveQuizAnswer,
     clearQuiz,
+    requestModeration,
+    getRoomMessages, // Added
+    sendChatMessage, // Added
+    subscribeToMessages, // Added
 } from '../services/communityService';
 import { streamStudyBuddyChat, generateQuizQuestion, extractTextFromFile } from '../services/geminiService';
 import { startSession, endSession, recordQuizResult } from '../services/analyticsService';
@@ -71,7 +75,7 @@ const StudyRoom: React.FC = () => {
     // ... (State, Refs, Handlers, Effects all remain the same) ...
     const { id: roomId } = useParams<{ id: string }>();
     const navigate = useNavigate();
-    const { currentUser } = useAuth();
+    const { user: currentUser } = useAuth();
 
     const [room, setRoom] = useState<StudyRoomType | null>(null);
     const [participants, setParticipants] = useState<{ email: string; displayName: string }[]>([]);
@@ -128,13 +132,25 @@ const StudyRoom: React.FC = () => {
     // --- END NEW HANDLER ---
 
     const participantChatMessages = useMemo(() => {
-        return allMessages.filter(msg => msg.role === 'user' && msg.user?.email !== SYSTEM_EMAIL);
+        const filtered = allMessages.filter(msg => {
+            const isUserRole = msg.role === 'user';
+            const isNotSystem = msg.user?.email !== SYSTEM_EMAIL;
+            // console.log("Filtering:", msg, "Keep?", isUserRole && isNotSystem);
+            return isUserRole && isNotSystem;
+        });
+        return filtered;
     }, [allMessages]);
 
     // --- Chat Handlers ---
     const handleSendChatMessage = async (messageText: string) => {
-        if (!messageText.trim() || !roomId || !currentUser) {
+        if (!messageText.trim() || !roomId) {
             console.log("handleSendChatMessage: Aborting - missing data", { messageText, roomId, currentUser });
+            return;
+        }
+        if (!currentUser) {
+            console.error('handleSendChatMessage: Aborting - missing data. User might not be fully logged in.', { messageText: chatInput, roomId, currentUser });
+            // Optional: You could show a toast here "Please wait for login..." or similar.
+            // For now, let's try to fetch it if possible or just return.
             return;
         }
 
@@ -145,10 +161,22 @@ const StudyRoom: React.FC = () => {
             timestamp: Date.now()
         };
         console.log("handleSendChatMessage: Sending message:", newMessage);
+        // Optimistically add message to UI immediately
+        const optimisticMessage: ChatMessage = {
+            ...newMessage,
+            id: 'temp-' + Date.now(), // Temporary ID
+        };
+        setAllMessages(prev => [...prev, optimisticMessage]);
+
         try {
-            await saveRoomMessages(roomId, [newMessage]);
-            setChatInput(''); // Clear input AFTER successful save
-            console.log("handleSendChatMessage: Message saved, input cleared.");
+            await sendChatMessage(roomId, {
+                ...newMessage,
+                text: newMessage.parts[0].text,
+                sender: currentUser.displayName,
+                userId: currentUser.email // Explicitly pass email as userId
+            }); // USE REAL SOCKET
+            setChatInput(''); // Clear input AFTER successful send
+            console.log("handleSendChatMessage: Message sent via socket, input cleared.");
         } catch (error) {
             console.error("handleSendChatMessage: Error saving message:", error);
         }
@@ -162,7 +190,12 @@ const StudyRoom: React.FC = () => {
             user: { displayName: 'Focus Bot', email: SYSTEM_EMAIL },
             timestamp: Date.now()
         };
-        await saveRoomMessages(roomId, [systemMessage]);
+        // await saveRoomMessages(roomId, [systemMessage]); // REMOVED STUB
+        // System messages might need a special sender or be handled by backend. 
+        // For now, let's just send it as a special user or skip if backend handles join/leave.
+        // Backend handles join/leave system messages, so we might not need this client-side logic for "X left".
+        // But for "X uploaded resource", we might want it.
+        await sendChatMessage(roomId, { ...systemMessage, text: text, sender: 'System' });
     }, [roomId]);
 
 
@@ -263,7 +296,30 @@ const StudyRoom: React.FC = () => {
             setParticipants(updatedRoom.users);
         });
 
-        const unsubMessages = onMessagesUpdate(roomId, setAllMessages);
+        // Initialize messages from history
+        getRoomMessages(roomId).then(msgs => {
+            setAllMessages(msgs);
+        });
+
+        const unsubMessages = subscribeToMessages((rawMsg) => {
+            console.log("Received socket message:", rawMsg);
+            const newMessage: ChatMessage = {
+                id: rawMsg.id || Date.now().toString(),
+                role: 'user',
+                parts: [{ text: rawMsg.text || '' }],
+                user: {
+                    displayName: rawMsg.sender || 'Unknown',
+                    email: rawMsg.userId || 'unknown'
+                },
+                timestamp: rawMsg.timestamp ? new Date(rawMsg.timestamp).getTime() : Date.now()
+            };
+
+            setAllMessages(prev => {
+                if (prev.some(m => m.id === newMessage.id)) return prev;
+                return [...prev, newMessage];
+            });
+        });
+        // const unsubMessages = onMessagesUpdate(roomId, setAllMessages); // REMOVED STUB
         const unsubNotes = onNotesUpdate(roomId, setNotes);
 
         const unsubResources = onResourcesUpdate(roomId, setResources);
@@ -294,7 +350,7 @@ const StudyRoom: React.FC = () => {
             unsubResources();
             unsubQuiz();
             if (currentUser) {
-                leaveRoom(roomId, currentUser);
+                leaveRoom(roomId);
             }
 
             // --- FIX 2 (cleanup): Use the ref here as well ---
@@ -348,7 +404,7 @@ const StudyRoom: React.FC = () => {
         // --- END FIX ---
 
         if (roomId && currentUser) {
-            await leaveRoom(roomId, currentUser);
+            await leaveRoom(roomId);
         }
         localStream?.getTracks().forEach(track => track.stop());
         navigate('/study-lobby');
@@ -614,6 +670,10 @@ const StudyRoom: React.FC = () => {
         }
     };
 
+    const handleModerationRequest = () => {
+        if (!roomId) return;
+        requestModeration(roomId); // You'll need to export this from communityService or define it locally calling socket directly
+    };
 
     // --- Component Return ---
     return (
@@ -688,6 +748,7 @@ const StudyRoom: React.FC = () => {
                             onSend={handleSendChatMessage}
                             currentUser={currentUser}
                             chatEndRef={chatEndRef}
+                            onModerationRequest={handleModerationRequest}
                         />
                     )}
                     {activeTab === 'participants' && <ParticipantsPanel participants={participants} />}
@@ -826,7 +887,7 @@ const TabButton: React.FC<{ id: ActiveTab, activeTab: ActiveTab, setActiveTab: (
     </button>
 );
 
-const ChatPanel: React.FC<any> = ({ messages, input, setInput, onSend, currentUser, chatEndRef }) => {
+const ChatPanel: React.FC<any> = ({ messages, input, setInput, onSend, currentUser, chatEndRef, onModerationRequest }) => {
     const [showEmojis, setShowEmojis] = useState(false);
 
     const handleEmojiSelect = (emoji: string) => {
@@ -856,6 +917,15 @@ const ChatPanel: React.FC<any> = ({ messages, input, setInput, onSend, currentUs
                 <div ref={chatEndRef}></div>
             </div>
             <div className="mt-auto flex gap-2 relative">
+                {/* AI Moderator Button */}
+                <Button
+                    onClick={onModerationRequest}
+                    className="px-3 bg-indigo-600/80 hover:bg-indigo-600 text-white"
+                    title="Summon AI Moderator"
+                >
+                    <Bot size={16} />
+                </Button>
+
                 {showEmojis && (
                     <div className="absolute bottom-14 left-0 bg-slate-900 p-2 rounded-lg grid grid-cols-3 gap-2">
                         {EMOJIS.map(emoji => (
@@ -865,6 +935,7 @@ const ChatPanel: React.FC<any> = ({ messages, input, setInput, onSend, currentUs
                 )}
                 <Button onClick={() => setShowEmojis(p => !p)} className="px-3 bg-slate-700 hover:bg-slate-600"><Smile size={16} /></Button>
                 <Input
+                    name="chat-message"
                     value={input}
                     onChange={e => setInput(e.target.value)}
                     onKeyPress={e => {
@@ -914,7 +985,7 @@ const AiPanel: React.FC<any> = ({ messages, input, setInput, onSend, notes, isEx
             <div ref={chatEndRef}></div>
         </div>
         <div className="mt-auto flex gap-2">
-            <Input value={input} onChange={e => setInput(e.target.value)} onKeyPress={e => e.key === 'Enter' && onSend()} placeholder="Ask the AI..." className="flex-1" disabled={isExtracting || !!sharedQuiz || isLoading} />
+            <Input name="ai-message" value={input} onChange={e => setInput(e.target.value)} onKeyPress={e => e.key === 'Enter' && onSend()} placeholder="Ask the AI..." className="flex-1" disabled={isExtracting || !!sharedQuiz || isLoading} />
             <Button onClick={onQuizMe} disabled={isExtracting || !!sharedQuiz || !notes.trim() || isLoading} className="px-3" title="Generate Group Quiz"><Lightbulb size={16} /></Button>
             <Button onClick={onSend} disabled={!input.trim() || isExtracting || !!sharedQuiz || isLoading} className="px-3"><Send size={16} /></Button>
         </div>

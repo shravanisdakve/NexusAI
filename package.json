@@ -11,7 +11,6 @@
   "dependencies": {
     "@google/genai": "^1.25.0",
     "axios": "^1.13.4",
-    "firebase": "^10.12.3",
     "framer-motion": "^12.29.2",
     "lucide-react": "^0.544.0",
     "mongodb": "^7.0.0",

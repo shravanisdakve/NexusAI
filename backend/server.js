@@ -18,7 +18,7 @@ socketHandler(server);
 app.use(cors({
   origin: process.env.NODE_ENV === 'production'
     ? (process.env.FRONTEND_URL || 'https://yourdomain.com')
-    : 'http://localhost:3000',
+    : ['http://localhost:3000', 'http://localhost:5173', 'http://localhost:5174'],
   credentials: true
 }));
 
@@ -40,6 +40,8 @@ if (process.env.NODE_ENV !== 'production') {
 // 5. Routes
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/gemini', require('./routes/gemini'));
+app.use('/api/analytics', require('./routes/analytics'));
+app.use('/api/community', require('./routes/community'));
 app.use('/api/notes', require('./routes/notes'));
 app.use('/api/courses', require('./routes/courses'));
 app.use('/api/games', require('./routes/games'));
@@ -69,6 +71,6 @@ app.use((err, req, res, next) => {
 });
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
 });

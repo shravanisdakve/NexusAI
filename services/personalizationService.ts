@@ -1,94 +1,51 @@
 import { type Mood } from '../types';
-import { db, auth } from '../firebase';
-import {
-    doc,
-    getDoc,
-    setDoc,
-    updateDoc,
-    arrayUnion,
-    increment
-} from 'firebase/firestore';
 
 export type ToolKey = 'tutor' | 'visualizer' | 'summarizer' | 'code-helper' | 'study-room';
 
-const getUserId = () => auth.currentUser?.uid;
-
-const getUserPreferencesDoc = () => {
-    const userId = getUserId();
-    if (!userId || !db) throw new Error("User not authenticated or db not initialized");
-    return doc(db, `users/${userId}`);
-}
+const TOOL_USAGE_KEY = 'nexus_tool_usage';
+const MOOD_HISTORY_KEY = 'nexus_mood_history';
 
 export const trackToolUsage = async (tool: ToolKey) => {
-    const userId = getUserId();
-    if (!userId || !db) return;
-
     try {
-        const userDocRef = getUserPreferencesDoc();
-        await updateDoc(userDocRef, {
-            [`toolUsage.${tool}`]: increment(1)
-        });
+        const stored = localStorage.getItem(TOOL_USAGE_KEY);
+        const usage = stored ? JSON.parse(stored) : {};
+        usage[tool] = (usage[tool] || 0) + 1;
+        localStorage.setItem(TOOL_USAGE_KEY, JSON.stringify(usage));
     } catch (error) {
-        // If the document or field doesn't exist, create it.
-        if ((error as any).code === 'not-found') {
-            try {
-                await setDoc(getUserPreferencesDoc(), { toolUsage: { [tool]: 1 } }, { merge: true });
-            } catch (e) {
-                console.error("Error setting tool usage: ", e);
-            }
-        } else {
-            console.error("Error tracking tool usage: ", error);
-        }
+        console.error("Error tracking tool usage:", error);
     }
 };
 
 export const getMostUsedTool = async (): Promise<string | null> => {
-    const userId = getUserId();
-    if (!userId || !db) return null;
-
     try {
-        const userDoc = await getDoc(getUserPreferencesDoc());
-        if (userDoc.exists()) {
-            const data = userDoc.data();
-            const toolUsage = data.toolUsage || {};
-            const totalUsage = Object.values(toolUsage).reduce((sum: number, count: any) => sum + count, 0);
+        const stored = localStorage.getItem(TOOL_USAGE_KEY);
+        if (!stored) return null;
 
-            if (totalUsage < 3) {
-                return null;
-            }
+        const usage: Record<string, number> = JSON.parse(stored);
+        const totalUsage = Object.values(usage).reduce((sum, count) => sum + count, 0);
 
-            const sortedTools = Object.entries(toolUsage).sort((a: [string, any], b: [string, any]) => b[1] - a[1]);
+        if (totalUsage < 3) return null;
 
-            if (sortedTools.length > 0 && sortedTools[0][1] > 0) {
-                return sortedTools[0][0];
-            }
+        const sortedTools = Object.entries(usage).sort((a, b) => b[1] - a[1]);
+
+        if (sortedTools.length > 0 && sortedTools[0][1] > 0) {
+            return sortedTools[0][0];
         }
     } catch (error) {
-        console.error("Error getting most used tool: ", error);
+        console.error("Error getting most used tool:", error);
     }
-
     return null;
 };
 
 export const recordMood = async (mood: Omit<Mood, 'timestamp'>) => {
-    const userId = getUserId();
-    if (!userId || !db) return;
-
     try {
+        const stored = localStorage.getItem(MOOD_HISTORY_KEY);
+        const moods = stored ? JSON.parse(stored) : [];
         const newMood = { ...mood, timestamp: new Date() };
-        await updateDoc(getUserPreferencesDoc(), {
-            moods: arrayUnion(newMood)
-        });
+        moods.push(newMood);
+        localStorage.setItem(MOOD_HISTORY_KEY, JSON.stringify(moods));
     } catch (error) {
-        if ((error as any).code === 'not-found') {
-            try {
-                await setDoc(getUserPreferencesDoc(), { moods: [newMood] }, { merge: true });
-            } catch (e) {
-                console.error("Error setting mood: ", e);
-            }
-        } else {
-            console.error("Error recording mood: ", error);
-        }
+        console.error("Error recording mood:", error);
     }
 };
 

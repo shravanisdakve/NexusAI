@@ -1,128 +1,128 @@
-import { type LeaderboardEntry, type Course } from '../types';
-import { auth } from '../firebase';
+import { type LeaderboardEntry } from '../types';
+import axios from 'axios';
 
-// --- Mock Database ---
-const mockSessions: any[] = [];
-const mockPomodoroCycles: any[] = [];
-const mockQuizResults: any[] = [];
+const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+
+const getAuthHeaders = () => {
+    const token = localStorage.getItem('token');
+    return token ? { Authorization: `Bearer ${token}` } : {};
+};
 
 // --- Session Tracking ---
+// For now, we'll just track the start time locally and send the duration when ending.
+let sessionStartTime: number | null = null;
+let currentTool: string | null = null;
+
 export const startSession = async (tool: string, courseId: string | null = null): Promise<string | null> => {
-    const userId = auth.currentUser?.uid;
-    if (!userId) return null;
-    
-    const sessionId = `mock_session_${Date.now()}`;
-    mockSessions.push({
-        id: sessionId,
-        userId,
-        tool,
-        courseId,
-        startTime: new Date(),
-    });
-    return sessionId;
+    sessionStartTime = Date.now();
+    currentTool = tool;
+    return "local-session";
 };
 
 export const endSession = async (sessionId: string | null) => {
-    if (!sessionId) return;
-    const session = mockSessions.find(s => s.id === sessionId);
-    if (session) {
-        session.endTime = new Date();
-        session.duration = Math.round((session.endTime.getTime() - session.startTime.getTime()) / 1000);
+    if (!sessionId || !sessionStartTime) return;
+
+    // Check if token exists before trying (service function doesn't need to return anything)
+    if (!localStorage.getItem('token')) return;
+
+    const duration = Math.round((Date.now() - sessionStartTime) / 1000); // in seconds
+
+    try {
+        await axios.post(`${API_URL}/api/analytics/session`, {
+            type: 'study_session',
+            duration,
+            description: `Studied using ${currentTool}`
+        }, { headers: getAuthHeaders() });
+    } catch (error) {
+        console.error("Error ending session:", error);
     }
+
+    sessionStartTime = null;
+    currentTool = null;
 };
 
 // --- Pomodoro Tracking ---
 export const recordPomodoroCycle = async () => {
-    const userId = auth.currentUser?.uid;
-    if (!userId) return;
-    mockPomodoroCycles.push({ userId, timestamp: new Date() });
+    if (!localStorage.getItem('token')) return;
+
+    try {
+        await axios.post(`${API_URL}/api/analytics/session`, {
+            type: 'pomodoro',
+            duration: 25 * 60, // 25 minutes
+            description: 'Completed Pomodoro Cycle'
+        }, { headers: getAuthHeaders() });
+    } catch (error) {
+        console.error("Error logging pomodoro:", error);
+    }
 };
 
 // --- Quiz Tracking ---
 export const recordQuizResult = async (topic: string, correct: boolean, courseId: string | null = null) => {
-    const userId = auth.currentUser?.uid;
-    if (!userId) return;
+    if (!localStorage.getItem('token')) return;
 
-    mockQuizResults.push({
-        userId,
-        topic,
-        correct,
-        courseId,
-        timestamp: new Date(),
-        user: {
-            email: auth.currentUser?.email,
-            displayName: auth.currentUser?.displayName,
-        }
-    });
+    try {
+        await axios.post(`${API_URL}/api/analytics/quiz`, {
+            topic,
+            isCorrect: correct,
+            score: correct ? 100 : 0
+        }, { headers: getAuthHeaders() });
+    } catch (error) {
+        console.error("Error logging quiz:", error);
+    }
 };
 
 // --- Data Retrieval for UI ---
 export const getProductivityReport = async (courseId: string | null = null) => {
-    const userId = auth.currentUser?.uid;
-    if (!userId) return {
-        totalStudyTime: 0, quizAccuracy: 0, totalQuizzes: 0, correctQuizzes: 0,
-        strengths: [], weaknesses: [], completedPomodoros: 0, sessions: []
-    };
+    if (!localStorage.getItem('token')) return getEmptyReport();
 
-    const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    try {
+        const response = await axios.get(`${API_URL}/api/analytics`, {
+            headers: getAuthHeaders()
+        });
 
-    const userSessions = mockSessions.filter(s => s.userId === userId && s.startTime >= oneWeekAgo && (!courseId || s.courseId === courseId));
-    const userQuizzes = mockQuizResults.filter(q => q.userId === userId && q.timestamp >= oneWeekAgo && (!courseId || q.courseId === courseId));
-    const userPomodoros = mockPomodoroCycles.filter(p => p.userId === userId && p.timestamp >= oneWeekAgo);
-    
-    const totalStudyTime = userSessions.reduce((acc, s) => acc + (s.duration || 0), 0);
-    const totalQuizzes = userQuizzes.length;
-    const correctQuizzes = userQuizzes.filter(q => q.correct).length;
-    const quizAccuracy = totalQuizzes > 0 ? Math.round((correctQuizzes / totalQuizzes) * 100) : 0;
+        // Backend now returns { success: true, data: { ... } }
+        const data = response.data.success ? response.data.data : response.data;
 
-    // --- FIX: Added logic to calculate topic mastery ---
-    const topicStats: { [topic: string]: { correct: number, total: number } } = {};
-    userQuizzes.forEach(quiz => {
-        const normalizedTopic = quiz.topic.trim().toLowerCase();
-        if (!topicStats[normalizedTopic]) topicStats[normalizedTopic] = { correct: 0, total: 0 };
-        topicStats[normalizedTopic].total++;
-        if (quiz.correct) topicStats[normalizedTopic].correct++;
-    });
+        if (!data) return getEmptyReport();
 
-    const topicPerformance = Object.entries(topicStats).map(([topic, stats]) => ({
-        topic,
-        accuracy: Math.round((stats.correct / stats.total) * 100),
-        count: stats.total,
-    }));
+        // Transform UserProgress model to expected report format
+        // We need to calculate strengths and weaknesses from topicMastery
 
-    const strengths = topicPerformance.filter(t => t.accuracy >= 80 && t.count > 1).sort((a, b) => b.accuracy - a.accuracy).slice(0, 3);
-    const weaknesses = topicPerformance.filter(t => t.accuracy < 60 && t.count > 1).sort((a, b) => a.accuracy - b.accuracy).slice(0, 3);
+        const strengths = (data.topicMastery || [])
+            .filter((t: any) => t.accuracy >= 70)
+            .sort((a: any, b: any) => b.accuracy - a.accuracy)
+            .slice(0, 3)
+            .map((t: any) => ({ topic: t.topic, accuracy: t.accuracy, count: t.attempts }));
 
-    return {
-        totalStudyTime,
-        quizAccuracy,
-        totalQuizzes,
-        correctQuizzes,
-        strengths, 
-        weaknesses,
-        completedPomodoros: userPomodoros.length,
-        sessions: userSessions,
-    };
+        const weaknesses = (data.topicMastery || [])
+            .filter((t: any) => t.accuracy < 70)
+            .sort((a: any, b: any) => a.accuracy - b.accuracy)
+            .slice(0, 3)
+            .map((t: any) => ({ topic: t.topic, accuracy: t.accuracy, count: t.attempts }));
+
+        return {
+            totalStudyTime: data.totalStudyTime || 0,
+            quizAccuracy: 0, // Calculated globally if needed, or per topic
+            totalQuizzes: data.quizzesTaken || 0,
+            correctQuizzes: 0, // Not stored primarily
+            strengths,
+            weaknesses,
+            completedPomodoros: data.pomodoroSessions || 0,
+            sessions: [] // Can be filled from recentActivity if needed
+        };
+
+    } catch (error) {
+        console.error("Error fetching productivity report:", error);
+        return getEmptyReport();
+    }
 };
 
+const getEmptyReport = () => ({
+    totalStudyTime: 0, quizAccuracy: 0, totalQuizzes: 0, correctQuizzes: 0,
+    strengths: [], weaknesses: [], completedPomodoros: 0, sessions: []
+});
+
 export const getLeaderboardData = async (): Promise<LeaderboardEntry[]> => {
-    // For mock purposes, we only have the current user's data
-    const userId = auth.currentUser?.uid;
-    if (!userId) return [];
-
-    const totalStudyTime = mockSessions.filter(s => s.userId === userId).reduce((acc, s) => acc + (s.duration || 0), 0);
-    const userQuizzes = mockQuizResults.filter(q => q.userId === userId);
-    const totalQuizzes = userQuizzes.length;
-    const correctQuizzes = userQuizzes.filter(q => q.correct).length;
-    const quizScore = totalQuizzes > 0 ? Math.round((correctQuizzes / totalQuizzes) * 100) : 0;
-
-    const leaderBoard: LeaderboardEntry[] = [{
-        email: auth.currentUser?.email || '',
-        displayName: auth.currentUser?.displayName || 'You',
-        studyTime: totalStudyTime,
-        quizScore: quizScore,
-        quizCount: totalQuizzes,
-    }];
-
-    return leaderBoard;
+    // Phase 3 TODO
+    return [];
 };

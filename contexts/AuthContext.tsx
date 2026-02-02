@@ -1,6 +1,7 @@
 import React, { createContext, useState, useEffect, useContext, ReactNode } from 'react';
 import axios from 'axios';
 import { User } from '../types'; // Import User from types/index.ts
+import { initializeSocket } from '../services/communityService'; // Added import
 
 interface AuthContextType {
   user: User | null;
@@ -19,7 +20,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [loading, setLoading] = useState(true);
 
   // Set the default base URL for axios
-  axios.defaults.baseURL = 'http://localhost:5000'; // Or your production URL
+  axios.defaults.baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
 
   // Check for existing token on mount
   useEffect(() => {
@@ -37,9 +38,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const response = await axios.get('/api/auth/verify', {
         headers: { Authorization: `Bearer ${token}` }
       });
-      
+
       if (response.data.success) {
         setUser(response.data.user);
+        initializeSocket(token); // Initialize socket
       } else {
         localStorage.removeItem('token');
       }
@@ -61,6 +63,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       if (response.data.success) {
         localStorage.setItem('token', response.data.token);
         setUser(response.data.user);
+        initializeSocket(response.data.token); // Initialize socket
       } else {
         throw new Error(response.data.message || 'Login failed');
       }
@@ -84,9 +87,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       if (response.data.success) {
         localStorage.setItem('token', response.data.token);
         setUser(response.data.user);
+        initializeSocket(response.data.token); // Initialize socket
       }
     } catch (error: any) {
-       throw new Error(error.response?.data?.message || 'Signup failed due to a server error.');
+      throw new Error(error.response?.data?.message || 'Signup failed due to a server error.');
     }
   };
 

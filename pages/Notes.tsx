@@ -103,10 +103,10 @@ const Notes: React.FC = () => {
       console.error("[Notes] Error adding course:", error);
       const errorMessage = error instanceof Error ? error.message : String(error);
 
-      if (errorMessage.includes("Firestore DB is not initialized")) {
-        alert("❌ Database not initialized. Please check your Firebase configuration in firebase.ts");
-      } else if (errorMessage.includes("Missing or insufficient permissions")) {
-        alert("❌ Permission denied. Please check your Firestore security rules.");
+      if (errorMessage.includes("Database not initialized")) {
+        alert("❌ Database connection failed. Please check your backend server.");
+      } else if (errorMessage.includes("insufficient permissions")) {
+        alert("❌ Permission denied. You might need to log in again.");
       } else {
         alert(`❌ Failed to add course: ${errorMessage}`);
       }

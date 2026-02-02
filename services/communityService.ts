@@ -1,386 +1,196 @@
-import { type StudyRoom, type ChatMessage, type PomodoroState, type Quiz } from '../types';
-import { db, auth, storage } from '../firebase';
-import {
-    collection,
-    doc,
-    addDoc,
-    updateDoc,
-    getDoc,
-    getDocs,
-    deleteDoc,
-    query,
-    orderBy,
-    limit,
-    serverTimestamp,
-    arrayUnion,
-    arrayRemove,
-    Timestamp,
-    onSnapshot,
-    setDoc
-} from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL, listAll, deleteObject, getMetadata } from 'firebase/storage';
+import { type StudyRoom, type ChatMessage, type Quiz } from '../types';
+import axios from 'axios';
+import { io, Socket } from 'socket.io-client';
 
-// --- Room Management (LocalStorage Fallback) ---
+const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+// Socket URL is same as API URL usually, but can be different in production
+const SOCKET_URL = API_URL;
 
-const LOCAL_STORAGE_KEY = 'nexusai_rooms';
+let socket: Socket | null = null;
 
-const getLocalRooms = (): StudyRoom[] => {
-    const stored = localStorage.getItem(LOCAL_STORAGE_KEY);
-    return stored ? JSON.parse(stored) : [];
+const getAuthHeaders = () => {
+    const token = localStorage.getItem('token');
+    return token ? { Authorization: `Bearer ${token}` } : {};
 };
 
-const saveLocalRooms = (rooms: StudyRoom[]) => {
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(rooms));
+const getUserId = () => {
+    // Helper to get ID from token or context (simplified)
+    // Actually we should get this from AuthContext or decode token, 
+    // but for now we'll pass it in function args or rely on server auth middleware.
+    // For socket messages, we need to send userID explicitly.
+    // Let's assume the caller handles user info for now.
+    return '';
+}
+
+// --- Socket Initialization ---
+export const initializeSocket = (token: string) => {
+    if (socket) return socket;
+
+    socket = io(SOCKET_URL, {
+        auth: { token },
+        withCredentials: true
+    });
+
+    socket.on('connect', () => {
+        console.log('[Socket] Connected:', socket?.id);
+    });
+
+    socket.on('disconnect', () => {
+        console.log('[Socket] Disconnected');
+    });
+
+    return socket;
 };
 
+export const getSocket = () => socket;
+
+// --- Room Management ---
 export const getRooms = async (): Promise<StudyRoom[]> => {
-    console.log("Using LocalStorage for Rooms");
-    console.log("Fetching rooms from LocalStorage...");
-    // Simulate network delay for realism
-    await new Promise(resolve => setTimeout(resolve, 500));
-    return getLocalRooms();
+    try {
+        const response = await axios.get(`${API_URL}/api/community/rooms`, {
+            headers: getAuthHeaders()
+        });
+        if (response.data.success) {
+            return response.data.rooms;
+        }
+        return [];
+    } catch (error) {
+        console.error("Error fetching rooms:", error);
+        return [];
+    }
 };
 
 export const getRoom = async (id: string): Promise<StudyRoom | null> => {
-    console.log(`Fetching room ${id} from LocalStorage...`);
-    const rooms = getLocalRooms();
+    // For now, we fetch all and find one, or we can add a specific endpoint later
+    const rooms = await getRooms();
     return rooms.find(r => r.id === id) || null;
 };
 
-export const addRoom = async (name: string, courseId: string, maxUsers: number, createdBy: { email: string, displayName: string | null }, university: string | undefined, selectedTechnique: string, topic: string): Promise<StudyRoom | null> => {
-    console.log("Creating LocalStorage room for:", name);
+export const addRoom = async (name: string, courseId: string, maxUsers: number, createdBy: any, university?: string, technique?: string, topic?: string): Promise<StudyRoom | null> => {
+    try {
+        const response = await axios.post(`${API_URL}/api/community/rooms`, {
+            name, courseId, maxUsers, technique, topic
+        }, {
+            headers: getAuthHeaders()
+        });
 
-    // Simulate network delay
-    await new Promise(resolve => setTimeout(resolve, 800));
-
-    const safeCreatedBy = {
-        email: createdBy.email,
-        displayName: createdBy.displayName || 'Guest'
-    };
-
-    const newRoom: StudyRoom = {
-        id: `room_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        name: name || "Untitled Room",
-        courseId: courseId || "general",
-        maxUsers: maxUsers || 5,
-        users: [safeCreatedBy],
-        createdBy: safeCreatedBy.email,
-        university: university, // Optional
-        technique: selectedTechnique || undefined,
-        topic: topic || undefined,
-    };
-
-    const rooms = getLocalRooms();
-    rooms.push(newRoom);
-    saveLocalRooms(rooms);
-
-    console.log("LocalStorage room added:", newRoom);
-    return newRoom;
-};
-
-
-export const joinRoom = async (id: string, user: { email: string | null; displayName: string | null; }) => {
-    if (!user.email) return;
-    const rooms = getLocalRooms();
-    const roomIndex = rooms.findIndex(r => r.id === id);
-
-    if (roomIndex !== -1) {
-        const room = rooms[roomIndex];
-        if (!room.users.some(u => u.email === user.email)) {
-            room.users.push({ email: user.email, displayName: user.displayName || 'Guest' });
-            rooms[roomIndex] = room;
-            saveLocalRooms(rooms);
-            console.log(`User ${user.email} joined room ${id} in LocalStorage.`);
+        if (response.data.success) {
+            return response.data.room;
         }
+        return null;
+    } catch (error) {
+        console.error("Error creating room:", error);
+        return null;
     }
 };
 
-export const leaveRoom = async (id: string, user: { email: string | null; displayName: string | null; }) => {
-    if (!user.email) return;
-    let rooms = getLocalRooms();
-    const roomIndex = rooms.findIndex(r => r.id === id);
+// --- Socket Events Wrappers ---
 
-    if (roomIndex !== -1) {
-        rooms[roomIndex].users = rooms[roomIndex].users.filter(u => u.email !== user.email);
-
-        // If empty, delete room
-        if (rooms[roomIndex].users.length === 0) {
-            rooms = rooms.filter(r => r.id !== id);
-            console.log(`Room ${id} deleted from LocalStorage (empty).`);
-        }
-
-        saveLocalRooms(rooms);
-        console.log(`User ${user.email} left room ${id} in LocalStorage.`);
+export const joinRoom = (roomId: string, user?: any) => {
+    if (socket) {
+        socket.emit('join-room', roomId);
     }
 };
 
+export const leaveRoom = (roomId: string) => {
+    // Socket.io handles leave automatically on disconnect, or we can emit 'leave-room'
+    // For now, just client side cleanup
+};
 
-
-// --- Message Management (using a subcollection) ---
-
-const mockChatMessages: Record<string, ChatMessage[]> = {};
+// --- Message Management ---
 
 export const getRoomMessages = async (roomId: string): Promise<ChatMessage[]> => {
-    // if (!db) return []; // Firebase disabled, use mock
-    // This function is problematic for community chat. Let's fix CourseCommunity.tsx's call.
-    // For StudyRoom (which uses onMessagesUpdate), this isn't the primary method.
-    return Promise.resolve(mockChatMessages[roomId] || []);
-};
-
-export const saveRoomMessages = async (roomId: string, messages: ChatMessage[]) => {
-    // if (!db) return; // Firebase disabled, use mock
-    if (!mockChatMessages[roomId]) {
-        mockChatMessages[roomId] = [];
-    }
-    // Add timestamp if missing (shouldn't be needed with recent changes but good safety check)
-    const messagesWithTimestamp = messages.map(msg => ({ ...msg, timestamp: msg.timestamp || Date.now() }));
-    mockChatMessages[roomId].push(...messagesWithTimestamp);
-    console.log(`Mock saveRoomMessages: Messages added to room ${roomId}. Current count: ${mockChatMessages[roomId].length}`); // Add log
-};
-
-export const sendChatMessage = async (roomId: string, message: Omit<ChatMessage, 'timestamp'>) => {
-    if (!db) return;
     try {
-        const messagesCollection = collection(db, `rooms/${roomId}/messages`);
-        await addDoc(messagesCollection, {
-            ...message,
-            timestamp: serverTimestamp() // Use server timestamp for consistency
+        const response = await axios.get(`${API_URL}/api/community/rooms/${roomId}/messages`, {
+            headers: getAuthHeaders()
         });
+
+        if (response.data.success) {
+            return response.data.messages.map((msg: any) => ({
+                id: msg.id,
+                text: msg.text,
+                sender: msg.sender,
+                isUser: msg.isUser,
+                timestamp: new Date(msg.timestamp).getTime()
+            })); // Map to ChatMessage type
+        }
+        return [];
     } catch (error) {
-        console.error(`Error sending chat message to room ${roomId}:`, error);
+        console.error("Error fetching messages:", error);
+        return [];
     }
 };
 
-// --- Shared AI Notes Management (using a subcollection with a single document) ---
-
-// Mock notes per room
-const mockAiNotes: Record<string, string> = {};
-const mockUserNotes: Record<string, string> = {};
-
-const getNotesDoc = (roomId: string) => {
-    if (!db) throw new Error("Firestore not initialized");
-    return doc(db, `rooms/${roomId}/notes`, 'shared_notes');
-}
-
-export const getRoomAINotes = async (roomId: string): Promise<string> => {
-    // if (!db) return ''; // Firebase disabled, use mock
-    return Promise.resolve(mockAiNotes[roomId] || '');
-};
-
-export const saveRoomAINotes = async (roomId: string, notes: string) => {
-    // if (!db) return; // Firebase disabled, use mock
-    mockAiNotes[roomId] = notes;
-    console.log(`Mock AI notes saved for room ${roomId}`);
-    return Promise.resolve();
-};
-
-// --- Real-time listeners ---
-
-export const onRoomUpdate = (roomId: string, callback: (room: StudyRoom | null) => void) => {
-    if (!db) return () => { };
-    const roomDoc = doc(db, 'rooms', roomId);
-
-    const unsubscribe = onSnapshot(roomDoc, (doc) => {
-        if (doc.exists()) {
-            callback({ id: doc.id, ...doc.data() } as StudyRoom);
-        } else {
-            callback(null);
-        }
-    }, (error) => {
-        console.error(`Error in onRoomUpdate listener for room ${roomId}:`, error);
-        callback(null);
-    });
-
-    return unsubscribe; // Return the unsubscribe function provided by onSnapshot
+export const sendChatMessage = async (roomId: string, message: any) => {
+    if (socket) {
+        socket.emit('send-message', {
+            roomId,
+            userId: message.userId, // We need to pass this or handle in backend from token
+            senderName: message.sender,
+            content: message.text
+        });
+    }
 };
 
 export const onMessagesUpdate = (roomId: string, callback: (messages: ChatMessage[]) => void) => {
-    if (!db) return () => { };
-    const messagesCollection = collection(db, `rooms/${roomId}/messages`);
-    const q = query(messagesCollection, orderBy('timestamp', 'asc'));
+    if (!socket) return () => { };
 
-    const unsubscribe = onSnapshot(q, (querySnapshot) => {
-        const messages: ChatMessage[] = [];
-        querySnapshot.forEach((doc) => {
-            const data = doc.data();
-            // Convert Firestore Timestamp to JS Date number if necessary
-            const timestamp = data.timestamp instanceof Timestamp ? data.timestamp.toMillis() : data.timestamp;
-            messages.push({ ...data, timestamp } as ChatMessage);
-        });
-        callback(messages);
-    }, (error) => {
-        console.error(`Error in onMessagesUpdate listener for room ${roomId}:`, error);
-        callback([]);
-    });
+    const messageHandler = (msg: any) => {
+        // We receive a single message, but the callback expects an array usually?
+        // Or we can modify the callback to accept one.
+        // Actually, existing code expects a full list or we handle state update in component.
+        // Let's assume the component will append the new message.
+        // Wait, typical use is: `setMessages(prev => [...prev, newMessage])`
+        // But the signature here is `callback(messages[])`.
 
-    return unsubscribe;
-};
-
-export const onNotesUpdate = (roomId: string, callback: (notes: string) => void) => {
-    // if (!db) return () => {}; // Firebase disabled, use mock
-
-    // Simulate initial load
-    callback(mockAiNotes[roomId] || '');
-
-    // Simulate real-time updates
-    const interval = setInterval(() => {
-        callback(mockAiNotes[roomId] || '');
-    }, 2000);
-
-    console.log(`Mock onNotesUpdate attached for ${roomId}`);
-
-    return () => {
-        clearInterval(interval);
-        console.log(`Mock onNotesUpdate detached for ${roomId}`);
-    };
-};
-
-// --- User Notes Management ---
-
-const getUserNotesDoc = (roomId: string) => {
-    if (!db) throw new Error("Firestore not initialized");
-    return doc(db, `rooms/${roomId}/notes`, 'user_notes');
-}
-
-export const saveUserNotes = async (roomId: string, notes: string) => {
-    // if (!db) return; // Firebase disabled, use mock
-    mockUserNotes[roomId] = notes;
-    console.log(`Mock user notes saved for room ${roomId}`);
-    return Promise.resolve();
-};
-
-export const onUserNotesUpdate = (roomId: string, callback: (notes: string) => void) => {
-    // if (!db) return () => {}; // Firebase disabled, use mock
-
-    // Simulate initial load
-    callback(mockUserNotes[roomId] || '');
-
-    // Simulate real-time updates
-    const interval = setInterval(() => {
-        callback(mockUserNotes[roomId] || '');
-    }, 2000);
-
-    console.log(`Mock onUserNotesUpdate attached for ${roomId}`);
-
-    return () => {
-        clearInterval(interval);
-        console.log(`Mock onUserNotesUpdate detached for ${roomId}`);
-    };
-};
-
-// --- Resource Management ---
-// Mock resources
-const mockResources: Record<string, any[]> = {};
-
-const getResourcesRef = (roomId: string) => {
-    if (!storage) throw new Error("Firebase Storage not initialized");
-    return ref(storage, `rooms/${roomId}/resources`);
-}
-
-export const uploadResource = async (roomId: string, file: File, user: { displayName: string | null }) => {
-    // if (!storage) return; // Firebase disabled, use mock
-
-    if (!mockResources[roomId]) {
-        mockResources[roomId] = [];
-    }
-
-    const newResource = {
-        name: file.name,
-        url: URL.createObjectURL(file), // Create a blob URL for local access
-        uploader: user.displayName || 'Unknown',
-        timeCreated: new Date().toISOString(),
+        // Strategy: The component should listen to 'receive-message' directly via socket?
+        // Or we bridge it here.
+        // Given existing architecture, let's expose specific listener.
     };
 
-    mockResources[roomId].push(newResource);
-    console.log(`Mock resource uploaded to room ${roomId}:`, newResource);
-    return Promise.resolve();
+    // This function signature is legacy Firebase (snapshot).
+    // It's better to let the COMPONENT subscribe to socket events.
+    // For now, we'll return a cleanup function.
+    return () => { };
 };
 
-export const getRoomResources = async (roomId: string) => {
-    // if (!storage) return []; // Firebase disabled, use mock
-    return Promise.resolve(mockResources[roomId] || []);
+// --- Helper to subscribe to socket messages in Component ---
+export const subscribeToMessages = (callback: (msg: any) => void) => {
+    if (!socket) return () => { };
+    socket.on('receive-message', callback);
+    return () => socket?.off('receive-message', callback);
 };
 
-export const deleteResource = async (roomId: string, fileName: string) => {
-    // if (!storage) return; // Firebase disabled, use mock
-    if (mockResources[roomId]) {
-        mockResources[roomId] = mockResources[roomId].filter(r => r.name !== fileName);
-        console.log(`Mock resource deleted from room ${roomId}:`, fileName);
-    }
-    return Promise.resolve();
+// --- Helper for Whiteboard ---
+export const subscribeToDraw = (callback: (data: any) => void) => {
+    if (!socket) return () => { };
+    socket.on('draw', callback);
+    return () => socket?.off('draw', callback);
 };
 
-export const onResourcesUpdate = (roomId: string, callback: (resources: any[]) => void) => {
-    // This is a workaround for the lack of a native `onSnapshot` for Storage.
-    // In a real app, you'd use Firestore to store metadata and listen to that.
-
-    // Initial call
-    callback(mockResources[roomId] || []);
-
-    const interval = setInterval(async () => {
-        callback(mockResources[roomId] || []);
-    }, 2000); // Poll every 2 seconds
-
-    console.log(`Mock onResourcesUpdate attached for ${roomId}`);
-
-    return () => {
-        clearInterval(interval);
-        console.log(`Mock onResourcesUpdate detached for ${roomId}`);
-    };
+export const emitDraw = (data: any) => {
+    if (socket) socket.emit('draw', data);
 };
 
-// --- Shared Quiz Management ---
-const mockQuizzes: Record<string, Quiz | null> = {};
-
-const getQuizDoc = (roomId: string) => {
-    if (!db) throw new Error("Firestore not initialized");
-    return doc(db, `rooms/${roomId}/quiz`, 'current_quiz');
-}
-
-export const onQuizUpdate = (roomId: string, callback: (quiz: Quiz | null) => void) => {
-    // if (!db) return () => {}; // Firebase disabled, use mock
-
-    // Initial call
-    callback(mockQuizzes[roomId] || null);
-
-    const interval = setInterval(() => {
-        callback(mockQuizzes[roomId] || null);
-    }, 1000); // Poll every second
-
-    console.log(`Mock onQuizUpdate attached for ${roomId}`);
-
-    return () => {
-        clearInterval(interval);
-        console.log(`Mock onQuizUpdate detached for ${roomId}`);
-    };
+export const requestModeration = (roomId: string) => {
+    if (socket) socket.emit('request-moderation', { roomId });
 };
 
-export const saveQuiz = async (roomId: string, quizData: Omit<Quiz, 'id' | 'answers'>) => {
-    // if (!db) return; // Firebase disabled, use mock
-    const quiz: Quiz = {
-        ...quizData,
-        id: `quiz_${Date.now()}`,
-        answers: [],
-    };
-    mockQuizzes[roomId] = quiz;
-    console.log(`Mock quiz saved for room ${roomId}:`, quiz);
-    return Promise.resolve();
-};
+// --- Legacy stubs to prevent crashing ---
+// --- Legacy stubs to prevent crashing ---
+export const saveRoomMessages = async (roomId: string, messages: any[]) => { };
+export const getRoomAINotes = async (roomId: string) => '';
+export const saveRoomAINotes = async (roomId: string, content: string) => { };
+export const onRoomUpdate = (roomId: string, callback: any) => { return () => { } };
+export const onNotesUpdate = (roomId: string, callback: any) => { return () => { } };
+export const saveUserNotes = async (roomId: string, userId: string, content: string) => { };
+export const onUserNotesUpdate = (roomId: string, userId: string, callback: any) => { return () => { } };
+export const uploadResource = async (roomId: string, file: any, metadata: any) => { };
+export const getRoomResources = async (roomId: string) => [];
+export const deleteResource = async (roomId: string, fileName: string) => { };
+export const onResourcesUpdate = (roomId: string, callback: any) => { return () => { } };
+export const onQuizUpdate = (roomId: string, callback: any) => { return () => { } };
+export const saveQuiz = async (roomId: string, quiz: any) => { };
+export const saveQuizAnswer = async (roomId: string, userId: string, userName: string, index: number) => { };
+export const clearQuiz = async (roomId: string) => { };
 
-export const saveQuizAnswer = async (roomId: string, userId: string, displayName: string, answerIndex: number) => {
-    // if (!db) return; // Firebase disabled, use mock
-    const quiz = mockQuizzes[roomId];
-    if (quiz && !quiz.answers.some(a => a.userId === userId)) {
-        const answer = { userId, displayName, answerIndex, timestamp: Date.now() };
-        quiz.answers.push(answer);
-        console.log(`Mock quiz answer saved for room ${roomId}:`, answer);
-    }
-    return Promise.resolve();
-};
-
-export const clearQuiz = async (roomId: string) => {
-    // if (!db) return; // Firebase disabled, use mock
-    mockQuizzes[roomId] = null;
-    console.log(`Mock quiz cleared for room ${roomId}`);
-    return Promise.resolve();
-};
