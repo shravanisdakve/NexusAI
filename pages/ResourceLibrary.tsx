@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { PageHeader, Button, Input, Select, Modal } from '../components/ui';
 import { useAuth } from '../contexts/AuthContext';
 import { type Resource } from '../types';
-import { PlusCircle, Upload, BookOpen } from 'lucide-react';
+import { PlusCircle, Upload, BookOpen, Search, FileText, Video } from 'lucide-react';
 // Assume a service exists to get/post resources
 import { getResources, addResource } from '../services/resourceService';
 
@@ -285,25 +285,41 @@ const ResourceLibrary: React.FC = () => {
             tempResources = tempResources.filter(r => r.type === typeFilter);
         }
         if (subjectFilter) {
-            tempResources = tempResources.filter(r => r.subject.toLowerCase().includes(subjectFilter.toLowerCase()));
+            const lowerSearch = subjectFilter.toLowerCase();
+            tempResources = tempResources.filter(r =>
+                r.subject.toLowerCase().includes(lowerSearch) ||
+                r.title.toLowerCase().includes(lowerSearch) ||
+                r.description.toLowerCase().includes(lowerSearch)
+            );
         }
         setFilteredResources(tempResources);
     }, [resources, yearFilter, typeFilter, subjectFilter]);
+
+    // Helper to get icon
+    const getResourceIcon = (type: string) => {
+        switch (type) {
+            case 'Video': return <Video size={20} className="text-red-400" />;
+            case 'Book': return <BookOpen size={20} className="text-blue-400" />;
+            case 'Paper': return <FileText size={20} className="text-yellow-400" />;
+            default: return <FileText size={20} className="text-violet-400" />;
+        }
+    };
 
     return (
         <>
             <UploadResourceModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onUpload={fetchAndSetResources} />
             <div className="space-y-8">
-                <PageHeader title="Resource Library" subtitle={`Resources for ${user?.branch} Engineering`} />
+                <PageHeader title="Resource Library" subtitle={`Resources for ${user?.branch || 'All'} Engineering`} />
 
-                <div className="flex justify-between items-center">
-                    <div className="flex gap-4">
+                <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+                    <div className="flex flex-1 gap-4 w-full">
                         {/* Filter controls */}
                         <Select
                             id="resource-year-filter"
                             name="yearFilter"
                             value={yearFilter}
                             onChange={(e) => setYearFilter(e.target.value)}
+                            className="w-full md:w-auto"
                         >
                             <option value="">All Years</option>
                             <option value="1">1st Year</option>
@@ -316,6 +332,7 @@ const ResourceLibrary: React.FC = () => {
                             name="typeFilter"
                             value={typeFilter}
                             onChange={(e) => setTypeFilter(e.target.value)}
+                            className="w-full md:w-auto"
                         >
                             <option value="">All Types</option>
                             <option value="Notes">Notes</option>
@@ -323,13 +340,17 @@ const ResourceLibrary: React.FC = () => {
                             <option value="Book">Book</option>
                             <option value="Video">Video</option>
                         </Select>
-                        <Input
-                            id="resource-subject-filter"
-                            name="subjectFilter"
-                            placeholder="Filter by subject..."
-                            value={subjectFilter}
-                            onChange={(e) => setSubjectFilter(e.target.value)}
-                        />
+                        <div className="flex-1 relative">
+                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={16} />
+                            <Input
+                                id="resource-search"
+                                name="subjectFilter"
+                                placeholder="Search by title, subject, or description..."
+                                value={subjectFilter}
+                                onChange={(e) => setSubjectFilter(e.target.value)}
+                                className="pl-10 w-full"
+                            />
+                        </div>
                     </div>
                     <Button onClick={() => setIsModalOpen(true)}>
                         <PlusCircle size={16} className="mr-2" />
@@ -338,23 +359,48 @@ const ResourceLibrary: React.FC = () => {
                 </div>
 
                 {/* Resource List */}
-                <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {isLoading ? (
-                        <p>Loading resources...</p>
+                        <p className="text-slate-400 col-span-full text-center">Loading resources...</p>
                     ) : filteredResources.length > 0 ? (
                         filteredResources.map((resource: any) => (
-                            <a key={resource.id || resource._id} href={resource.link} target="_blank" rel="noopener noreferrer" className="block p-4 bg-slate-800 rounded-lg hover:bg-slate-700 transition-colors">
-                                <div className="flex justify-between items-center">
-                                    <div>
-                                        <h4 className="font-bold text-white">{resource.title}</h4>
-                                        <p className="text-sm text-slate-400">{resource.subject} - {resource.year}nd Year</p>
+                            <a
+                                key={resource.id || resource._id}
+                                href={resource.link}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="block p-5 bg-slate-800/50 border border-slate-700/50 rounded-xl hover:bg-slate-800 hover:border-violet-500/50 transition-all duration-300 group relative overflow-hidden"
+                            >
+                                <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
+                                    {getResourceIcon(resource.type)}
+                                </div>
+                                <div className="flex items-start justify-between mb-3">
+                                    <div className="p-2 bg-slate-700/50 rounded-lg group-hover:scale-110 transition-transform duration-300">
+                                        {getResourceIcon(resource.type)}
                                     </div>
-                                    <span className="text-xs font-semibold px-2 py-1 bg-violet-500/20 text-violet-400 rounded-full">{resource.type}</span>
+                                    <span className="text-xs font-medium px-2 py-1 bg-violet-500/10 text-violet-300 rounded-full border border-violet-500/20">
+                                        {resource.type}
+                                    </span>
+                                </div>
+
+                                <h4 className="font-bold text-white text-lg mb-1 group-hover:text-violet-300 transition-colors line-clamp-1">{resource.title}</h4>
+                                <p className="text-sm text-slate-400 mb-3">{resource.subject} • {resource.year === 1 ? '1st' : resource.year === 2 ? '2nd' : resource.year === 3 ? '3rd' : '4th'} Year</p>
+
+                                {resource.description && (
+                                    <p className="text-xs text-slate-500 line-clamp-2 mb-3 bg-slate-900/30 p-2 rounded-lg">
+                                        {resource.description}
+                                    </p>
+                                )}
+
+                                <div className="flex items-center text-xs text-slate-500 mt-2">
+                                    <span>Added by {typeof resource.uploadedBy === 'string' ? 'User' : resource.uploadedBy?.displayName || 'Admin'}</span>
                                 </div>
                             </a>
                         ))
                     ) : (
-                        <p className="text-center text-slate-400 py-8">No resources found for the selected filters.</p>
+                        <p className="text-center text-slate-400 py-12 col-span-full bg-slate-800/20 rounded-xl border border-dashed border-slate-700">
+                            No resources found matching your criteria.
+                        </p>
                     )}
                 </div>
             </div>

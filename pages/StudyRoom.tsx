@@ -678,138 +678,142 @@ const StudyRoom: React.FC = () => {
 
     // --- Component Return ---
     return (
-        <div className="h-full flex flex-col bg-slate-900 text-slate-200 p-0 m-[-2rem] relative">
-            <Reactions reactions={reactions} />
-            {showShareModal && <ShareModal roomId={roomId || ''} onClose={() => setShowShareModal(false)} />}
+        <div className="h-full flex flex-col bg-[url('https://images.unsplash.com/photo-1534796636912-3b95b3ab5986?q=80&w=2072&auto=format&fit=crop')] bg-cover bg-center text-slate-200 p-0 m-[-2rem] relative">
+            <div className="absolute inset-0 bg-slate-900/90 backdrop-blur-sm z-0" />
+            <div className="relative z-10 flex flex-col h-full">
+                <Reactions reactions={reactions} />
+                {showShareModal && <ShareModal roomId={roomId || ''} onClose={() => setShowShareModal(false)} />}
 
-            {sharedQuiz && (
-                <div className="absolute inset-0 bg-slate-900/90 z-20 flex items-center justify-center p-8 backdrop-blur-sm">
-                    {showLeaderboard ?
-                        <Leaderboard quiz={sharedQuiz} participants={participants} onClear={handleClearQuiz} /> :
-                        <QuizDisplay quiz={sharedQuiz} onAnswer={handleAnswerQuiz} currentUser={currentUser} />
-                    }
-                </div>
-            )}
+                {sharedQuiz && (
+                    <div className="absolute inset-0 bg-slate-900/90 z-20 flex items-center justify-center p-8 backdrop-blur-sm">
+                        {showLeaderboard ?
+                            <Leaderboard quiz={sharedQuiz} participants={participants} onClear={handleClearQuiz} /> :
+                            <QuizDisplay quiz={sharedQuiz} onAnswer={handleAnswerQuiz} currentUser={currentUser} />
+                        }
+                    </div>
+                )}
 
 
-            <div className="flex-1 flex overflow-hidden">
-                {/* Main Video Grid */}
-                <main className="flex-1 flex flex-col p-4 relative">
-                    {/* --- REMOVED Timer Display FROM HERE --- */}
+                <div className="flex-1 flex overflow-hidden">
+                    {/* Main Video Grid */}
+                    <main className="flex-1 flex flex-col p-4 relative">
+                        {/* --- REMOVED Timer Display FROM HERE --- */}
 
-                    {mediaError && (
-                        // ... (media error display) ...
-                        <div className={`
+                        {mediaError && (
+                            // ... (media error display) ...
+                            <div className={`
                             p-3 rounded-lg text-sm mb-4 ring-1 flex justify-between items-center animate-in fade-in-50
                             ${mediaError.type === 'error'
-                                ? 'bg-red-900/50 text-red-300 ring-red-700'
-                                : 'bg-sky-900/50 text-sky-300 ring-sky-700'
-                            }
+                                    ? 'bg-red-900/50 text-red-300 ring-red-700'
+                                    : 'bg-sky-900/50 text-sky-300 ring-sky-700'
+                                }
                         `}>
-                            <div className="flex items-center gap-2">
-                                {mediaError.type === 'error' ? <AlertTriangle size={18} /> : <Info size={18} />}
-                                <span className="font-medium">{mediaError.message}</span>
-                            </div>
-                            <button onClick={getMedia} className={`
+                                <div className="flex items-center gap-2">
+                                    {mediaError.type === 'error' ? <AlertTriangle size={18} /> : <Info size={18} />}
+                                    <span className="font-medium">{mediaError.message}</span>
+                                </div>
+                                <button onClick={getMedia} className={`
                                 font-semibold text-white rounded-md py-1 px-3 text-xs transition-colors
                                 ${mediaError.type === 'error'
-                                    ? 'bg-red-600/50 hover:bg-red-600/80'
-                                    : 'bg-sky-600/50 hover:bg-sky-600/80'
-                                }
+                                        ? 'bg-red-600/50 hover:bg-red-600/80'
+                                        : 'bg-sky-600/50 hover:bg-sky-600/80'
+                                    }
                             `}>
-                                Retry Access
-                            </button>
+                                    Retry Access
+                                </button>
+                            </div>
+                        )}
+                        <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <VideoTile stream={localStream} displayName={currentUser?.displayName || 'You'} isMuted={isMuted} isLocal={true} isScreenSharing={isScreenSharing} />
+                            {participants.filter(p => p.email !== currentUser?.email).map(p => (
+                                <VideoTile key={p.email} displayName={p.displayName} isMuted={false} />
+                            ))}
                         </div>
-                    )}
-                    <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <VideoTile stream={localStream} displayName={currentUser?.displayName || 'You'} isMuted={isMuted} isLocal={true} isScreenSharing={isScreenSharing} />
-                        {participants.filter(p => p.email !== currentUser?.email).map(p => (
-                            <VideoTile key={p.email} displayName={p.displayName} isMuted={false} />
-                        ))}
-                    </div>
 
-                </main>
+                    </main>
 
-                {/* Side Panel */}
-                {/* ... (Side Panel Tabs and Content remain the same) ... */}
-                <aside className="w-96 bg-slate-800/70 flex flex-col h-full">
-                    <div className="flex border-b border-slate-700">
-                        <TabButton id="chat" activeTab={activeTab} setActiveTab={setActiveTab} icon={MessageSquare} label="Chat" />
-                        <TabButton id="ai" activeTab={activeTab} setActiveTab={setActiveTab} icon={Brain} label="AI Buddy" />
-                        <TabButton id="notes" activeTab={activeTab} setActiveTab={setActiveTab} icon={FileText} label="Notes" />
-                        <TabButton id="whiteboard" activeTab={activeTab} setActiveTab={setActiveTab} icon={Palette} label="Board" />
-                        <TabButton id="participants" activeTab={activeTab} setActiveTab={setActiveTab} icon={Users} label="Participants" count={participants.length} />
-                    </div>
-
-                    {activeTab === 'chat' && (
-                        <ChatPanel
-                            messages={participantChatMessages}
-                            input={chatInput}
-                            setInput={setChatInput}
-                            onSend={handleSendChatMessage}
-                            currentUser={currentUser}
-                            chatEndRef={chatEndRef}
-                            onModerationRequest={handleModerationRequest}
-                        />
-                    )}
-                    {activeTab === 'participants' && <ParticipantsPanel participants={participants} />}
-                    {activeTab === 'ai' && (
-                        <AiPanel
-                            messages={aiMessages}
-                            input={aiInput}
-                            setInput={setAiInput}
-                            onSend={handleSendAiMessage}
-                            notes={notes}
-                            isExtracting={isExtracting}
-                            onUploadClick={() => notesFileInputRef.current?.click()}
-                            onQuizMe={handleGenerateQuiz}
-                            sharedQuiz={sharedQuiz}
-                            chatEndRef={aiChatEndRef}
-                            isLoading={isAiLoading}
-                        />
-                    )}
-                    {activeTab === 'notes' && (
-                        <StudyRoomNotesPanel
-                            sharedNoteContent={notes} // Pass the shared text content
-                            resources={resources} // Pass the list of shared files
-                            onSaveSharedNote={handleSaveSharedNote} // Pass the save handler for text
-                            onUploadResource={handleUploadResource} // Pass the file upload handler
-                            onDeleteResource={handleDeleteResource} // Pass the file delete handler
-                            isSavingNote={isSavingSharedNote} // Pass loading state for saving text
-                            isUploading={isUploading} // Pass loading state for file upload
-                        />
-                    )}
-                    {activeTab === 'whiteboard' && (
-                        <div className="flex-1 p-4 h-full">
-                            <Whiteboard roomId={roomId || ''} />
+                    {/* Side Panel */}
+                    {/* ... (Side Panel Tabs and Content remain the same) ... */}
+                    {/* Side Panel */}
+                    <aside className="w-96 bg-slate-900/40 backdrop-blur-md border-l border-white/5 flex flex-col h-full shadow-2xl z-20">
+                        <div className="flex border-b border-white/5 p-2 gap-1 bg-black/20">
+                            <TabButton id="chat" activeTab={activeTab} setActiveTab={setActiveTab} icon={MessageSquare} label="Chat" />
+                            <TabButton id="ai" activeTab={activeTab} setActiveTab={setActiveTab} icon={Brain} label="AI" />
+                            <TabButton id="notes" activeTab={activeTab} setActiveTab={setActiveTab} icon={FileText} label="Notes" />
+                            <TabButton id="whiteboard" activeTab={activeTab} setActiveTab={setActiveTab} icon={Palette} label="Board" />
+                            <TabButton id="participants" activeTab={activeTab} setActiveTab={setActiveTab} icon={Users} label="" count={participants.length} />
                         </div>
-                    )}
-                </aside>
 
+                        {activeTab === 'chat' && (
+                            <ChatPanel
+                                messages={participantChatMessages}
+                                input={chatInput}
+                                setInput={setChatInput}
+                                onSend={handleSendChatMessage}
+                                currentUser={currentUser}
+                                chatEndRef={chatEndRef}
+                                onModerationRequest={handleModerationRequest}
+                            />
+                        )}
+                        {activeTab === 'participants' && <ParticipantsPanel participants={participants} />}
+                        {activeTab === 'ai' && (
+                            <AiPanel
+                                messages={aiMessages}
+                                input={aiInput}
+                                setInput={setAiInput}
+                                onSend={handleSendAiMessage}
+                                notes={notes}
+                                isExtracting={isExtracting}
+                                onUploadClick={() => notesFileInputRef.current?.click()}
+                                onQuizMe={handleGenerateQuiz}
+                                sharedQuiz={sharedQuiz}
+                                chatEndRef={aiChatEndRef}
+                                isLoading={isAiLoading}
+                            />
+                        )}
+                        {activeTab === 'notes' && (
+                            <StudyRoomNotesPanel
+                                sharedNoteContent={notes} // Pass the shared text content
+                                resources={resources} // Pass the list of shared files
+                                onSaveSharedNote={handleSaveSharedNote} // Pass the save handler for text
+                                onUploadResource={handleUploadResource} // Pass the file upload handler
+                                onDeleteResource={handleDeleteResource} // Pass the file delete handler
+                                isSavingNote={isSavingSharedNote} // Pass loading state for saving text
+                                isUploading={isUploading} // Pass loading state for file upload
+                            />
+                        )}
+                        {activeTab === 'whiteboard' && (
+                            <div className="flex-1 p-4 h-full">
+                                <Whiteboard roomId={roomId || ''} />
+                            </div>
+                        )}
+                    </aside>
+
+                </div>
+
+                <input type="file" ref={notesFileInputRef} onChange={handleNotesFileUpload} accept=".txt,.md,.pdf,.pptx" style={{ display: 'none' }} />
+
+                <RoomControls
+                    mediaReady={!!localStream}
+                    isMuted={isMuted}
+                    isCameraOn={isCameraOn}
+                    isScreenSharing={isScreenSharing}
+                    onToggleMute={handleToggleMute}
+                    onToggleCamera={handleToggleCamera}
+                    onToggleScreenShare={handleToggleScreenShare}
+                    onHangUp={handleHangUp}
+                    onReact={handleReaction}
+                    onToggleMusic={() => setShowMusicPlayer(p => !p)}
+                    onShare={() => setShowShareModal(true)}
+                    roomId={roomId || ''}
+                    formattedSessionTime={formatElapsedTime(elapsedTime)} // Pass formatted time
+                    onAddTestUser={handleAddTestUser}
+                    showMusicPlayer={showMusicPlayer} // Pass showMusicPlayer state
+                >
+                    {showMusicPlayer && <MusicPlayer onClose={() => setShowMusicPlayer(false)} />} {/* Render MusicPlayer as child */}
+                </RoomControls>
+                {/* --- END FIX --- */}
             </div>
-
-            <input type="file" ref={notesFileInputRef} onChange={handleNotesFileUpload} accept=".txt,.md,.pdf,.pptx" style={{ display: 'none' }} />
-
-            <RoomControls
-                mediaReady={!!localStream}
-                isMuted={isMuted}
-                isCameraOn={isCameraOn}
-                isScreenSharing={isScreenSharing}
-                onToggleMute={handleToggleMute}
-                onToggleCamera={handleToggleCamera}
-                onToggleScreenShare={handleToggleScreenShare}
-                onHangUp={handleHangUp}
-                onReact={handleReaction}
-                onToggleMusic={() => setShowMusicPlayer(p => !p)}
-                onShare={() => setShowShareModal(true)}
-                roomId={roomId || ''}
-                formattedSessionTime={formatElapsedTime(elapsedTime)} // Pass formatted time
-                onAddTestUser={handleAddTestUser}
-                showMusicPlayer={showMusicPlayer} // Pass showMusicPlayer state
-            >
-                {showMusicPlayer && <MusicPlayer onClose={() => setShowMusicPlayer(false)} />} {/* Render MusicPlayer as child */}
-            </RoomControls>
-            {/* --- END FIX --- */}
         </div>
     );
 };
@@ -883,8 +887,15 @@ const Leaderboard: React.FC<{ quiz: SharedQuiz, participants: { email: string; d
 };
 
 const TabButton: React.FC<{ id: ActiveTab, activeTab: ActiveTab, setActiveTab: (tab: ActiveTab) => void, icon: React.ElementType, label: string, count?: number }> = ({ id, activeTab, setActiveTab, icon: Icon, label, count }) => (
-    <button onClick={() => setActiveTab(id)} className={`flex-1 flex justify-center items-center gap-2 py-3 text-sm font-medium transition-colors ${activeTab === id ? 'bg-slate-700 text-violet-400' : 'text-slate-400 hover:bg-slate-700/50 hover:text-white'}`}>
-        <Icon size={16} /> {label} {count !== undefined && <span className="text-xs bg-slate-600 rounded-full px-1.5">{count}</span>}
+    <button
+        onClick={() => setActiveTab(id)}
+        className={`flex-1 flex justify-center items-center gap-2 py-2 text-xs font-medium rounded-lg transition-all duration-200 ${activeTab === id
+            ? 'bg-violet-600/20 text-violet-300 shadow-[0_0_10px_rgba(124,58,237,0.2)]'
+            : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
+            }`}
+        title={label || 'Participants'}
+    >
+        <Icon size={16} /> {label} {count !== undefined && count > 0 && <span className="text-[10px] bg-slate-800 text-slate-300 rounded-full px-1.5 min-w-[1.2em]">{count}</span>}
     </button>
 );
 
@@ -904,17 +915,26 @@ const ChatPanel: React.FC<any> = ({ messages, input, setInput, onSend, currentUs
     return (
         <div className="flex flex-col flex-1 overflow-hidden p-4">
             <div className="flex-1 overflow-y-auto pr-2">
-                {messages.map((msg: ChatMessage, i: number) => (
-                    <div key={i} className={`flex items-start gap-2.5 my-3 ${msg.user?.email === currentUser?.email ? 'flex-row-reverse' : ''}`}>
-                        <img src={`https://ui-avatars.com/api/?name=${msg.user?.displayName || '?'}&background=random`} alt="avatar" className="w-8 h-8 rounded-full" />
-                        <div className={`flex flex-col max-w-[80%] ${msg.user?.email === currentUser?.email ? 'items-end' : 'items-start'}`}>
-                            <span className="text-xs text-slate-400 mb-1 px-1">{msg.user?.displayName}</span>
-                            <div className={`p-3 rounded-xl text-sm ${msg.user?.email === currentUser?.email ? 'bg-sky-600 text-white rounded-br-none' : 'bg-slate-700 rounded-bl-none'}`}>
-                                {msg.parts[0].text}
+                {messages.map((msg: ChatMessage, i: number) => {
+                    const isMe = msg.user?.email === currentUser?.email;
+                    return (
+                        <div key={msg.id || i} className={`flex items-start gap-3 my-4 ${isMe ? 'flex-row-reverse' : ''} group`}>
+                            <img src={`https://ui-avatars.com/api/?name=${msg.user?.displayName || '?'}&background=random&color=fff`} alt="avatar" className="w-8 h-8 rounded-full shadow-lg ring-2 ring-white/10" />
+                            <div className={`flex flex-col max-w-[85%] ${isMe ? 'items-end' : 'items-start'}`}>
+                                <div className="flex items-center gap-2 mb-1 opacity-70">
+                                    <span className="text-xs font-medium text-slate-300">{msg.user?.displayName}</span>
+                                    {msg.timestamp && <span className="text-[10px] text-slate-500">{new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>}
+                                </div>
+                                <div className={`p-3.5 text-sm shadow-md backdrop-blur-sm ${isMe
+                                    ? 'bg-violet-600/90 text-white rounded-2xl rounded-tr-sm'
+                                    : 'bg-slate-800/80 border border-slate-700/50 text-slate-200 rounded-2xl rounded-tl-sm'
+                                    }`}>
+                                    {msg.parts[0].text}
+                                </div>
                             </div>
                         </div>
-                    </div>
-                ))}
+                    );
+                })}
                 <div ref={chatEndRef}></div>
             </div>
             <div className="mt-auto flex gap-2 relative">
@@ -956,39 +976,84 @@ const ChatPanel: React.FC<any> = ({ messages, input, setInput, onSend, currentUs
 
 const ParticipantsPanel: React.FC<{ participants: { email: string; displayName: string }[] }> = ({ participants }) => (
     <div className="p-4 space-y-3 overflow-y-auto">
+        <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">In this room ({participants.length})</h3>
         {participants.map(p => (
-            <div key={p.email} className="flex items-center gap-3 bg-slate-700/50 p-2 rounded-lg">
-                <img src={`https://ui-avatars.com/api/?name=${p.displayName}&background=random`} alt="avatar" className="w-9 h-9 rounded-full" />
-                <span className="font-medium text-slate-200">{p.displayName}</span>
+            <div key={p.email} className="flex items-center gap-3 bg-white/5 hover:bg-white/10 p-3 rounded-xl transition-colors border border-white/5">
+                <div className="relative">
+                    <img src={`https://ui-avatars.com/api/?name=${p.displayName}&background=random`} alt="avatar" className="w-9 h-9 rounded-full ring-2 ring-violet-500/30" />
+                    <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 border-2 border-slate-800 rounded-full"></span>
+                </div>
+                <div className="flex flex-col">
+                    <span className="font-medium text-slate-200 text-sm">{p.displayName}</span>
+                    <span className="text-[10px] text-slate-500">Student</span>
+                </div>
             </div>
         ))}
     </div>
 );
 
 const AiPanel: React.FC<any> = ({ messages, input, setInput, onSend, notes, isExtracting, onUploadClick, onQuizMe, chatEndRef, isLoading, sharedQuiz }) => (
-    <div className="flex flex-col flex-1 overflow-hidden p-4">
-        <div className="mb-4">
-            <PomodoroTimer />
-        </div>
-        <div className="relative">
-            <Textarea value={notes} placeholder="Upload a file (.txt, .md, .pdf, .pptx) to set the AI context for everyone..." rows={6} className="resize-none bg-slate-700/80" readOnly />
-            <Button onClick={onUploadClick} disabled={isExtracting || isLoading} className="absolute bottom-2 right-2 px-2 py-1 text-xs bg-slate-600 hover:bg-slate-500"><UploadCloud size={14} className="mr-1" /> Upload Notes</Button>
-            {isExtracting && <div className="absolute inset-0 bg-slate-800/80 flex items-center justify-center rounded-md"><Spinner /> <span className="ml-2 text-sm text-slate-300">Extracting text...</span></div>}
-        </div>
-        <div className="flex-1 overflow-y-auto pr-2 my-4 space-y-3">
+    <div className="flex flex-col flex-1 overflow-hidden relative">
+        <div className="flex-1 overflow-y-auto p-4 space-y-4 pb-20 scrollbar-thin scrollbar-thumb-slate-700">
+            {!notes && (
+                <div className="text-center p-6 border-2 border-dashed border-slate-700 rounded-xl bg-slate-800/30 mx-4 mt-4">
+                    <UploadCloud size={32} className="mx-auto text-slate-500 mb-2" />
+                    <p className="text-sm text-slate-300 font-medium">No Context Loaded</p>
+                    <p className="text-xs text-slate-500 mb-4">Upload study material to get better AI help.</p>
+                    <Button onClick={onUploadClick} disabled={isExtracting || isLoading} className="text-xs bg-slate-700 hover:bg-slate-600 w-full justify-center">
+                        Upload Notes Provided By Class
+                    </Button>
+                </div>
+            )}
+
             {messages.map((msg: ChatMessage, i: number) => (
-                <div key={i} className={`flex items-start gap-2.5 ${msg.role === 'model' ? '' : 'justify-end'}`}>
-                    {msg.role === 'model' && <div className="w-8 h-8 rounded-full bg-violet-600 flex items-center justify-center flex-shrink-0"><Bot size={18} /></div>}
-                    <div className={`p-3 rounded-xl text-sm max-w-[85%] ${msg.role === 'model' ? 'bg-slate-700 rounded-bl-none' : 'bg-sky-600 rounded-br-none text-white'}`} style={{ whiteSpace: 'pre-wrap' }}>{msg.parts[0].text}</div>
+                <div key={i} className={`flex items-start gap-3 ${msg.role === 'model' ? '' : 'justify-end'}`}>
+                    {msg.role === 'model' && (
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-600 to-indigo-600 flex items-center justify-center flex-shrink-0 shadow-lg ring-1 ring-white/10">
+                            <Bot size={16} className="text-white" />
+                        </div>
+                    )}
+                    <div className={`p-4 rounded-2xl text-sm max-w-[85%] shadow-md backdrop-blur-sm leading-relaxed ${msg.role === 'model'
+                            ? 'bg-slate-800/90 border border-slate-700/50 text-slate-200 rounded-tl-none'
+                            : 'bg-indigo-600 text-white rounded-tr-none'
+                        }`}>
+                        {msg.parts[0].text}
+                    </div>
                 </div>
             ))}
-            {isLoading && <div className="flex justify-center"><Spinner /></div>}
+            {isLoading && (
+                <div className="flex items-center gap-2 text-slate-400 text-xs ml-12">
+                    <Spinner size="sm" />
+                    <span>Thinking...</span>
+                </div>
+            )}
             <div ref={chatEndRef}></div>
         </div>
-        <div className="mt-auto flex gap-2">
-            <Input name="ai-message" value={input} onChange={e => setInput(e.target.value)} onKeyPress={e => e.key === 'Enter' && onSend()} placeholder="Ask the AI..." className="flex-1" disabled={isExtracting || !!sharedQuiz || isLoading} />
-            <Button onClick={onQuizMe} disabled={isExtracting || !!sharedQuiz || !notes.trim() || isLoading} className="px-3" title="Generate Group Quiz"><Lightbulb size={16} /></Button>
-            <Button onClick={onSend} disabled={!input.trim() || isExtracting || !!sharedQuiz || isLoading} className="px-3"><Send size={16} /></Button>
+
+        {/* Input Area */}
+        <div className="p-4 bg-slate-900/60 backdrop-blur-md border-t border-white/5">
+            <div className="flex gap-2">
+                <div className="flex-1 relative">
+                    <Input
+                        name="ai-message"
+                        value={input}
+                        onChange={e => setInput(e.target.value)}
+                        onKeyPress={e => e.key === 'Enter' && onSend()}
+                        placeholder={notes ? "Ask a question about your notes..." : "Upload notes to start..."}
+                        className="w-full pl-4 pr-10 py-3 bg-slate-800/50 border-slate-700/50 focus:ring-violet-500/50 rounded-xl transition-all"
+                        disabled={isExtracting || !!sharedQuiz || isLoading}
+                    />
+                    {notes && <div className="absolute right-3 top-1/2 -translate-y-1/2 w-2 h-2 bg-emerald-500 rounded-full" title="Context Active"></div>}
+                </div>
+                <Button onClick={onSend} disabled={!input.trim() || isExtracting || !!sharedQuiz || isLoading} className="px-4 rounded-xl bg-violet-600 hover:bg-violet-500 shadow-lg shadow-violet-500/20"><Send size={18} /></Button>
+            </div>
+
+            <div className="flex gap-2 mt-3 overflow-x-auto pb-1 scrollbar-none">
+                <Button onClick={onUploadClick} size="sm" variant="secondary" className="text-xs whitespace-nowrap bg-slate-800/50 border border-slate-700/50 hover:bg-slate-700"><Paperclip size={12} className="mr-1.5" /> Context</Button>
+                <Button onClick={onQuizMe} size="sm" variant="secondary" className="text-xs whitespace-nowrap bg-slate-800/50 border border-slate-700/50 hover:bg-slate-700"><Lightbulb size={12} className="mr-1.5" /> Generate Quiz</Button>
+                <Button size="sm" variant="secondary" className="text-xs whitespace-nowrap bg-slate-800/50 border border-slate-700/50 hover:bg-slate-700"><Info size={12} className="mr-1.5" /> Summarize</Button>
+            </div>
+            <p className="text-[10px] text-center text-slate-500 mt-2">AI can make mistakes. Double check important info.</p>
         </div>
     </div>
 );

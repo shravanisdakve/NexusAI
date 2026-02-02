@@ -40,6 +40,7 @@ export interface Quiz {
 }
 
 export interface ChatMessage {
+    id?: string;
     role: 'user' | 'model';
     parts: { text: string }[];
     // For group chat simulation
