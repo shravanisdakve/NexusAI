@@ -42,6 +42,7 @@ const socketHandler = (server) => {
                     text: newMessage.content,
                     sender: newMessage.senderName,
                     userId: newMessage.userId,
+                    email: data.email,
                     timestamp: newMessage.timestamp
                 });
             } catch (error) {

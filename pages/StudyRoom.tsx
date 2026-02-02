@@ -173,7 +173,8 @@ const StudyRoom: React.FC = () => {
                 ...newMessage,
                 text: newMessage.parts[0].text,
                 sender: currentUser.displayName,
-                userId: currentUser.email // Explicitly pass email as userId
+                userId: currentUser.id, // Pass ObjectId for DB
+                email: currentUser.email // Pass email for UI mapping
             }); // USE REAL SOCKET
             setChatInput(''); // Clear input AFTER successful send
             console.log("handleSendChatMessage: Message sent via socket, input cleared.");
@@ -309,7 +310,7 @@ const StudyRoom: React.FC = () => {
                 parts: [{ text: rawMsg.text || '' }],
                 user: {
                     displayName: rawMsg.sender || 'Unknown',
-                    email: rawMsg.userId || 'unknown'
+                    email: rawMsg.email || rawMsg.userId || 'unknown'
                 },
                 timestamp: rawMsg.timestamp ? new Date(rawMsg.timestamp).getTime() : Date.now()
             };

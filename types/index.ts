@@ -42,7 +42,7 @@ export interface StudyRoom {
 }
 
 export interface ChatMessage {
-    id?: string;
+    id: string;
     role: 'user' | 'model';
     parts: { text: string }[];
     user: { displayName: string | null, email: string | null };

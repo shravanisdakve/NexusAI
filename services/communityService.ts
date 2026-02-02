@@ -125,7 +125,8 @@ export const sendChatMessage = async (roomId: string, message: any) => {
     if (socket) {
         socket.emit('send-message', {
             roomId,
-            userId: message.userId, // We need to pass this or handle in backend from token
+            userId: message.userId,
+            email: message.email,
             senderName: message.sender,
             content: message.text
         });
