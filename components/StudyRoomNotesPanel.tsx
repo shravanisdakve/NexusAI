@@ -67,19 +67,19 @@ const StudyRoomNotesPanel: React.FC<StudyRoomNotesPanelProps> = ({
                     uploader: res.uploader || 'Unknown'
                 });
             } else {
-                 console.warn("Skipping invalid resource item:", res);
+                console.warn("Skipping invalid resource item:", res);
             }
         });
         return items;
     }, [sharedNoteContent, resources]);
 
     // Effect to update edited content or select first item
-     useEffect(() => {
+    useEffect(() => {
         // If there's no active item, select the first one (usually Shared Notes)
         if (!activeItem && displayItems.length > 0) {
             setActiveItem(displayItems[0]);
             if (displayItems[0].type === 'shared-text') {
-                 setEditedContent(displayItems[0].content || '');
+                setEditedContent(displayItems[0].content || '');
             }
             setIsEditingNote(false);
         }
@@ -89,16 +89,16 @@ const StudyRoomNotesPanel: React.FC<StudyRoomNotesPanelProps> = ({
         }
         // If the activeItem is removed from displayItems (e.g., deleted file), deselect it
         else if (activeItem && !displayItems.some(item => item.id === activeItem.id)) {
-             setActiveItem(null);
-             setIsEditingNote(false);
+            setActiveItem(null);
+            setIsEditingNote(false);
         }
 
     }, [sharedNoteContent, activeItem, isEditingNote, displayItems]); // Added displayItems
 
     // Reset preview when active item changes
-     useEffect(() => {
+    useEffect(() => {
         setShowPdfPreview(false);
-     }, [activeItem]);
+    }, [activeItem]);
 
 
     const handleSelect = (item: DisplayItem) => {
@@ -110,7 +110,7 @@ const StudyRoomNotesPanel: React.FC<StudyRoomNotesPanelProps> = ({
             setEditedContent(item.content || '');
             setIsEditingNote(false); // Default to view mode on select
         } else {
-             setIsEditingNote(false); // Ensure editing is off for files
+            setIsEditingNote(false); // Ensure editing is off for files
         }
     };
 
@@ -122,20 +122,20 @@ const StudyRoomNotesPanel: React.FC<StudyRoomNotesPanelProps> = ({
     const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
         if (file) {
-          onUploadResource(file);
-          event.target.value = '';
+            onUploadResource(file);
+            event.target.value = '';
         }
-      };
+    };
 
     const handleDownloadFile = (item: DisplayItem) => {
-      if (item.type === 'file' && item.fileUrl) {
-           const link = document.createElement('a');
-           link.href = item.fileUrl;
-           link.download = item.fileName || item.title;
-           document.body.appendChild(link);
-           link.click();
-           document.body.removeChild(link);
-      }
+        if (item.type === 'file' && item.fileUrl) {
+            const link = document.createElement('a');
+            link.href = item.fileUrl;
+            link.download = item.fileName || item.title;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
     };
 
 
@@ -145,8 +145,15 @@ const StudyRoomNotesPanel: React.FC<StudyRoomNotesPanelProps> = ({
             <div className="w-2/5 border-r border-slate-700 flex flex-col h-full bg-slate-800/50"> {/* Slightly wider list */}
                 <div className="p-3 border-b border-slate-700">
                     {/* File Upload Input (Hidden) */}
-                     <input type="file" ref={fileInputRef} onChange={handleFileChange} style={{ display: 'none' }} />
-                     {/* Upload Button */}
+                    <input
+                        type="file"
+                        id="study-room-file-upload"
+                        name="studyRoomFileUpload"
+                        ref={fileInputRef}
+                        onChange={handleFileChange}
+                        style={{ display: 'none' }}
+                    />
+                    {/* Upload Button */}
                     <Button onClick={() => fileInputRef.current?.click()} disabled={isUploading} className="w-full text-xs py-2"> {/* Smaller button */}
                         {isUploading ? <><Spinner size="sm" className="mr-2" /> Uploading...</> : <><Upload size={14} className="mr-2" /> Upload File</>}
                     </Button>
@@ -182,7 +189,7 @@ const StudyRoomNotesPanel: React.FC<StudyRoomNotesPanelProps> = ({
                                         e.stopPropagation();
                                         if (window.confirm(`Delete file "${item.fileName}"?`)) {
                                             onDeleteResource(item.fileName!);
-                                            if(activeItem?.id === item.id) setActiveItem(null);
+                                            if (activeItem?.id === item.id) setActiveItem(null);
                                         }
                                     }}
                                     title={`Delete ${item.fileName}`}
@@ -232,11 +239,13 @@ const StudyRoomNotesPanel: React.FC<StudyRoomNotesPanelProps> = ({
                         </div>
 
                         {/* --- Content Display --- */}
-                         {/* Added overflow-y-auto here for content scroll */}
+                        {/* Added overflow-y-auto here for content scroll */}
                         <div className="p-4 flex-1 overflow-y-auto">
                             {activeItem.type === 'shared-text' ? (
                                 isEditingNote ? (
                                     <Textarea
+                                        id="shared-notes-area"
+                                        name="sharedNotesArea"
                                         value={editedContent}
                                         onChange={(e) => setEditedContent(e.target.value)}
                                         className="w-full h-full min-h-[calc(100vh-200px)] p-0 bg-slate-800 border-none focus:ring-0 text-sm resize-none" // Adjusted styles
@@ -248,22 +257,22 @@ const StudyRoomNotesPanel: React.FC<StudyRoomNotesPanelProps> = ({
                                 )
                             ) : (
                                 // File Display Area
-                                 <div>
-                                      {/* PDF Preview Logic */}
-                                     {activeItem.fileType === 'application/pdf' && activeItem.fileUrl ? (
-                                         <div className="mt-2"> {/* Reduced margin */}
+                                <div>
+                                    {/* PDF Preview Logic */}
+                                    {activeItem.fileType === 'application/pdf' && activeItem.fileUrl ? (
+                                        <div className="mt-2"> {/* Reduced margin */}
                                             {!showPdfPreview ? (
                                                 <div className="flex items-center gap-2 bg-slate-700 p-3 rounded-lg ring-1 ring-slate-600">
                                                     <FileText size={18} className="text-sky-400 flex-shrink-0" />
                                                     <span className="font-medium text-slate-200 truncate flex-1">{activeItem.fileName}</span>
                                                     <Button onClick={() => setShowPdfPreview(true)} variant="outline" size="sm" className="text-xs"> {/* Smaller button */}
-                                                    <Eye size={14} className="mr-1"/> Preview
+                                                        <Eye size={14} className="mr-1" /> Preview
                                                     </Button>
                                                 </div>
-                                                ) : (
+                                            ) : (
                                                 <div>
                                                     <Button onClick={() => setShowPdfPreview(false)} variant="ghost" size="sm" className="mb-2 text-xs"> {/* Smaller button */}
-                                                        <EyeOff size={14} className="mr-1"/> Close Preview
+                                                        <EyeOff size={14} className="mr-1" /> Close Preview
                                                     </Button>
                                                     <div className="w-full h-[65vh] rounded-lg overflow-hidden ring-1 ring-slate-700"> {/* Adjusted height */}
                                                         <iframe
@@ -277,15 +286,15 @@ const StudyRoomNotesPanel: React.FC<StudyRoomNotesPanelProps> = ({
                                                 </div>
                                             )}
                                         </div>
-                                     ) : (
-                                         // Nicer "Preview not available" message
-                                         <div className="flex flex-col items-center justify-center text-center p-6 bg-slate-700/50 rounded-lg mt-4 h-40 ring-1 ring-slate-600">
-                                             <Info size={24} className="text-slate-400 mb-2"/>
+                                    ) : (
+                                        // Nicer "Preview not available" message
+                                        <div className="flex flex-col items-center justify-center text-center p-6 bg-slate-700/50 rounded-lg mt-4 h-40 ring-1 ring-slate-600">
+                                            <Info size={24} className="text-slate-400 mb-2" />
                                             <p className="font-semibold text-slate-300">Preview not available</p>
                                             <p className="text-xs text-slate-400 mt-1">Use the download button in the header to view this file type.</p>
-                                         </div>
-                                     )}
-                                 </div>
+                                        </div>
+                                    )}
+                                </div>
                             )}
                         </div>
                     </div>

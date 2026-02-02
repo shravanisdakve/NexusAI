@@ -4,9 +4,14 @@ const cors = require('cors');
 const connectDB = require('./config/db');
 
 const app = express();
+const server = require('http').createServer(app);
+const socketHandler = require('./socketHandler');
 
 // 1. Connect Database FIRST
 connectDB();
+
+// Setup Sockets
+socketHandler(server);
 
 // 2. CORS Configuration (BEFORE routes)
 // IMPORTANT: Replace 'https://yourdomain.com' with your actual frontend production domain
@@ -20,6 +25,9 @@ app.use(cors({
 // 3. Body Parsers
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// 3.5. Serve uploaded files
+app.use('/uploads', express.static('uploads'));
 
 // 4. Request Logging (Development only)
 if (process.env.NODE_ENV !== 'production') {
@@ -36,6 +44,8 @@ app.use('/api/notes', require('./routes/notes'));
 app.use('/api/courses', require('./routes/courses'));
 app.use('/api/games', require('./routes/games'));
 app.use('/api/resources', require('./routes/resources'));
+app.use('/api/study-plan', require('./routes/studyPlan'));
+app.use('/api/goals', require('./routes/goals'));
 
 // 6. Health Check Route
 app.get('/api/health', (req, res) => {

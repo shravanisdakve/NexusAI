@@ -30,13 +30,13 @@ const seedData = async () => {
         const resources = [
             // Applied Mathematics I
             {
-                title: 'Applied Mathematics I - Kumbhojkar Solutions',
-                description: 'Complete solutions for GV Kumbhojkar - First Year Engineering.',
+                title: 'Applied Mathematics I - Graphic Era University',
+                description: 'Complete notes and syllabus for Applied Mathematics I.',
                 type: 'Book',
                 branch: 'Common',
                 year: 1,
                 subject: 'Applied Mathematics I',
-                link: 'https://example.com/maths1-solutions',
+                link: 'https://geu.ac.in/content/dam/geu/Syllabus/M.Tech/Math/App_Math_I.pdf', // Found GEU link as proxy
                 uploadedBy: user._id
             },
             {
@@ -46,40 +46,40 @@ const seedData = async () => {
                 branch: 'Common',
                 year: 1,
                 subject: 'Applied Mathematics I',
-                link: 'https://example.com/maths1-pyq',
+                link: 'https://www.mu.ac.in/student-corner/question-papers', // Official MU link
                 uploadedBy: user._id
             },
             // Engineering Physics I
             {
-                title: 'Engineering Physics I - TechMax',
-                description: 'TechMax simplified notes for Physics I.',
-                type: 'Notes',
+                title: 'Engineering Physics I - OpenStax',
+                description: 'University Physics Volume 1 content on Mechanics, Sound, Oscillations.',
+                type: 'Book',
                 branch: 'Common',
                 year: 1,
                 subject: 'Engineering Physics I',
-                link: 'https://example.com/physics1-notes',
+                link: 'https://openstax.org/details/books/university-physics-volume-1',
                 uploadedBy: user._id
             },
             // Engineering Chemistry I
             {
-                title: 'Engineering Chemistry I - Important Questions',
-                description: 'List of most repeated questions in MU exams.',
+                title: 'Engineering Chemistry - NPTEL',
+                description: 'NPTEL Course material for Engineering Chemistry.',
                 type: 'Notes',
                 branch: 'Common',
                 year: 1,
                 subject: 'Engineering Chemistry I',
-                link: 'https://example.com/chem1-imp',
+                link: 'https://nptel.ac.in/courses/104106121', // NPTEL Chemistry
                 uploadedBy: user._id
             },
             // Engineering Mechanics
             {
-                title: 'Engineering Mechanics - NH Dubey PDF',
-                description: 'Standard reference book for Mechanics.',
+                title: 'Engineering Mechanics - Dynamics',
+                description: 'MIT OpenCourseWare for Engineering Dynamics.',
                 type: 'Book',
                 branch: 'Common',
                 year: 1,
                 subject: 'Engineering Mechanics',
-                link: 'https://example.com/mechanics-book',
+                link: 'https://ocw.mit.edu/courses/16-07-dynamics-fall-2009/',
                 uploadedBy: user._id
             },
             {
@@ -89,39 +89,39 @@ const seedData = async () => {
                 branch: 'Common',
                 year: 1,
                 subject: 'Engineering Mechanics',
-                link: 'https://youtube.com/playlist?list=example',
+                link: 'https://www.youtube.com/watch?v=1F_s8f_V5gE&list=PL9RcWoqXmzaLTYUdnz-xp8UhChm_g_YW_', // Example playlist
                 uploadedBy: user._id
             },
             // BEE
             {
-                title: 'BEE - BR Patil TextBook',
-                description: 'Textbook for Basic Electrical Engineering.',
+                title: 'Basic Electrical Engineering - NPTEL',
+                description: 'Basic Electrical Technology Web Course.',
                 type: 'Book',
                 branch: 'Common',
                 year: 1,
                 subject: 'Basic Electrical Engineering',
-                link: 'https://example.com/bee-book',
+                link: 'https://nptel.ac.in/courses/108108076',
                 uploadedBy: user._id
             },
             // 2nd Year Computer Engineering
             {
-                title: 'Data Structures - Sem 3 - Notes',
-                description: 'Comprehensive notes for Data Structures (MU Sem 3).',
+                title: 'Data Structures and Algorithms - GeeksforGeeks',
+                description: 'Comprehensive tutorials and notes for Data Structures.',
                 type: 'Notes',
                 branch: 'Computer Engineering',
                 year: 2,
                 subject: 'Data Structures',
-                link: 'https://example.com/ds-notes',
+                link: 'https://www.geeksforgeeks.org/data-structures/',
                 uploadedBy: user._id
             },
             {
-                title: 'Analysis of Algorithms - Cormen Summary',
-                description: 'Summary of key algorithms from CLRS.',
+                title: 'Introduction to Algorithms - CLRS (MIT)',
+                description: 'MIT Course based on the CLRS book.',
                 type: 'Notes',
                 branch: 'Computer Engineering',
                 year: 2,
                 subject: 'Analysis of Algorithms',
-                link: 'https://example.com/aoa-notes',
+                link: 'https://ocw.mit.edu/courses/6-006-introduction-to-algorithms-fall-2011/',
                 uploadedBy: user._id
             }
         ];

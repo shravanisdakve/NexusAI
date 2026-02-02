@@ -66,6 +66,8 @@ const GPACalculator: React.FC = () => {
                             <div className="flex-1">
                                 <label className="block text-sm text-slate-400 mb-1">Subject {index + 1}</label>
                                 <Input
+                                    id={`subject-name-${subject.id}`}
+                                    name={`subjectName-${subject.id}`}
                                     value={subject.name}
                                     onChange={(e) => updateSubject(subject.id, 'name', e.target.value)}
                                     placeholder="Subject Name"
@@ -74,6 +76,8 @@ const GPACalculator: React.FC = () => {
                             <div className="w-24">
                                 <label className="block text-sm text-slate-400 mb-1">Credits</label>
                                 <Input
+                                    id={`subject-credits-${subject.id}`}
+                                    name={`subjectCredits-${subject.id}`}
                                     type="number"
                                     value={subject.credits}
                                     onChange={(e) => updateSubject(subject.id, 'credits', e.target.value)}
@@ -83,6 +87,8 @@ const GPACalculator: React.FC = () => {
                             <div className="w-32">
                                 <label className="block text-sm text-slate-400 mb-1">Grade</label>
                                 <Input
+                                    id={`subject-grade-${subject.id}`}
+                                    name={`subjectGrade-${subject.id}`}
                                     value={subject.grade}
                                     onChange={(e) => updateSubject(subject.id, 'grade', e.target.value)}
                                     placeholder="e.g. A+"

@@ -6,7 +6,7 @@ import { type ChatMessage } from '../types';
 import { streamChat, generateQuizQuestion } from '../services/geminiService';
 import { trackToolUsage } from '../services/personalizationService';
 import { startSession, endSession, recordQuizResult, getProductivityReport } from '../services/analyticsService';
-import { Bot, User, Send, Mic, Volume2, VolumeX, Lightbulb } from 'lucide-react';
+import { Bot, User, Send, Mic, Volume2, VolumeX, Lightbulb, Sparkles, Calendar } from 'lucide-react';
 
 interface Quiz {
     topic: string;
@@ -57,6 +57,7 @@ const AiTutor: React.FC = () => {
     const [isListening, setIsListening] = useState(false);
     const [quiz, setQuiz] = useState<Quiz | null>(null);
     const [selectedCourse, setSelectedCourse] = useState<string | null>(null);
+    const [studyMode, setStudyMode] = useState<'Normal' | 'Feynman Technique' | 'Spaced Repetition' | 'Active Recall'>('Normal');
     const [isAutoSpeaking, setIsAutoSpeaking] = useState(() => {
         try {
             return localStorage.getItem('nexusAutoSpeak') === 'true';
@@ -108,13 +109,16 @@ const AiTutor: React.FC = () => {
 
             switch (technique) {
                 case 'Active Recall':
-                    initialPrompt = `Hello! I'm ready to help you with Active Recall. To test your knowledge on "${topic}", you can either ask me questions, or I can quiz you. How would you like to begin?`;
+                    setStudyMode('Active Recall');
+                    initialPrompt = `Hello! I'm ready to help you with Active Recall on "${topic}". I'll ask you challenging questions to test your core understanding. Ready?`;
                     break;
                 case 'Feynman Technique':
-                    initialPrompt = `Let's use the Feynman Technique for "${topic}". Start by explaining it to me in the simplest way you can. I'll act like a beginner and ask questions to help you find any gaps in your understanding.`;
+                    setStudyMode('Feynman Technique');
+                    initialPrompt = `Let's use the Feynman Technique for "${topic}". Start by explaining it to me in the simplest way you can—as if I'm 10 years old. I'll look for gaps in your explanation.`;
                     break;
                 case 'Spaced Repetition':
-                    initialPrompt = `Let's set up a Spaced Repetition plan for "${topic}". Tell me the key facts or concepts you want to remember, and I'll create a quiz schedule to help you review them at optimal intervals for long-term memory. What's the first key point?`;
+                    setStudyMode('Spaced Repetition');
+                    initialPrompt = `Let's set up a Spaced Repetition plan for "${topic}". List the core concepts you want to memorize, and I'll generate a quiz and review schedule. What's the first concept?`;
                     break;
             }
 
@@ -175,7 +179,16 @@ const AiTutor: React.FC = () => {
         setQuiz(null);
 
         try {
-            const stream = await streamChat(currentMessage);
+            let contextPrompt = currentMessage;
+            if (studyMode === 'Feynman Technique') {
+                contextPrompt = `[MODE: FEYNMAN TECHNIQUE - Explain like I'm 10. Identify gaps.] User says: ${currentMessage}`;
+            } else if (studyMode === 'Spaced Repetition') {
+                contextPrompt = `[MODE: SPACED REPETITION - Focus on creating memorization cards and scheduling.] User says: ${currentMessage}`;
+            } else if (studyMode === 'Active Recall') {
+                contextPrompt = `[MODE: ACTIVE RECALL - Ask tough questions to probe understanding.] User says: ${currentMessage}`;
+            }
+
+            const stream = await streamChat(contextPrompt);
 
             if (!stream) throw new Error("Failed to start stream");
 
@@ -230,7 +243,7 @@ const AiTutor: React.FC = () => {
         } finally {
             setIsLoading(false);
         }
-    }, [input, isLoading, isAutoSpeaking]);
+    }, [input, isLoading, isAutoSpeaking, studyMode]);
 
     const handleQuizMe = async () => {
         if (isLoading) return;
@@ -340,7 +353,14 @@ const AiTutor: React.FC = () => {
     return (
         <div className="h-full flex flex-col">
             <div className="flex justify-between items-center">
-                <PageHeader title="AI Tutor" subtitle="Your personal AI guide for any subject." />
+                <div className="flex items-center gap-4">
+                    <PageHeader title="AI Tutor" subtitle="Your personal AI guide for any subject." />
+                    {studyMode !== 'Normal' && (
+                        <div className="bg-violet-600/20 text-violet-400 px-3 py-1 rounded-full text-xs font-bold ring-1 ring-violet-500/50 flex items-center gap-1 animate-pulse">
+                            <Sparkles size={12} /> {studyMode} Mode
+                        </div>
+                    )}
+                </div>
                 <CourseSelector selectedCourse={selectedCourse} onCourseChange={setSelectedCourse} />
             </div>
             <div className="flex-1 bg-slate-800/50 rounded-xl p-4 flex flex-col overflow-hidden ring-1 ring-slate-700">
@@ -402,6 +422,7 @@ const AiTutor: React.FC = () => {
                         placeholder="Ask a question or start speaking..."
                         disabled={isLoading || !!quiz}
                         className="flex-1"
+                        autoComplete="off"
                     />
                     <Button
                         onClick={handleQuizMe}

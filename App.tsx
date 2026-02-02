@@ -23,6 +23,10 @@ import Privacy from './pages/Privacy';
 import ResourceLibrary from './pages/ResourceLibrary'; // Import the new page
 import GPACalculator from './pages/GPACalculator';
 import ProjectGenerator from './pages/ProjectGenerator';
+import KTCalculator from './pages/KTCalculator';
+import MockPaperGenerator from './pages/MockPaperGenerator';
+import VivaSimulator from './pages/VivaSimulator';
+import StudyPlan from './pages/StudyPlan';
 import { useAuth } from './contexts/AuthContext';
 import { Spinner } from './components/ui';
 
@@ -67,6 +71,9 @@ const App: React.FC = () => {
         <Route path="/resources" element={<ProtectedRoute><ResourceLibrary /></ProtectedRoute>} />
         <Route path="/gpa-calculator" element={<ProtectedRoute><GPACalculator /></ProtectedRoute>} />
         <Route path="/project-generator" element={<ProtectedRoute><ProjectGenerator /></ProtectedRoute>} />
+        <Route path="/kt-calculator" element={<ProtectedRoute><KTCalculator /></ProtectedRoute>} />
+        <Route path="/mock-paper" element={<ProtectedRoute><MockPaperGenerator /></ProtectedRoute>} />
+        <Route path="/viva-simulator" element={<ProtectedRoute><VivaSimulator /></ProtectedRoute>} />
         <Route path="/insights" element={<ProtectedRoute><Insights /></ProtectedRoute>} />
         <Route path="/notes" element={<ProtectedRoute><Notes /></ProtectedRoute>} />
         <Route path="/tutor" element={<ProtectedRoute><AITutor /></ProtectedRoute>} />
@@ -78,6 +85,7 @@ const App: React.FC = () => {
         <Route path="/sudoku" element={<ProtectedRoute><SudokuGame /></ProtectedRoute>} />
         <Route path="/zip" element={<ProtectedRoute><ZipGame /></ProtectedRoute>} />
         <Route path="/speed-math" element={<ProtectedRoute><SpeedMathGame /></ProtectedRoute>} />
+        <Route path="/study-plan" element={<ProtectedRoute><StudyPlan /></ProtectedRoute>} />
 
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/" replace />} />

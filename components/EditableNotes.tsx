@@ -17,6 +17,8 @@ const EditableNotes: React.FC<EditableNotesProps> = ({ initialNotes, onSave, isS
   return (
     <div className="flex flex-col h-full">
       <Textarea
+        id="editable-notes-textarea"
+        name="editableNotes"
         value={notes}
         onChange={(e) => setNotes(e.target.value)}
         placeholder="Start typing your notes here..."

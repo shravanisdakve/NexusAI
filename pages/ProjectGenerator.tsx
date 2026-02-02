@@ -45,6 +45,8 @@ const ProjectGenerator: React.FC = () => {
                         <div>
                             <label className="block text-sm font-medium text-slate-300 mb-2">Branch</label>
                             <Input
+                                id="project-branch"
+                                name="branch"
                                 value={branch}
                                 onChange={(e) => setBranch(e.target.value)}
                                 placeholder="e.g. CSE"
@@ -53,6 +55,8 @@ const ProjectGenerator: React.FC = () => {
                         <div>
                             <label className="block text-sm font-medium text-slate-300 mb-2">Area of Interest</label>
                             <Input
+                                id="project-interest"
+                                name="interest"
                                 value={interest}
                                 onChange={(e) => setInterest(e.target.value)}
                                 placeholder="e.g. Web Dev, ML, IoT"
@@ -60,7 +64,7 @@ const ProjectGenerator: React.FC = () => {
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-slate-300 mb-2">Difficulty</label>
-                            <Select value={difficulty} onChange={(e) => setDifficulty(e.target.value)}>
+                            <Select id="project-difficulty" name="difficulty" value={difficulty} onChange={(e) => setDifficulty(e.target.value)}>
                                 <option>Beginner</option>
                                 <option>Intermediate</option>
                                 <option>Advanced</option>

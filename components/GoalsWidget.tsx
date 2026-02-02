@@ -11,26 +11,35 @@ const GoalsWidget: React.FC = () => {
 
   useEffect(() => {
     const fetchGoals = async () => {
-      if (currentUser?.uid) {
-        const fetchedGoals = await getGoals(currentUser.uid);
+      if (currentUser?.id) {
+        const fetchedGoals = await getGoals();
         setGoals(fetchedGoals);
       }
     };
     fetchGoals();
-  }, [currentUser]);
+  }, [currentUser?.id]);
 
   const handleAddGoal = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (newGoalTitle.trim() && currentUser?.uid) {
-      const newGoal = await addGoal({
-        userId: currentUser.uid,
+    if (!newGoalTitle.trim()) {
+        console.error('[GoalsWidget] Goal title is empty. Cannot add goal.');
+        return;
+    }
+    if (!currentUser?.id) {
+        console.error('[GoalsWidget] User is not logged in. Cannot add goal.');
+        return;
+    }
+
+    const newGoal = await addGoal({
         title: newGoalTitle.trim(),
         status: 'In Progress',
-      });
-      if (newGoal) {
+    });
+    if (newGoal) {
         setGoals((prev) => [...prev, newGoal]);
         setNewGoalTitle('');
-      }
+    } else {
+        console.error('[GoalsWidget] Failed to add goal via API. Check network and server logs.');
+        alert('Failed to add goal. Please try again.');
     }
   };
 
@@ -56,6 +65,8 @@ const GoalsWidget: React.FC = () => {
       </h3>
       <form onSubmit={handleAddGoal} className="flex gap-2 mb-4">
         <Input
+          id="new-goal-title"
+          name="newGoalTitle"
           value={newGoalTitle}
           onChange={(e) => setNewGoalTitle(e.target.value)}
           placeholder="Add a new goal (e.g., Finish Chapter 3)"
@@ -77,6 +88,8 @@ const GoalsWidget: React.FC = () => {
               <div className="flex items-center">
                 <input
                   type="checkbox"
+                  id={`goal-status-${goal.id}`}
+                  name={`goalStatus-${goal.id}`}
                   checked={goal.status === 'Completed'}
                   onChange={() => handleToggleGoalStatus(goal)}
                   className="form-checkbox h-4 w-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500 mr-3 accent-violet-500"

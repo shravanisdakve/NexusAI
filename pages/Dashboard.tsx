@@ -13,7 +13,7 @@ import {
     MessageSquare, Share2, FileText, Code, ArrowRight,
     Target, Lightbulb, Timer, Zap, BookOpen,
     Play, Pause, RefreshCw, PlusCircle, Trash2, User, Users, Star,
-    BarChart, Clock, Brain, TrendingUp, TrendingDown, Repeat, Sparkles, Calculator
+    BarChart, Clock, Brain, TrendingUp, TrendingDown, Repeat, Sparkles, Calculator, Shield, Calendar
 } from 'lucide-react';
 
 const formatSeconds = (seconds: number) => {
@@ -99,18 +99,23 @@ const MyCourses: React.FC = () => {
     const [isAdding, setIsAdding] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
 
+    const fetchCourses = async () => {
+        console.log("[MyCourses] Starting fetchCourses...");
+        setIsLoading(true);
+        try {
+            const fetchedCourses = await getCourses();
+            console.log("[MyCourses] Fetched courses data:", fetchedCourses);
+            setCourses(fetchedCourses);
+            console.log("[MyCourses] State updated with fetched courses.");
+        } catch (error) {
+            console.error("[MyCourses] Error in fetchCourses:", error);
+        } finally {
+            setIsLoading(false);
+            console.log("[MyCourses] Finished fetchCourses.");
+        }
+    };
+
     useEffect(() => {
-        const fetchCourses = async () => {
-            setIsLoading(true);
-            try {
-                const fetchedCourses = await getCourses();
-                setCourses(fetchedCourses);
-            } catch (error) {
-                console.error("Error fetching courses:", error);
-            } finally {
-                setIsLoading(false);
-            }
-        };
         fetchCourses();
     }, []);
 
@@ -125,7 +130,8 @@ const MyCourses: React.FC = () => {
                 setNewCourseName('');
                 setIsAdding(false);
             } catch (error) {
-                console.error("Error adding course:", error);
+                console.error("[MyCourses] Error in handleAddCourse:", error);
+                alert(`Failed to add course. Please check the console for details.`);
             }
         }
     }
@@ -166,11 +172,14 @@ const MyCourses: React.FC = () => {
             {isAdding ? (
                 <form onSubmit={handleAddCourse} className="mt-4 flex gap-2">
                     <Input
+                        id="new-course-name"
+                        name="newCourseName"
                         value={newCourseName}
                         onChange={(e) => setNewCourseName(e.target.value)}
                         placeholder="e.g., Organic Chemistry"
                         className="text-sm flex-1"
-                        autoFocus
+                        autoComplete="off"
+                    autoFocus
                     />
                     <Button type="submit" className="px-3 py-2 text-sm">Add</Button>
                     <Button type="button" variant="ghost" size="sm" onClick={() => setIsAdding(false)} className="px-3 py-2 text-sm text-slate-400">Cancel</Button>
@@ -191,6 +200,10 @@ const tools = [
     { key: 'quizzes', name: 'Quizzes & Practice', href: '/quizzes', description: 'Test your knowledge with practice quizzes.', icon: Brain, color: 'text-rose-400', bgColor: 'bg-rose-900/50' },
     { key: 'gpa', name: 'GPA Calculator', href: '/gpa-calculator', description: 'Calculate your SGPA/CGPA easily.', icon: Calculator, color: 'text-violet-400', bgColor: 'bg-violet-900/50' },
     { key: 'project', name: 'Project Ideas', href: '/project-generator', description: 'Get AI-powered project ideas.', icon: Lightbulb, color: 'text-amber-400', bgColor: 'bg-amber-900/50' },
+    { key: 'kt', name: 'KT Avoidance', href: '/kt-calculator', description: 'Check required marks to pass.', icon: Shield, color: 'text-rose-400', bgColor: 'bg-rose-900/50' },
+    { key: 'paper', name: 'Mock Papers', href: '/mock-paper', description: 'Real MU exam pattern mocks.', icon: FileText, color: 'text-sky-400', bgColor: 'bg-sky-900/50' },
+    { key: 'viva', name: 'Viva Bot', href: '/viva-simulator', description: 'Practice with an external bot.', icon: Users, color: 'text-emerald-400', bgColor: 'bg-emerald-900/50' },
+    { key: 'study-plan', name: 'Study Planner', href: '/study-plan', description: 'Get a personalized roadmap.', icon: Calendar, color: 'text-violet-400', bgColor: 'bg-violet-900/50' },
 ];
 
 interface ToolCardProps {

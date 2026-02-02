@@ -59,6 +59,8 @@ const SudokuGame: React.FC = () => {
           row.map((cell, c) => (
             <input
               key={`${r}-${c}`}
+              id={`sudoku-cell-${r}-${c}`}
+              name={`sudokuCell-${r}-${c}`}
               value={cell === 0 ? '' : cell}
               onChange={e => handleChange(r, c, e.target.value)}
               disabled={initialBoard[r][c] !== 0}

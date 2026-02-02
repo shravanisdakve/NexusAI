@@ -2,48 +2,68 @@ export interface User {
   id: string;
   email: string;
   displayName: string;
-  university?: string;
-  createdAt?: string; // Add createdAt as it might be returned from backend
+  branch: string;
+  year: number;
+  college: string;
+  createdAt: string;
 }
 
-export interface AuthResponse {
-  success: boolean;
-  token?: string;
-  user?: User;
-  message?: string;
+export interface Course {
+    id: string;
+    name: string;
+    color: string;
+    createdAt?: string;
 }
 
-export interface GeminiRequest {
-  prompt?: string; // made optional
-  message?: string; // for chat
-  courseContext?: string;
-  aspectRatio?: string;
-  base64Data?: string;
-  mimeType?: string;
-  language?: string;
-  reportJson?: string;
-  mood?: string;
-  goalTitle?: string;
-  notes?: string;
-  context?: string;
-  branch?: string; // Added
-  interest?: string; // Added
-  difficulty?: string; // Added
-  text?: string; // for summarizeText
+export interface Resource {
+  id: string;
+  title: string;
+  description?: string;
+  type: 'Notes' | 'Paper' | 'Book' | 'Video';
+  branch: string;
+  year: number;
+  subject: string;
+  link: string;
+  uploadedBy: string; // User ID
+  createdAt: string;
 }
 
-export interface GeminiResponse {
-  success?: boolean; // made optional as often error is returned directly
-  response?: string;
-  error?: string;
-  image?: string;
-  summary?: string;
-  code?: string;
-  text?: string;
-  question?: string;
-  suggestions?: string;
-  suggestion?: string; // Added singular
-  flashcards?: string;
-  breakdown?: string;
-  ideas?: string; // Added
+export interface StudyRoom {
+    id: string;
+    name: string;
+    courseId: string;
+    maxUsers: number;
+    createdBy: string;
+    university?: string;
+    users: { email: string | null; displayName: string | null; }[];
+    technique: string;
+    topic: string;
+    createdAt?: string;
 }
+
+export interface ChatMessage {
+    role: 'user' | 'model';
+    parts: { text: string }[];
+    user: { displayName: string | null, email: string | null };
+    timestamp: number;
+}
+
+// You can add other types here as needed, e.g., for Pomodoro, Quiz, etc.
+export interface PomodoroState {
+    mode: 'work' | 'short_break' | 'long_break';
+    timeLeft: number;
+    isActive: boolean;
+    cycleCount: number;
+}
+
+export interface Quiz {
+    id: string;
+    topic: string;
+    question: string;
+    options: string[];
+    correctOptionIndex: number;
+    answers: { userId: string, displayName: string, answerIndex: number, timestamp: number }[];
+    createdAt: number;
+}
+
+export type Mood = 'Happy' | 'Calm' | 'Overwhelmed' | 'Sad' | 'Angry';

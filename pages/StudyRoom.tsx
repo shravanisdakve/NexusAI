@@ -23,20 +23,19 @@ import {
 import { streamStudyBuddyChat, generateQuizQuestion, extractTextFromFile } from '../services/geminiService';
 import { startSession, endSession, recordQuizResult } from '../services/analyticsService';
 // --- REMOVED Clock import here ---
-import { Bot, User, Send, MessageSquare, Users, Brain, UploadCloud, Lightbulb, FileText, Paperclip, Smile, FolderOpen, AlertTriangle, Info } from 'lucide-react';
-// --- END REMOVAL ---
+import { Bot, User, Send, MessageSquare, Users, Brain, UploadCloud, Lightbulb, FileText, Paperclip, Smile, FolderOpen, AlertTriangle, Info, Palette } from 'lucide-react';
 import { Input, Button, Textarea, Spinner } from '../components/ui';
 import RoomControls from '../components/RoomControls'; //
 import VideoTile from '../components/VideoTile';
 import Reactions, { type Reaction } from '../components/Reactions';
 import MusicPlayer from '../components/MusicPlayer';
 import ShareModal from '../components/ShareModal';
-import StudyRoomNotesPanel from '../components/StudyRoomNotesPanel'; // Import the new component
+import StudyRoomNotesPanel from '../components/StudyRoomNotesPanel';
+import Whiteboard from '../components/Whiteboard';
+import PomodoroTimer from '../components/PomodoroTimer';
 
-
-// ... (Helper Types & formatElapsedTime function remain the same) ...
 // --- Helper Types & Constants ---
-type ActiveTab = 'chat' | 'participants' | 'ai' | 'notes';
+type ActiveTab = 'chat' | 'participants' | 'ai' | 'notes' | 'whiteboard';
 
 
 interface Quiz {
@@ -677,6 +676,7 @@ const StudyRoom: React.FC = () => {
                         <TabButton id="chat" activeTab={activeTab} setActiveTab={setActiveTab} icon={MessageSquare} label="Chat" />
                         <TabButton id="ai" activeTab={activeTab} setActiveTab={setActiveTab} icon={Brain} label="AI Buddy" />
                         <TabButton id="notes" activeTab={activeTab} setActiveTab={setActiveTab} icon={FileText} label="Notes" />
+                        <TabButton id="whiteboard" activeTab={activeTab} setActiveTab={setActiveTab} icon={Palette} label="Board" />
                         <TabButton id="participants" activeTab={activeTab} setActiveTab={setActiveTab} icon={Users} label="Participants" count={participants.length} />
                     </div>
 
@@ -716,6 +716,11 @@ const StudyRoom: React.FC = () => {
                             isSavingNote={isSavingSharedNote} // Pass loading state for saving text
                             isUploading={isUploading} // Pass loading state for file upload
                         />
+                    )}
+                    {activeTab === 'whiteboard' && (
+                        <div className="flex-1 p-4 h-full">
+                            <Whiteboard roomId={roomId || ''} />
+                        </div>
                     )}
                 </aside>
 
@@ -890,6 +895,9 @@ const ParticipantsPanel: React.FC<{ participants: { email: string; displayName: 
 
 const AiPanel: React.FC<any> = ({ messages, input, setInput, onSend, notes, isExtracting, onUploadClick, onQuizMe, chatEndRef, isLoading, sharedQuiz }) => (
     <div className="flex flex-col flex-1 overflow-hidden p-4">
+        <div className="mb-4">
+            <PomodoroTimer />
+        </div>
         <div className="relative">
             <Textarea value={notes} placeholder="Upload a file (.txt, .md, .pdf, .pptx) to set the AI context for everyone..." rows={6} className="resize-none bg-slate-700/80" readOnly />
             <Button onClick={onUploadClick} disabled={isExtracting || isLoading} className="absolute bottom-2 right-2 px-2 py-1 text-xs bg-slate-600 hover:bg-slate-500"><UploadCloud size={14} className="mr-1" /> Upload Notes</Button>

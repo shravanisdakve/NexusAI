@@ -151,3 +151,45 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }
         </div>
     );
 };
+
+// Toast Notification Component
+export interface ToastProps {
+  message: string;
+  type?: 'success' | 'error' | 'info';
+  onClose: () => void;
+}
+
+export const Toast: React.FC<ToastProps> = ({ message, type = 'info', onClose }) => {
+  React.useEffect(() => {
+    const timer = setTimeout(onClose, 5000);
+    return () => clearTimeout(timer);
+  }, [onClose]);
+
+  const bgColor = {
+    success: 'bg-emerald-600',
+    error: 'bg-rose-600',
+    info: 'bg-violet-600'
+  }[type];
+
+  return (
+    <div className={`${bgColor} text-white px-6 py-3 rounded-lg shadow-lg flex items-center justify-between gap-4 animate-in slide-in-from-right duration-300 min-w-[300px]`}>
+      <span className="font-medium">{message}</span>
+      <button onClick={onClose} className="hover:opacity-70 transition-opacity">
+        <X size={18} />
+      </button>
+    </div>
+  );
+};
+
+export const ToastContainer: React.FC<{ toasts: { id: string; message: string; type: any }[]; onRemove: (id: string) => void }> = ({ toasts, onRemove }) => (
+  <div className="fixed bottom-6 right-6 z-[100] flex flex-col gap-3">
+    {toasts.map((toast) => (
+      <Toast
+        key={toast.id}
+        message={toast.message}
+        type={toast.type}
+        onClose={() => onRemove(toast.id)}
+      />
+    ))}
+  </div>
+);

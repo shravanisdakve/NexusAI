@@ -303,5 +303,64 @@ export const generateProjectIdeas = async (branch: string, interest: string, dif
     return data.ideas;
 };
 
+// --- MOCK PAPER GENERATOR SERVICE ---
+export const generateMockPaper = async (branch: string, subject: string, year: string): Promise<any> => {
+    const requestBody: GeminiRequest = { branch, subject, year };
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/gemini/generateMockPaper`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody),
+    });
+
+    if (!response.ok) {
+        const errorData: GeminiResponse = await response.json();
+        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+    }
+
+    const data: GeminiResponse = await response.json();
+    if (!data.paper) {
+        throw new Error('Question paper not found in response');
+    }
+    return data.paper;
+};
+
+// --- VIVA SIMULATOR SERVICE ---
+export const streamVivaChat = async (message: string, subject: string, branch: string): Promise<ReadableStream<Uint8Array> | null> => {
+    const requestBody: GeminiRequest = { message, subject, branch };
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/gemini/streamVivaChat`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody),
+    });
+
+    if (!response.ok) {
+        const errorData: GeminiResponse = await response.json();
+        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+    }
+
+    return response.body;
+};
+
+// --- STUDY PLAN SERVICE ---
+export const generateStudyPlan = async (goal: string, timeframe: string, currentLevel: string, subjects: string[]): Promise<any> => {
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/study-plan/generate`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ goal, timeframe, currentLevel, subjects }),
+    });
+
+    if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    return await response.json();
+};
+
 
 

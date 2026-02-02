@@ -1,6 +1,20 @@
 
 
 
+export interface Resource {
+    id: string;
+    title: string;
+    description: string;
+    type: string;
+    branch: string;
+    year: number;
+    subject: string;
+    link: string;
+    uploadedBy: string | User;
+    createdAt: string;
+    _id?: string; // Add optional Mongo ID
+}
+
 export interface User {
     id: string; // Or whatever ID system you use
     displayName: string;
@@ -87,11 +101,14 @@ export interface Note {
     id: string;
     courseId: string;
     title: string;
-    content?: string; // For text notes
+    type?: 'text' | 'file'; // Discriminator for note type
+    content?: string; // For text notes and extracted text
     fileUrl?: string; // For file notes
     fileName?: string;
     fileType?: string;
-    createdAt: number;
+    fileExtension?: string;
+    fileSize?: number;
+    createdAt: number | string; // Can be timestamp or ISO string from backend
 }
 
 export interface GeminiRequest {
@@ -107,6 +124,11 @@ export interface GeminiRequest {
     reportJson?: string;
     mood?: string;
     goalTitle?: string;
+    branch?: string;
+    interest?: string;
+    difficulty?: string;
+    subject?: string;
+    year?: string;
 }
 
 export interface GeminiResponse {
@@ -120,6 +142,8 @@ export interface GeminiResponse {
     flashcards?: string;
     suggestion?: string;
     breakdown?: string;
+    ideas?: string;
+    paper?: any;
 }
 
 export interface PomodoroState {

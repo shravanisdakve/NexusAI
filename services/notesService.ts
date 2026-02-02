@@ -1,5 +1,14 @@
 import { type Note, type Flashcard } from '../types';
 import { extractTextFromFile, summarizeAudioFromBase64 } from './geminiService';
+import axios from 'axios';
+
+const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+
+// Get auth token from localStorage
+const getAuthHeaders = () => {
+    const token = localStorage.getItem('token');
+    return token ? { Authorization: `Bearer ${token}` } : {};
+};
 
 // Helper function to convert File to Base64
 const fileToBase64 = (file: File): Promise<string> => {
@@ -18,157 +27,206 @@ const fileToBase64 = (file: File): Promise<string> => {
     });
 };
 
-// Mock database with localStorage persistence
-const getMockNotes = (courseId: string): Note[] => {
-    try {
-        const notes = localStorage.getItem(`mockNotes_${courseId}`);
-        return notes ? JSON.parse(notes) : [];
-    } catch (error) {
-        console.error("Error reading notes from localStorage", error);
-        return [];
-    }
-};
-
-const setMockNotes = (courseId: string, notes: Note[]) => {
-    try {
-        localStorage.setItem(`mockNotes_${courseId}`, JSON.stringify(notes));
-    } catch (error) {
-        console.error("Error saving notes to localStorage", error);
-    }
-};
-
-const getMockFlashcards = (courseId: string): Flashcard[] => {
-    try {
-        const flashcards = localStorage.getItem(`mockFlashcards_${courseId}`);
-        return flashcards ? JSON.parse(flashcards) : [];
-    } catch (error) {
-        console.error("Error reading flashcards from localStorage", error);
-        return [];
-    }
-};
-
-const setMockFlashcards = (courseId: string, flashcards: Flashcard[]) => {
-    try {
-        localStorage.setItem(`mockFlashcards_${courseId}`, JSON.stringify(flashcards));
-    } catch (error) {
-        console.error("Error saving flashcards to localStorage", error);
-    }
-};
+// ==================== NOTES ====================
 
 export const getNotes = async (courseId: string): Promise<Note[]> => {
-    console.log("Fetching notes from mock service...");
-    return Promise.resolve(getMockNotes(courseId));
+    console.log(`[notesService] Fetching notes for course ${courseId} from backend`);
+    try {
+        const response = await axios.get(`${API_URL}/api/notes/${courseId}`, {
+            headers: getAuthHeaders()
+        });
+
+        if (response.data.success) {
+            console.log(`[notesService] Successfully fetched ${response.data.notes.length} notes`);
+            return response.data.notes;
+        }
+
+        console.error("[notesService] API returned success: false");
+        return [];
+    } catch (error) {
+        console.error("[notesService] Error fetching notes:", error);
+        if (axios.isAxiosError(error) && error.response?.status === 401) {
+            console.error("[notesService] Unauthorized - user may not be logged in");
+        }
+        return [];
+    }
 };
 
 export const addTextNote = async (courseId: string, title: string, content: string): Promise<Note | null> => {
-    console.log("Adding text note to mock service:", title);
-    const mockNotes = getMockNotes(courseId);
-    const newNote: Note = {
-        id: `mock_note_${Date.now()}`,
-        courseId,
-        title,
-        content,
-        createdAt: Date.now(),
-    };
-    const updatedNotes = [...mockNotes, newNote];
-    setMockNotes(courseId, updatedNotes);
-    console.log("Added text note to mock service:", newNote);
-    return Promise.resolve(newNote);
+    console.log(`[notesService] Adding text note "${title}" to course ${courseId}`);
+    try {
+        const response = await axios.post(
+            `${API_URL}/api/notes/${courseId}/text`,
+            { title, content },
+            { headers: getAuthHeaders() }
+        );
+
+        if (response.data.success) {
+            console.log("[notesService] Successfully added text note");
+            return response.data.note;
+        }
+
+        throw new Error(response.data.message || "Failed to add note");
+    } catch (error) {
+        console.error("[notesService] Error adding text note:", error);
+        throw error;
+    }
 };
 
 export const uploadNoteFile = async (courseId: string, title: string, file: File): Promise<Note | null> => {
-    console.log("Uploading note file to mock service:", title);
-    const mockNotes = getMockNotes(courseId);
-    let extractedContent = "[Text extraction pending or failed]"; // Default content
+    console.log(`[notesService] Uploading file "${file.name}" to course ${courseId}`);
 
     try {
-      const base64Data = await fileToBase64(file);
-      
-      // Check if it's an audio file
-      if (file.type.startsWith('audio/')) {
-        console.log(`Summarizing audio file ${file.name}...`);
-        extractedContent = await summarizeAudioFromBase64(base64Data, file.type);
-        console.log(`Extracted ${extractedContent.length} characters from audio: ${file.name}`);
-      
-      // Otherwise, treat as document (PDF, PPTX, TXT)
-      } else {
-        console.log(`Extracting text from document ${file.name}...`);
-        extractedContent = await extractTextFromFile(base64Data, file.type);
-        console.log(`Extracted ${extractedContent.length} characters from document: ${file.name}`);
-      }
+        // Create FormData for file upload
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('title', title || file.name);
 
+        // Upload file to backend
+        const response = await axios.post(
+            `${API_URL}/api/notes/${courseId}/file`,
+            formData,
+            {
+                headers: {
+                    ...getAuthHeaders(),
+                    'Content-Type': 'multipart/form-data'
+                }
+            }
+        );
+
+        if (response.data.success) {
+            console.log("[notesService] Successfully uploaded file");
+            const note = response.data.note;
+
+            // Extract text in the background and update the note
+            extractTextInBackground(courseId, note.id, file);
+
+            return note;
+        }
+
+        throw new Error(response.data.message || "Failed to upload file");
     } catch (error) {
-      console.error(`Failed to extract text from ${file.name}:`, error);
-      // Keep the default content message if extraction fails
+        console.error("[notesService] Error uploading file:", error);
+        throw error;
     }
+};
 
-    const newNote: Note = {
-        id: `mock_note_${Date.now()}_${Math.random()}`,
-        courseId,
-        title,
-        content: extractedContent, // Store extracted text here
-        fileName: file.name,
-        fileType: file.type,
-        fileUrl: URL.createObjectURL(file), // Still store URL for preview/download
-        createdAt: Date.now(),
-    };
-    const updatedNotes = [...mockNotes, newNote];
-    setMockNotes(courseId, updatedNotes);
-    console.log("Uploaded note file to mock service (with extracted text):", newNote);
-    return Promise.resolve(newNote);
+// Background text extraction
+const extractTextInBackground = async (courseId: string, noteId: string, file: File) => {
+    try {
+        console.log(`[notesService] Extracting text from ${file.name} in background...`);
+        const base64Data = await fileToBase64(file);
+
+        let extractedContent = "";
+
+        // Check if it's an audio file
+        if (file.type.startsWith('audio/')) {
+            console.log(`[notesService] Summarizing audio file ${file.name}...`);
+            extractedContent = await summarizeAudioFromBase64(base64Data, file.type);
+        } else {
+            console.log(`[notesService] Extracting text from document ${file.name}...`);
+            extractedContent = await extractTextFromFile(base64Data, file.type);
+        }
+
+        console.log(`[notesService] Extracted ${extractedContent.length} characters, updating note...`);
+
+        // Update the note with extracted content
+        await updateNoteContent(courseId, noteId, extractedContent);
+
+        console.log(`[notesService] Successfully updated note ${noteId} with extracted text`);
+    } catch (error) {
+        console.error(`[notesService] Failed to extract text from ${file.name}:`, error);
+    }
 };
 
 export const updateNoteContent = async (courseId: string, noteId: string, newContent: string): Promise<void> => {
-    console.log("Updating note content in mock service:", noteId);
-    const mockNotes = getMockNotes(courseId);
-    const updatedNotes = mockNotes.map(n =>
-        n.id === noteId ? { ...n, content: newContent } : n
-    );
-    setMockNotes(courseId, updatedNotes);
-    console.log("Updated note content in mock service:", noteId);
-    return Promise.resolve();
+    console.log(`[notesService] Updating content for note ${noteId}`);
+    try {
+        await axios.put(
+            `${API_URL}/api/notes/${courseId}/${noteId}`,
+            { content: newContent },
+            { headers: getAuthHeaders() }
+        );
+        console.log("[notesService] Successfully updated note content");
+    } catch (error) {
+        console.error("[notesService] Error updating note:", error);
+        throw error;
+    }
 };
 
 export const deleteNote = async (courseId: string, note: Note): Promise<void> => {
-    console.log("Deleting note from mock service:", note.id);
-    const mockNotes = getMockNotes(courseId);
-    const updatedNotes = mockNotes.filter(n => n.id !== note.id);
-    setMockNotes(courseId, updatedNotes);
-    console.log("Deleted note from mock service:", note.id);
-    return Promise.resolve();
+    console.log(`[notesService] Deleting note ${note.id}`);
+    try {
+        await axios.delete(`${API_URL}/api/notes/${courseId}/${note.id}`, {
+            headers: getAuthHeaders()
+        });
+        console.log("[notesService] Successfully deleted note");
+    } catch (error) {
+        console.error("[notesService] Error deleting note:", error);
+        throw error;
+    }
 };
 
-// --- Flashcard Management ---
+// ==================== FLASHCARDS ====================
 
 export const getFlashcards = async (courseId: string): Promise<Flashcard[]> => {
-    console.log("Fetching flashcards from mock service...");
-    return Promise.resolve(getMockFlashcards(courseId));
+    console.log(`[notesService] Fetching flashcards for course ${courseId}`);
+    try {
+        const response = await axios.get(`${API_URL}/api/notes/${courseId}/flashcards`, {
+            headers: getAuthHeaders()
+        });
+
+        if (response.data.success) {
+            console.log(`[notesService] Successfully fetched ${response.data.flashcards.length} flashcards`);
+            return response.data.flashcards;
+        }
+
+        return [];
+    } catch (error) {
+        console.error("[notesService] Error fetching flashcards:", error);
+        return [];
+    }
 };
 
 export const addFlashcards = async (courseId: string, flashcards: Flashcard[]): Promise<void> => {
-    console.log("Adding flashcards to mock service...");
-    const mockFlashcards = getMockFlashcards(courseId);
-    // const newFlashcards = flashcards.map(f => ({ ...f, id: `mock_flashcard_${Date.now()}` })); // <-- This was the bug
-    const updatedFlashcards = [...mockFlashcards, ...flashcards]; // <-- Use the flashcards (with their good IDs) directly
-    setMockFlashcards(courseId, updatedFlashcards);
-    console.log("Added flashcards to mock service:", flashcards);
-    return Promise.resolve();
+    console.log(`[notesService] Adding ${flashcards.length} flashcards to course ${courseId}`);
+    try {
+        await axios.post(
+            `${API_URL}/api/notes/${courseId}/flashcards`,
+            { flashcards },
+            { headers: getAuthHeaders() }
+        );
+        console.log("[notesService] Successfully added flashcards");
+    } catch (error) {
+        console.error("[notesService] Error adding flashcards:", error);
+        throw error;
+    }
 };
 
 export const updateFlashcard = async (courseId: string, flashcardId: string, updates: Partial<Flashcard>): Promise<void> => {
-    console.log("Updating flashcard in mock service:", flashcardId);
-    const mockFlashcards = getMockFlashcards(courseId);
-    const updatedFlashcards = mockFlashcards.map(f => f.id === flashcardId ? { ...f, ...updates } : f);
-    setMockFlashcards(courseId, updatedFlashcards);
-    console.log("Updated flashcard in mock service:", flashcardId);
-    return Promise.resolve();
+    console.log(`[notesService] Updating flashcard ${flashcardId}`);
+    try {
+        await axios.put(
+            `${API_URL}/api/notes/${courseId}/flashcards/${flashcardId}`,
+            updates,
+            { headers: getAuthHeaders() }
+        );
+        console.log("[notesService] Successfully updated flashcard");
+    } catch (error) {
+        console.error("[notesService] Error updating flashcard:", error);
+        throw error;
+    }
 };
 
 export const deleteFlashcard = async (courseId: string, flashcardId: string): Promise<void> => {
-    console.log("Deleting flashcard from mock service:", flashcardId);
-    const mockFlashcards = getMockFlashcards(courseId);
-    const updatedFlashcards = mockFlashcards.filter(f => f.id !== flashcardId);
-    setMockFlashcards(courseId, updatedFlashcards);
-    console.log("Deleted flashcard from mock service:", flashcardId);
-    return Promise.resolve();
+    console.log(`[notesService] Deleting flashcard ${flashcardId}`);
+    try {
+        await axios.delete(`${API_URL}/api/notes/${courseId}/flashcards/${flashcardId}`, {
+            headers: getAuthHeaders()
+        });
+        console.log("[notesService] Successfully deleted flashcard");
+    } catch (error) {
+        console.error("[notesService] Error deleting flashcard:", error);
+        throw error;
+    }
 };

@@ -29,7 +29,14 @@ const ResourcePanel: React.FC<ResourcePanelProps> = ({ resources, onUpload, onDe
 
   return (
     <div className="p-4">
-      <input type="file" ref={fileInputRef} onChange={handleFileChange} style={{ display: 'none' }} />
+      <input
+        type="file"
+        id="resource-upload"
+        name="resourceUpload"
+        ref={fileInputRef}
+        onChange={handleFileChange}
+        style={{ display: 'none' }}
+      />
       <Button onClick={() => fileInputRef.current?.click()} disabled={isUploading} className="w-full">
         {isUploading ? <><Spinner size="sm" className="mr-2" /> Uploading...</> : <><UploadCloud size={16} className="mr-2" /> Upload Resource</>}
       </Button>
