@@ -1,11 +1,11 @@
 export interface User {
-  id: string;
-  email: string;
-  displayName: string;
-  branch: string;
-  year: number;
-  college: string;
-  createdAt: string;
+    id: string;
+    email: string;
+    displayName: string;
+    branch: string;
+    year: number;
+    college: string;
+    createdAt: string;
 }
 
 export interface Course {
@@ -16,16 +16,16 @@ export interface Course {
 }
 
 export interface Resource {
-  id: string;
-  title: string;
-  description?: string;
-  type: 'Notes' | 'Paper' | 'Book' | 'Video';
-  branch: string;
-  year: number;
-  subject: string;
-  link: string;
-  uploadedBy: string; // User ID
-  createdAt: string;
+    id: string;
+    title: string;
+    description?: string;
+    type: 'Notes' | 'Paper' | 'Book' | 'Video';
+    branch: string;
+    year: number;
+    subject: string;
+    link: string;
+    uploadedBy: string; // User ID
+    createdAt: string;
 }
 
 export interface StudyRoom {
@@ -42,6 +42,7 @@ export interface StudyRoom {
 }
 
 export interface ChatMessage {
+    id?: string;
     role: 'user' | 'model';
     parts: { text: string }[];
     user: { displayName: string | null, email: string | null };
