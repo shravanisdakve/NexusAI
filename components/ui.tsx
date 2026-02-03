@@ -36,111 +36,135 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
 
 // Input Component
 export const Input = React.forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement>>(
-    ({ className, ...props }, ref) => {
-        return (
-            <input
-            ref={ref}
-            className={`w-full bg-slate-800 border border-slate-700 rounded-md py-3 px-4 text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-violet-500 transition-colors duration-200 ${className}`}
-            {...props}
-            />
-        );
-    }
+  ({ className, ...props }, ref) => {
+    return (
+      <input
+        ref={ref}
+        className={`w-full bg-slate-800 border border-slate-700 rounded-md py-3 px-4 text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-violet-500 transition-colors duration-200 ${className}`}
+        {...props}
+      />
+    );
+  }
 );
 
 // Textarea Component
 export const Textarea = React.forwardRef<HTMLTextAreaElement, React.TextareaHTMLAttributes<HTMLTextAreaElement>>(
-    ({ className, ...props }, ref) => {
-        return (
-            <textarea
-            ref={ref}
-            className={`w-full bg-slate-800 border border-slate-700 rounded-md py-3 px-4 text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-violet-500 transition-colors duration-200 ${className}`}
-            {...props}
-            />
-        );
-    }
+  ({ className, ...props }, ref) => {
+    return (
+      <textarea
+        ref={ref}
+        className={`w-full bg-slate-800 border border-slate-700 rounded-md py-3 px-4 text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-violet-500 transition-colors duration-200 ${className}`}
+        {...props}
+      />
+    );
+  }
 );
 
 // Select Component
 export const Select = React.forwardRef<HTMLSelectElement, React.SelectHTMLAttributes<HTMLSelectElement>>(
-    ({ className, ...props }, ref) => {
-        return (
-            <select
-            ref={ref}
-            className={`w-full bg-slate-800 border border-slate-700 rounded-md py-2 px-3 text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-violet-500 transition-colors duration-200 ${className}`}
-            {...props}
-            />
-        );
-    }
+  ({ className, ...props }, ref) => {
+    return (
+      <select
+        ref={ref}
+        className={`w-full bg-slate-800 border border-slate-700 rounded-md py-2 px-3 text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-violet-500 transition-colors duration-200 ${className}`}
+        {...props}
+      />
+    );
+  }
 );
 
 // Spinner Component
-export const Spinner: React.FC = () => (
-    <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+// Spinner Component
+interface SpinnerProps {
+  size?: 'sm' | 'md' | 'lg' | number;
+  className?: string;
+}
+
+export const Spinner: React.FC<SpinnerProps> = ({ size = 'md', className = '' }) => {
+  let sizeClass = 'h-5 w-5';
+  let style = {};
+
+  if (typeof size === 'number') {
+    style = { height: size, width: size };
+    sizeClass = '';
+  } else {
+    const sizes = {
+      sm: 'h-4 w-4',
+      md: 'h-5 w-5',
+      lg: 'h-8 w-8',
+      xl: 'h-12 w-12'
+    };
+    sizeClass = sizes[size as keyof typeof sizes] || sizes.md;
+  }
+
+  return (
+    <svg className={`animate-spin text-white ${sizeClass} ${className}`} style={style} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
     </svg>
-);
+  );
+};
 
 // CodeBlock Component
 interface CodeBlockProps {
   code: string;
 }
 export const CodeBlock: React.FC<CodeBlockProps> = ({ code }) => {
-    const [copied, setCopied] = useState(false);
+  const [copied, setCopied] = useState(false);
 
-    const handleCopy = () => {
-        navigator.clipboard.writeText(code);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-    };
+  const handleCopy = () => {
+    navigator.clipboard.writeText(code);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
-    // Basic cleaning to remove markdown backticks and language identifier
-    const cleanedCode = code.replace(/^```(?:\w+\n)?/, '').replace(/```$/, '').trim();
+  // Basic cleaning to remove markdown backticks and language identifier
+  const cleanedCode = code.replace(/^```(?:\w+\n)?/, '').replace(/```$/, '').trim();
 
-    return (
-        <div className="bg-slate-800 rounded-lg my-4 relative">
-            <button onClick={handleCopy} className="absolute top-3 right-3 p-1.5 bg-slate-700 hover:bg-slate-600 rounded-md text-slate-300 transition-colors">
-                {copied ? <Check size={16} /> : <Clipboard size={16} />}
-            </button>
-            <pre className="p-4 overflow-x-auto text-sm text-slate-200 rounded-lg">
-                <code className="font-mono">{cleanedCode}</code>
-            </pre>
-        </div>
-    );
+  return (
+    <div className="bg-slate-800 rounded-lg my-4 relative">
+      <button onClick={handleCopy} className="absolute top-3 right-3 p-1.5 bg-slate-700 hover:bg-slate-600 rounded-md text-slate-300 transition-colors">
+        {copied ? <Check size={16} /> : <Clipboard size={16} />}
+      </button>
+      <pre className="p-4 overflow-x-auto text-sm text-slate-200 rounded-lg">
+        <code className="font-mono">{cleanedCode}</code>
+      </pre>
+    </div>
+  );
 };
 
 // Modal Component
 interface ModalProps {
-    isOpen: boolean;
-    onClose: () => void;
-    title: string;
-    children: React.ReactNode;
+  isOpen: boolean;
+  onClose: () => void;
+  title: string;
+  children: React.ReactNode;
 }
 export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }) => {
-    if (!isOpen) return null;
+  if (!isOpen) return null;
 
-    return (
-        <div 
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 transition-opacity duration-300"
-            aria-labelledby="modal-title"
-            role="dialog"
-            aria-modal="true"
-            onClick={onClose}
-        >
-            <div 
-                className="bg-slate-800 rounded-xl shadow-2xl w-full max-w-md m-4 ring-1 ring-slate-700 p-6 transform transition-all duration-300 scale-95 opacity-0 animate-in"
-                onClick={(e) => e.stopPropagation()}
-                style={{ animationName: 'modal-enter', animationDuration: '0.2s', animationFillMode: 'forwards' }}
-            >
-                <div className="flex justify-between items-center mb-4">
-                    <h2 id="modal-title" className="text-xl font-bold text-white">{title}</h2>
-                    <button onClick={onClose} className="text-slate-400 hover:text-white p-1 rounded-full hover:bg-slate-700 transition-colors">
-                        <X size={20} />
-                    </button>
-                </div>
-                {children}
-            </div>
-            <style>{`
+  return (
+    <div
+      className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 transition-opacity duration-300"
+      aria-labelledby="modal-title"
+      role="dialog"
+      aria-modal="true"
+      onClick={onClose}
+    >
+      <div
+        className="bg-slate-800 rounded-xl shadow-2xl w-full max-w-md m-4 ring-1 ring-slate-700 p-6 transform transition-all duration-300 scale-95 opacity-0 animate-in"
+        onClick={(e) => e.stopPropagation()}
+        style={{ animationName: 'modal-enter', animationDuration: '0.2s', animationFillMode: 'forwards' }}
+      >
+        <div className="flex justify-between items-center mb-4">
+          <h2 id="modal-title" className="text-xl font-bold text-white">{title}</h2>
+          <button onClick={onClose} className="text-slate-400 hover:text-white p-1 rounded-full hover:bg-slate-700 transition-colors">
+            <X size={20} />
+          </button>
+        </div>
+        {children}
+      </div>
+      <style>{`
                 @keyframes modal-enter {
                     to {
                         transform: scale(1);
@@ -148,8 +172,8 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }
                     }
                 }
             `}</style>
-        </div>
-    );
+    </div>
+  );
 };
 
 // Toast Notification Component

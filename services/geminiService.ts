@@ -1,10 +1,11 @@
-
 import { GeminiRequest, GeminiResponse } from '../types';
+
+const API_URL = import.meta.env.VITE_API_BASE_URL || '';
 
 // --- AI TUTOR SERVICE ---
 export const streamChat = async (message: string): Promise<ReadableStream<Uint8Array> | null> => {
     const requestBody: GeminiRequest = { message };
-    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/gemini/streamChat`, {
+    const response = await fetch(`${API_URL}/api/gemini/streamChat`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -24,7 +25,7 @@ export const streamChat = async (message: string): Promise<ReadableStream<Uint8A
 // --- STUDY BUDDY (NOTES-BASED) SERVICE ---
 export const streamStudyBuddyChat = async (message: string, notes: string): Promise<ReadableStream<Uint8Array> | null> => {
     const requestBody: GeminiRequest = { message, notes };
-    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/gemini/streamStudyBuddyChat`, {
+    const response = await fetch(`${API_URL}/api/gemini/streamStudyBuddyChat`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -44,7 +45,7 @@ export const streamStudyBuddyChat = async (message: string, notes: string): Prom
 // --- CONCEPT VISUALIZER SERVICE ---
 export const generateImage = async (prompt: string, aspectRatio: string): Promise<string> => {
     const requestBody: GeminiRequest = { prompt, aspectRatio };
-    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/gemini/generateImage`, {
+    const response = await fetch(`${API_URL}/api/gemini/generateImage`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -67,7 +68,7 @@ export const generateImage = async (prompt: string, aspectRatio: string): Promis
 // --- NOTE SUMMARIZATION SERVICE ---
 export const summarizeText = async (text: string): Promise<string> => {
     const requestBody: GeminiRequest = { text };
-    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/gemini/summarizeText`, {
+    const response = await fetch(`${API_URL}/api/gemini/summarizeText`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -90,7 +91,7 @@ export const summarizeText = async (text: string): Promise<string> => {
 // --- AUDIO SUMMARIZATION SERVICE ---
 export const summarizeAudioFromBase64 = async (base64Data: string, mimeType: string): Promise<string> => {
     const requestBody: GeminiRequest = { base64Data, mimeType };
-    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/gemini/summarizeAudioFromBase64`, {
+    const response = await fetch(`${API_URL}/api/gemini/summarizeAudioFromBase64`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -113,7 +114,7 @@ export const summarizeAudioFromBase64 = async (base64Data: string, mimeType: str
 // --- CODE HELPER SERVICE ---
 export const generateCode = async (prompt: string, language: string): Promise<string> => {
     const requestBody: GeminiRequest = { prompt, language };
-    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/gemini/generateCode`, {
+    const response = await fetch(`${API_URL}/api/gemini/generateCode`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -136,7 +137,7 @@ export const generateCode = async (prompt: string, language: string): Promise<st
 // --- TEXT EXTRACTION FROM FILE SERVICE ---
 export const extractTextFromFile = async (base64Data: string, mimeType: string): Promise<string> => {
     const requestBody: GeminiRequest = { base64Data, mimeType };
-    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/gemini/extractTextFromFile`, {
+    const response = await fetch(`${API_URL}/api/gemini/extractTextFromFile`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -159,7 +160,7 @@ export const extractTextFromFile = async (base64Data: string, mimeType: string):
 // --- QUIZ GENERATION SERVICE ---
 export const generateQuizQuestion = async (context: string): Promise<string> => {
     const requestBody: GeminiRequest = { context };
-    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/gemini/generateQuizQuestion`, {
+    const response = await fetch(`${API_URL}/api/gemini/generateQuizQuestion`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -182,7 +183,7 @@ export const generateQuizQuestion = async (context: string): Promise<string> => 
 // --- AI STUDY SUGGESTIONS SERVICE ---
 export const getStudySuggestions = async (reportJson: string): Promise<string> => {
     const requestBody: GeminiRequest = { reportJson };
-    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/gemini/getStudySuggestions`, {
+    const response = await fetch(`${API_URL}/api/gemini/getStudySuggestions`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -205,7 +206,7 @@ export const getStudySuggestions = async (reportJson: string): Promise<string> =
 // --- FLASHCARD GENERATION SERVICE ---
 export const generateFlashcards = async (context: string): Promise<string> => {
     const requestBody: GeminiRequest = { context };
-    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/gemini/generateFlashcards`, {
+    const response = await fetch(`${API_URL}/api/gemini/generateFlashcards`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -226,11 +227,11 @@ export const generateFlashcards = async (context: string): Promise<string> => {
 };
 
 export const getSuggestionForMood = async (mood: string): Promise<string> => {
-    console.log(`Getting AI suggestion for mood: ${mood}`);
+    console.log(`Getting AI suggestion for mood: ${mood} `);
 
     try {
         const requestBody: GeminiRequest = { mood };
-        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/gemini/getSuggestionForMood`, {
+        const response = await fetch(`${API_URL}/api/gemini/getSuggestionForMood`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -257,7 +258,7 @@ export const getSuggestionForMood = async (mood: string): Promise<string> => {
 // --- GOAL BREAKDOWN SERVICE ---
 export const breakDownGoal = async (goalTitle: string): Promise<string> => {
     const requestBody: GeminiRequest = { goalTitle };
-    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/gemini/breakDownGoal`, {
+    const response = await fetch(`${API_URL}/api/gemini/breakDownGoal`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -283,7 +284,7 @@ export const generateProjectIdeas = async (branch: string, interest: string, dif
     // Wait, I should verify backend/routes/gemini.js for the prompt update.
     // Let's assume I will update the backend route.
 
-    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/gemini/generateProjectIdeas`, {
+    const response = await fetch(`${API_URL}/api/gemini/generateProjectIdeas`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -306,7 +307,7 @@ export const generateProjectIdeas = async (branch: string, interest: string, dif
 // --- MOCK PAPER GENERATOR SERVICE ---
 export const generateMockPaper = async (branch: string, subject: string, year: string): Promise<any> => {
     const requestBody: GeminiRequest = { branch, subject, year };
-    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/gemini/generateMockPaper`, {
+    const response = await fetch(`${API_URL}/api/gemini/generateMockPaper`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -329,7 +330,7 @@ export const generateMockPaper = async (branch: string, subject: string, year: s
 // --- VIVA SIMULATOR SERVICE ---
 export const streamVivaChat = async (message: string, subject: string, branch: string, persona: string): Promise<ReadableStream<Uint8Array> | null> => {
     const requestBody: GeminiRequest = { message, subject, branch, persona };
-    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/gemini/streamVivaChat`, {
+    const response = await fetch(`${API_URL}/api/gemini/streamVivaChat`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -347,7 +348,7 @@ export const streamVivaChat = async (message: string, subject: string, branch: s
 
 // --- STUDY PLAN GENERATION SERVICE ---
 export const generateStudyPlan = async (goal: string, durationDays: number, notesContext: string): Promise<string> => {
-    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/study-plan/generate`, {
+    const response = await fetch(`${API_URL}/api/study-plan/generate`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',

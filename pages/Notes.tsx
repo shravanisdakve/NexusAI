@@ -176,8 +176,8 @@ const StudyPlanView: React.FC<{
                     key={task.id}
                     onClick={() => toggleTask(idx, (task._id || task.id)!, task.completed)}
                     className={`group cursor-pointer p-3 rounded-lg border transition-all ${task.completed
-                        ? 'bg-emerald-900/10 border-emerald-500/20 text-slate-500'
-                        : 'bg-slate-700/50 border-transparent hover:border-violet-500/50 text-slate-200'
+                      ? 'bg-emerald-900/10 border-emerald-500/20 text-slate-500'
+                      : 'bg-slate-700/50 border-transparent hover:border-violet-500/50 text-slate-200'
                       }`}
                   >
                     <div className="flex items-start gap-3">
@@ -567,6 +567,7 @@ const TabButton: React.FC<{ icon: React.ElementType, label: string, isActive: bo
 );
 
 // --- FIX: Replaced entire NotesView component with the correct version ---
+// --- NotesView Sub-Component ---
 const NotesView: React.FC<{
   notes: Note[];
   activeNote: Note | null;
@@ -789,32 +790,37 @@ const NotesView: React.FC<{
 const AddNoteModal: React.FC<{ isOpen: boolean, onClose: () => void, courseId: string, onNoteAdded: () => void }> = ({
   isOpen, onClose, courseId, onNoteAdded
 }) => {
-  // --- FIX: Removed noteType state, default to 'file' ---
-  // const [noteType, setNoteType] = useState<'text' | 'file'>('text');
-  const noteType = 'file'; // Always assume file upload
-  // --- END FIX ---
+
   const [title, setTitle] = useState('');
   // --- FIX: Removed content state for text notes ---
   // const [content, setContent] = useState('');
   // --- END FIX ---
   const [file, setFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [noteType, setNoteType] = useState<'text' | 'file'>('file');
+  const [content, setContent] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // --- FIX: Simplified check, only requires courseId and file ---
-    if (!courseId || !file) return;
-    // --- END FIX ---
+    // Validation
+    if (!courseId) return;
+    if (noteType === 'file' && !file) {
+      alert("Please select a file to upload");
+      return;
+    }
+    if (noteType === 'text' && !content) {
+      alert("Please enter some content for the note");
+      return;
+    }
 
     setIsSubmitting(true);
     try {
-      // --- FIX: Removed text note logic ---
-      // if (noteType === 'file' && file) {
-      await uploadNoteFile(courseId, title || file.name, file);
-      // } else if (noteType === 'text') {
-      //     await addTextNote(courseId, title, content);
-      // }
-      // --- END FIX ---
+      if (noteType === 'file' && file) {
+        await uploadNoteFile(courseId, title || file.name, file);
+      } else if (noteType === 'text') {
+        const noteTitle = title || "Untitled Note";
+        await addTextNote(courseId, noteTitle, content);
+      }
       onNoteAdded(); // Refresh the notes list
     } catch (error) {
       console.error("Failed to add note:", error);
@@ -823,9 +829,9 @@ const AddNoteModal: React.FC<{ isOpen: boolean, onClose: () => void, courseId: s
       setIsSubmitting(false);
       // Reset local state *before* closing to avoid flicker
       setTitle('');
-      // setContent(''); // Removed
+      setContent('');
       setFile(null);
-      // setNoteType('text'); // Removed
+      setNoteType('file');
       onClose();
     }
   };
@@ -834,26 +840,24 @@ const AddNoteModal: React.FC<{ isOpen: boolean, onClose: () => void, courseId: s
   useEffect(() => {
     if (!isOpen) {
       setTitle('');
-      // setContent(''); // Removed
+      setContent('');
       setFile(null);
-      // setNoteType('text'); // Removed
+      setNoteType('file');
       setIsSubmitting(false);
     }
   }, [isOpen]);
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Add New Resource File"> {/* Changed Title */}
+    <Modal isOpen={isOpen} onClose={onClose} title="Add New Resource">
       <form onSubmit={handleSubmit} className="space-y-4">
-        {/* --- FIX: Removed Text/File toggle buttons --- */}
-        {/* <div className="flex justify-center bg-slate-700 rounded-lg p-1">
-            <Button type="button" onClick={() => setNoteType('text')} className={`w-1/2 ${noteType === 'text' ? 'bg-violet-600' : 'bg-transparent'}`}>
-              Text Note
-            </Button>
-            <Button type="button" onClick={() => setNoteType('file')} className={`w-1/2 ${noteType === 'file' ? 'bg-violet-600' : 'bg-transparent'}`}>
-              Upload File
-            </Button>
-          </div> */}
-        {/* --- END FIX --- */}
+        <div className="flex justify-center bg-slate-700/50 rounded-lg p-1">
+          <Button type="button" onClick={() => setNoteType('text')} className={`w-1/2 rounded-md ${noteType === 'text' ? 'bg-violet-600 shadow-md' : 'bg-transparent text-slate-400 hover:text-white hover:bg-slate-600/50'}`}>
+            <FileText size={16} className="mr-2" /> Text Note
+          </Button>
+          <Button type="button" onClick={() => setNoteType('file')} className={`w-1/2 rounded-md ${noteType === 'file' ? 'bg-violet-600 shadow-md' : 'bg-transparent text-slate-400 hover:text-white hover:bg-slate-600/50'}`}>
+            <Upload size={16} className="mr-2" /> Upload File
+          </Button>
+        </div>
 
         <Input
           id="add-note-title"
@@ -864,45 +868,40 @@ const AddNoteModal: React.FC<{ isOpen: boolean, onClose: () => void, courseId: s
         // required // Title is now optional
         />
 
-        {/* --- FIX: Removed Textarea input --- */}
-        {/* {noteType === 'text' && (
-            <Textarea
-              placeholder="Write your note or doubt here..."
-              value={content}
-              onChange={e => setContent(e.target.value)}
-              rows={6}
-            />
-          )} */}
-        {/* --- END FIX --- */}
+        {noteType === 'text' && (
+          <Textarea
+            placeholder="Write your note or doubt here..."
+            value={content}
+            onChange={e => setContent(e.target.value)}
+            rows={8}
+            className="bg-slate-900/50 border-white/5 resize-none focus:ring-violet-500/50"
+          />
+        )}
 
-        {/* --- FIX: File input is now always visible --- */}
-        {/* {noteType === 'file' && ( */}
-        <div className="flex items-center justify-center w-full">
-          <label htmlFor="modal-file-upload" className="flex flex-col items-center justify-center w-full h-32 border-2 border-slate-600 border-dashed rounded-lg cursor-pointer bg-slate-700/50 hover:bg-slate-700">
-            <div className="flex flex-col items-center justify-center pt-5 pb-6">
-              <Upload size={24} className="text-slate-400 mb-2" />
-              <p className="mb-2 text-sm text-slate-400 text-center px-2">
-                {file ? file.name : <><span className="font-semibold">Click to upload</span> or drag and drop</>}</p>
-              <p className="text-xs text-slate-500">PDF, TXT, MD, PPTX, Audio</p>
-            </div>
-            <input
-              id="modal-file-upload"
-              type="file"
-              className="hidden"
-              onChange={e => setFile(e.target.files ? e.target.files[0] : null)}
-              accept=".txt,.md,.pdf,.pptx,.mp3,.wav,.ogg,.aac"
-              required // Make file input required
-            />
-          </label>
-        </div>
-        {/* )} */}
-        {/* --- END FIX --- */}
+        {noteType === 'file' && (
+          <div className="flex items-center justify-center w-full">
+            <label htmlFor="modal-file-upload" className="flex flex-col items-center justify-center w-full h-32 border-2 border-slate-600 border-dashed rounded-lg cursor-pointer bg-slate-700/50 hover:bg-slate-700/50 hover:border-violet-500 transition-all group">
+              <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                <Upload size={24} className="text-slate-400 mb-2 group-hover:text-violet-400 transition-colors" />
+                <p className="mb-2 text-sm text-slate-400 text-center px-2">
+                  {file ? <span className="text-violet-400 font-semibold">{file.name}</span> : <><span className="font-semibold text-slate-300">Click to upload</span> or drag and drop</>}
+                </p>
+                <p className="text-xs text-slate-500">PDF, TXT, MD, PPTX, Audio</p>
+              </div>
+              <input
+                id="modal-file-upload"
+                type="file"
+                className="hidden"
+                onChange={e => setFile(e.target.files ? e.target.files[0] : null)}
+                accept=".txt,.md,.pdf,.pptx,.mp3,.wav,.ogg,.aac"
+              />
+            </label>
+          </div>
+        )}
 
-        {/* --- FIX: Simplified disabled check --- */}
-        <Button type="submit" isLoading={isSubmitting} className="w-full" disabled={isSubmitting || !file}>
-          {isSubmitting ? 'Uploading...' : 'Upload File'} {/* Changed Button Text */}
+        <Button type="submit" isLoading={isSubmitting} className="w-full bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500" disabled={isSubmitting || (noteType === 'file' && !file) || (noteType === 'text' && !content)}>
+          {isSubmitting ? 'Adding...' : (noteType === 'file' ? 'Upload File' : 'Save Note')}
         </Button>
-        {/* --- END FIX --- */}
       </form>
     </Modal>
   );

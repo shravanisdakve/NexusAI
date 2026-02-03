@@ -3,7 +3,7 @@ import axios from 'axios';
 import { io, Socket } from 'socket.io-client';
 import { getResources } from './resourceService';
 
-const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+const API_URL = import.meta.env.VITE_API_BASE_URL || '';
 // Socket URL is same as API URL usually, but can be different in production
 const SOCKET_URL = API_URL;
 

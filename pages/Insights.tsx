@@ -77,6 +77,15 @@ const Insights: React.FC = () => {
         subtitle="Deep analysis of your learning patterns and performance."
       />
 
+      {mapData.length === 0 && (
+        <div className="bg-amber-900/30 border border-amber-600/50 rounded-lg p-3 flex items-center gap-3 text-amber-200 mb-6">
+          <ShieldAlert size={20} className="flex-shrink-0" />
+          <p className="text-sm">
+            <strong>Viewing Sample Data:</strong> You haven't taken enough quizzes to generate a personalized Knowledge Map yet. The data below is for demonstration.
+          </p>
+        </div>
+      )}
+
       {/* SUMMARY CARDS */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard

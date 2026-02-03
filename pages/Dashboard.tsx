@@ -128,7 +128,22 @@ const ActivePlanWidget: React.FC = () => {
     }, []);
 
     if (isLoading) return null;
-    if (!plan) return null;
+
+    if (!plan) return (
+        <div className="bg-slate-800/60 backdrop-blur-md rounded-xl p-6 ring-1 ring-slate-700 shadow-[0_0_20px_rgba(139,92,246,0.1)] mb-8 flex flex-col items-center text-center">
+            <div className="p-4 bg-slate-700/50 rounded-full mb-4">
+                <Calendar className="w-8 h-8 text-slate-400" />
+            </div>
+            <h3 className="text-xl font-bold text-slate-100 mb-2">No Active Study Plan</h3>
+            <p className="text-slate-400 max-w-md mb-6">You don't have a study plan for today. Create one to stay organized and ace your exams!</p>
+            <Link to="/study-plan">
+                <Button className="px-6">
+                    <PlusCircle size={18} className="mr-2" />
+                    Create Study Plan
+                </Button>
+            </Link>
+        </div>
+    );
 
     // Logic to find current day task
     const daysSinceStart = Math.floor((Date.now() - plan.startDate) / (24 * 60 * 60 * 1000));

@@ -212,3 +212,11 @@ export interface Post {
     isBestAnswer: boolean;
     createdAt: number;
 }
+
+export interface Goal {
+    id: string;
+    title: string;
+    status: 'In Progress' | 'Completed';
+    createdAt: string;
+    userId?: string;
+}

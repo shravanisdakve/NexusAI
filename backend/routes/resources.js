@@ -73,7 +73,10 @@ router.post('/', [authMiddleware, upload.single('file')], async (req, res) => {
 
     // If file was uploaded, use the local path (served via static)
     if (req.file) {
-      const baseUrl = process.env.VITE_API_BASE_URL || 'http://localhost:5000';
+      // Use dynamic base URL based on request to ensure it works in dev (3000) and prod
+      const protocol = req.protocol;
+      const host = req.get('host');
+      const baseUrl = process.env.API_BASE_URL || `${protocol}://${host}`;
       finalLink = `${baseUrl}/uploads/resources/${req.file.filename}`;
     }
 

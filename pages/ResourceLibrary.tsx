@@ -3,7 +3,7 @@ import { PageHeader, Button, Input, Select, Modal } from '../components/ui';
 import { useAuth } from '../contexts/AuthContext';
 import { type Resource } from '../types';
 import { PlusCircle, Upload, BookOpen, Search, FileText, Video } from 'lucide-react';
-// Assume a service exists to get/post resources
+// Real backend storage enabled via resourceService (uploads/resources)
 import { getResources, addResource } from '../services/resourceService';
 
 // Upload Modal Component
@@ -31,9 +31,8 @@ const UploadResourceModal: React.FC<{ isOpen: boolean, onClose: () => void, onUp
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
             setSelectedFile(e.target.files[0]);
-            // For now, since we don't have real file storage, we'll mock the link
-            // In a real app, you'd upload this file to S3/Firebase and get a URL back
             if (!link && uploadMode === 'file') {
+                // Link helps with UI feedback if needed, but not critical
                 setLink(`File: ${e.target.files[0].name}`);
             }
         }
@@ -66,11 +65,6 @@ const UploadResourceModal: React.FC<{ isOpen: boolean, onClose: () => void, onUp
         setError('');
         setIsUploading(true);
         try {
-            // Note: If real file upload was implemented, we would upload 'selectedFile' here 
-            // and get the URL to pass as 'link'. 
-            // For this demo, we use the link state which is set to a placeholder for files.
-            const finalLink = uploadMode === 'file' ? (link || `local-file://${selectedFile?.name}`) : link;
-
             await addResource({
                 title,
                 description,

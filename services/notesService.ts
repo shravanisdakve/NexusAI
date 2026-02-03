@@ -2,7 +2,7 @@ import { type Note, type Flashcard } from '../types';
 import { extractTextFromFile, summarizeAudioFromBase64 } from './geminiService';
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+const API_URL = import.meta.env.VITE_API_BASE_URL || '';
 
 // Get auth token from localStorage
 const getAuthHeaders = () => {

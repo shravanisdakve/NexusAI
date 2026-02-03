@@ -13,11 +13,33 @@ connectDB();
 // Setup Sockets
 socketHandler(server);
 
-// 2. CORS Configuration (BEFORE routes)
-// IMPORTANT: Replace 'https://yourdomain.com' with your actual frontend production domain
+const path = require('path');
+const helmet = require('helmet');
+const compression = require('compression');
+const rateLimit = require('express-rate-limit');
+
+// ... (DB Connection and Socket setup remians same)
+
+// 2. Security & Performance Middleware
+app.use(helmet({
+  contentSecurityPolicy: false, // Disabled for simplicity in dev/demo; enable and configure for strict prod
+  crossOriginEmbedderPolicy: false
+}));
+app.use(compression());
+
+// Rate Limiting (Apply to all requests)
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 requests per windowMs
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use('/api', limiter);
+
+// CORS Configuration
 app.use(cors({
   origin: process.env.NODE_ENV === 'production'
-    ? (process.env.FRONTEND_URL || 'https://yourdomain.com')
+    ? (process.env.FRONTEND_URL || 'https://yourdomain.com') // Update this after deployment
     : ['http://localhost:3000', 'http://localhost:5173', 'http://localhost:5174'],
   credentials: true
 }));
@@ -27,7 +49,7 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // 3.5. Serve uploaded files
-app.use('/uploads', express.static('uploads'));
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // 4. Request Logging (Development only)
 if (process.env.NODE_ENV !== 'production') {
@@ -54,10 +76,21 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// 7. 404 Handler
-app.use((req, res, next) => {
-  res.status(404).json({ success: false, message: 'Route not found' });
-});
+// 7. Serve Frontend in Production
+if (process.env.NODE_ENV === 'production') {
+  // Serve static files from the React frontend app
+  app.use(express.static(path.join(__dirname, '../dist')));
+
+  // Handle React routing, return all requests to React app
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, '../dist', 'index.html'));
+  });
+} else {
+  // 404 for non-API routes in dev
+  app.use((req, res, next) => {
+    res.status(404).json({ success: false, message: 'Route not found' });
+  });
+}
 
 // 8. Global Error Handler (MUST BE LAST)
 app.use((err, req, res, next) => {
