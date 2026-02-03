@@ -4,7 +4,7 @@ const StudyPlan = require('../models/StudyPlan');
 const auth = require('../middleware/auth');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY, { apiVersion: 'v1beta' });
 
 // Test route to verify router is loaded
 router.get('/test', (req, res) => {
@@ -82,9 +82,9 @@ router.post('/generate', auth, async (req, res) => {
     try {
         const { goal, durationDays, notesContext } = req.body;
 
-        // Use gemini-2.0-flash as it's used elsewhere in the project
+        // Use gemini-1.5-flash for broader free-tier availability
         const model = genAI.getGenerativeModel({
-            model: "gemini-2.0-flash",
+            model: "gemini-1.5-flash",
         });
 
         const prompt = `You are an expert personalized academic advisor. 

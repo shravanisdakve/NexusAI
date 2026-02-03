@@ -235,11 +235,20 @@ const AiTutor: React.FC = () => {
             if (modelResponse && (isAutoSpeaking || isVoiceInput)) {
                 handleSpeak(modelResponse);
             }
-        } catch (err) {
-            console.error(err);
-            const errorMsg = 'Sorry, something went wrong. Please try again.';
-            setError(errorMsg);
-            setMessages(prev => [...prev, { role: 'model', parts: [{ text: errorMsg }] }]);
+        } catch (err: any) {
+            console.error("AI Tutor Error:", err);
+
+            let userFriendlyMsg = 'Sorry, something went wrong. Please try again.';
+            const rawError = err.message || '';
+
+            if (rawError.includes('429') || rawError.toLowerCase().includes('quota')) {
+                userFriendlyMsg = 'The AI is currently at its limit (free tier). Please wait about a minute and try again.';
+            } else if (rawError.includes('404')) {
+                userFriendlyMsg = 'The AI model is currently unavailable. I am looking into it.';
+            }
+
+            setError(userFriendlyMsg);
+            setMessages(prev => [...prev, { role: 'model', parts: [{ text: userFriendlyMsg }] }]);
         } finally {
             setIsLoading(false);
         }

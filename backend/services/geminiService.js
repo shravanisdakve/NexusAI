@@ -1,9 +1,9 @@
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 
 // Initialize Gemini with API key
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY, { apiVersion: 'v1beta' });
 
-const getModel = (modelName = 'gemini-2.0-flash', systemInstruction = null) => {
+const getModel = (modelName = 'gemini-1.5-flash', systemInstruction = null) => {
     const config = { model: modelName };
     if (systemInstruction) {
         config.systemInstruction = systemInstruction;
@@ -16,7 +16,7 @@ const getModel = (modelName = 'gemini-2.0-flash', systemInstruction = null) => {
  */
 const analyzeChatContext = async (messages) => {
     try {
-        const model = getModel('gemini-2.0-flash', `You are an expert Study Room Moderator. 
+        const model = getModel('gemini-1.5-flash', `You are an expert Study Room Moderator. 
         Your goal is to ensure the study session remains productive, focused, and positive.
         
         Analyze the provided chat history.

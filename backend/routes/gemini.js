@@ -3,10 +3,10 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
 const router = express.Router();
 
 // Initialize Gemini with API key from environment variables
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY, { apiVersion: 'v1beta' });
 
 // Helper to get model
-const getModel = (modelName = 'gemini-2.0-flash', systemInstruction = null) => {
+const getModel = (modelName = 'gemini-1.5-flash', systemInstruction = null) => {
     const config = { model: modelName };
     if (systemInstruction) {
         config.systemInstruction = systemInstruction;
@@ -18,7 +18,7 @@ const getModel = (modelName = 'gemini-2.0-flash', systemInstruction = null) => {
 router.post('/streamChat', async (req, res) => {
     try {
         const { message } = req.body;
-        const model = getModel('gemini-2.0-flash', 'You are an expert AI Tutor. Your goal is to help users understand complex topics by providing clear explanations, step-by-step examples, and asking probing questions to test their knowledge. Be patient, encouraging, and adapt your teaching style to the user\'s needs.');
+        const model = getModel('gemini-1.5-flash', 'You are an expert AI Tutor. Your goal is to help users understand complex topics by providing clear explanations, step-by-step examples, and asking probing questions to test their knowledge. Be patient, encouraging, and adapt your teaching style to the user\'s needs.');
 
         const chat = model.startChat({
             history: [],
@@ -57,7 +57,7 @@ Your knowledge is strictly limited to the text provided above. You CANNOT use an
 2. If the answer is in the notes, provide a comprehensive answer based exclusively on that text.
 3. If the answer is NOT in the notes, you MUST begin your response with the exact phrase: "Based on the provided notes, I can't find information on that topic." After this phrase, you may optionally and briefly mention what the notes DO cover. Do not try to answer the original question.`;
 
-        const model = getModel('gemini-2.0-flash', systemInstruction);
+        const model = getModel('gemini-1.5-flash', systemInstruction);
         const chat = model.startChat();
 
         const result = await chat.sendMessageStream(message);
@@ -91,7 +91,7 @@ router.post('/generateImage', async (req, res) => {
 router.post('/summarizeText', async (req, res) => {
     try {
         const { text } = req.body;
-        const model = getModel('gemini-2.0-flash');
+        const model = getModel('gemini-1.5-flash');
         const prompt = `Summarize the following academic text or notes. Focus on extracting the key concepts, definitions, and main arguments. Present the summary in a clear, structured format, using bullet points or numbered lists where appropriate. Text: "${text}"`;
 
         const result = await model.generateContent(prompt);
@@ -106,7 +106,7 @@ router.post('/summarizeText', async (req, res) => {
 router.post('/summarizeAudioFromBase64', async (req, res) => {
     try {
         const { base64Data, mimeType } = req.body;
-        const model = getModel('gemini-2.0-flash');
+        const model = getModel('gemini-1.5-flash');
 
         const audioPart = {
             inlineData: {
@@ -130,7 +130,7 @@ router.post('/summarizeAudioFromBase64', async (req, res) => {
 router.post('/generateCode', async (req, res) => {
     try {
         const { prompt, language } = req.body;
-        const model = getModel('gemini-2.0-flash');
+        const model = getModel('gemini-1.5-flash');
         const fullPrompt = `You are an expert programming assistant. The user is asking for help with a coding task in ${language}. Provide a clear and accurate response. If generating code, wrap it in a single markdown code block (use triple backticks with ${language.toLowerCase()}). Task: "${prompt}"`;
 
         const result = await model.generateContent(fullPrompt);
@@ -145,7 +145,7 @@ router.post('/generateCode', async (req, res) => {
 router.post('/extractTextFromFile', async (req, res) => {
     try {
         const { base64Data, mimeType } = req.body;
-        const model = getModel('gemini-2.0-flash');
+        const model = getModel('gemini-1.5-flash');
 
         const filePart = {
             inlineData: {
@@ -170,7 +170,7 @@ router.post('/generateQuizQuestion', async (req, res) => {
     try {
         const { context } = req.body;
         const model = genAI.getGenerativeModel({
-            model: "gemini-2.0-flash",
+            model: "gemini-1.5-flash",
             generationConfig: { responseMimeType: "application/json" }
         });
 
@@ -199,7 +199,7 @@ router.post('/generateQuizQuestion', async (req, res) => {
 router.post('/getStudySuggestions', async (req, res) => {
     try {
         const { reportJson } = req.body;
-        const model = getModel('gemini-2.0-flash');
+        const model = getModel('gemini-1.5-flash');
         const prompt = `You are an expert academic advisor for engineering students (specifically Mumbai University context). 
         Based on the following JSON data of a student's weekly performance, provide 3-4 specific, actionable suggestions.
         Considering Mumbai University's pattern, emphasize the importance of consistent practice and concept clarity.
@@ -222,7 +222,7 @@ router.post('/generateFlashcards', async (req, res) => {
     try {
         const { context } = req.body;
         const model = genAI.getGenerativeModel({
-            model: "gemini-2.0-flash",
+            model: "gemini-1.5-flash",
             generationConfig: { responseMimeType: "application/json" }
         });
 
@@ -247,7 +247,7 @@ router.post('/generateFlashcards', async (req, res) => {
 router.post('/getSuggestionForMood', async (req, res) => {
     try {
         const { mood } = req.body;
-        const model = getModel('gemini-2.0-flash');
+        const model = getModel('gemini-1.5-flash');
         console.log(`Getting AI suggestion for mood: ${mood}`);
 
         const prompt = `A user in my learning app just reported their mood as '${mood}'.
@@ -270,7 +270,7 @@ router.post('/breakDownGoal', async (req, res) => {
     try {
         const { goalTitle } = req.body;
         const model = genAI.getGenerativeModel({
-            model: "gemini-2.0-flash",
+            model: "gemini-1.5-flash",
             generationConfig: { responseMimeType: "application/json" }
         });
 
@@ -293,7 +293,7 @@ router.post('/generateProjectIdeas', async (req, res) => {
     try {
         const { branch, interest, difficulty } = req.body;
         const model = genAI.getGenerativeModel({
-            model: "gemini-2.0-flash",
+            model: "gemini-1.5-flash",
             generationConfig: { responseMimeType: "application/json" }
         });
 
@@ -325,7 +325,7 @@ router.post('/generateMockPaper', async (req, res) => {
     try {
         const { branch, subject, year } = req.body;
         const model = genAI.getGenerativeModel({
-            model: "gemini-2.0-flash",
+            model: "gemini-1.5-flash",
             generationConfig: { responseMimeType: "application/json" }
         });
 
@@ -400,7 +400,7 @@ router.post('/streamVivaChat', async (req, res) => {
 
         The goal is to simulate a high-pressure practical viva session.`;
 
-        const model = getModel('gemini-2.0-flash', systemInstruction);
+        const model = getModel('gemini-1.5-flash', systemInstruction);
         const chat = model.startChat();
 
         const result = await chat.sendMessageStream(message);
