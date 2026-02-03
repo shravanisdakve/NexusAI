@@ -327,8 +327,8 @@ export const generateMockPaper = async (branch: string, subject: string, year: s
 };
 
 // --- VIVA SIMULATOR SERVICE ---
-export const streamVivaChat = async (message: string, subject: string, branch: string): Promise<ReadableStream<Uint8Array> | null> => {
-    const requestBody: GeminiRequest = { message, subject, branch };
+export const streamVivaChat = async (message: string, subject: string, branch: string, persona: string): Promise<ReadableStream<Uint8Array> | null> => {
+    const requestBody: GeminiRequest = { message, subject, branch, persona };
     const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/gemini/streamVivaChat`, {
         method: 'POST',
         headers: {

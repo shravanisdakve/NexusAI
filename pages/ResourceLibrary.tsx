@@ -78,7 +78,8 @@ const UploadResourceModal: React.FC<{ isOpen: boolean, onClose: () => void, onUp
                 branch: branch,
                 year: parseInt(year, 10),
                 subject,
-                link: finalLink,
+                link: uploadMode === 'link' ? link : '',
+                file: uploadMode === 'file' ? selectedFile : null,
             });
             onUpload();
             handleClose();

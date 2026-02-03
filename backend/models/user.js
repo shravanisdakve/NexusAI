@@ -26,10 +26,24 @@ const UserSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  points: {
+    type: Number,
+    default: 0,
+  },
+  level: {
+    type: Number,
+    default: 1,
+  },
+  contributions: {
+    type: Number,
+    default: 0,
+  },
   createdAt: {
     type: Date,
     default: Date.now,
   },
+  resetPasswordToken: String,
+  resetPasswordExpires: Date,
 }, {
   // Add toJSON and toObject options
   toJSON: {

@@ -1,6 +1,7 @@
-import { type StudyRoom, type ChatMessage, type Quiz } from '../types';
+import { type StudyRoom, type ChatMessage, type Quiz, type Thread, type Post } from '../types';
 import axios from 'axios';
 import { io, Socket } from 'socket.io-client';
+import { getResources } from './resourceService';
 
 const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
 // Socket URL is same as API URL usually, but can be different in production
@@ -186,12 +187,147 @@ export const onRoomUpdate = (roomId: string, callback: any) => { return () => { 
 export const onNotesUpdate = (roomId: string, callback: any) => { return () => { } };
 export const saveUserNotes = async (roomId: string, userId: string, content: string) => { };
 export const onUserNotesUpdate = (roomId: string, userId: string, callback: any) => { return () => { } };
-export const uploadResource = async (roomId: string, file: any, metadata: any) => { };
-export const getRoomResources = async (roomId: string) => [];
 export const deleteResource = async (roomId: string, fileName: string) => { };
-export const onResourcesUpdate = (roomId: string, callback: any) => { return () => { } };
+export const uploadResource = async (roomId: string, file: any, metadata: any) => { };
+export const getRoomResources = async (courseName: string) => {
+    try {
+        const resources = await getResources({ subject: courseName });
+        return resources;
+    } catch (e) {
+        console.error("Error fetching room resources:", e);
+        return [];
+    }
+};
+
+export const onResourcesUpdate = (courseName: string, callback: any) => {
+    // For now, since we don't have a real subscription, just fetch once and call callback
+    getRoomResources(courseName).then(callback);
+    return () => { };
+};
 export const onQuizUpdate = (roomId: string, callback: any) => { return () => { } };
 export const saveQuiz = async (roomId: string, quiz: any) => { };
 export const saveQuizAnswer = async (roomId: string, userId: string, userName: string, index: number) => { };
 export const clearQuiz = async (roomId: string) => { };
 
+// --- Q&A FORUM SERVICES ---
+
+export const getThreads = async (courseId: string): Promise<Thread[]> => {
+    try {
+        const response = await axios.get(`${API_URL}/api/community/courses/${courseId}/threads`, {
+            headers: getAuthHeaders()
+        });
+        return response.data.success ? response.data.threads : [];
+    } catch (error) {
+        console.error("Error fetching threads:", error);
+        return [];
+    }
+};
+
+export const createThread = async (data: { courseId: string, title: string, content: string, category: string, pyqTag?: string }): Promise<Thread | null> => {
+    try {
+        const response = await axios.post(`${API_URL}/api/community/threads`, data, {
+            headers: getAuthHeaders()
+        });
+        return response.data.success ? response.data.thread : null;
+    } catch (error) {
+        console.error("Error creating thread:", error);
+        return null;
+    }
+};
+
+export const getThreadPosts = async (threadId: string): Promise<Post[]> => {
+    try {
+        const response = await axios.get(`${API_URL}/api/community/threads/${threadId}/posts`, {
+            headers: getAuthHeaders()
+        });
+        return response.data.success ? response.data.posts : [];
+    } catch (error) {
+        console.error("Error fetching posts:", error);
+        return [];
+    }
+};
+
+export const createPost = async (threadId: string, content: string): Promise<Post | null> => {
+    try {
+        const response = await axios.post(`${API_URL}/api/community/threads/${threadId}/posts`, { content }, {
+            headers: getAuthHeaders()
+        });
+        return response.data.success ? response.data.post : null;
+    } catch (error) {
+        console.error("Error creating post:", error);
+        return null;
+    }
+};
+
+export const upvoteThread = async (threadId: string): Promise<{ success: boolean, upvotes: number }> => {
+    try {
+        const response = await axios.patch(`${API_URL}/api/community/threads/${threadId}/upvote`, {}, {
+            headers: getAuthHeaders()
+        });
+        return { success: response.data.success, upvotes: response.data.upvotes };
+    } catch (error) {
+        console.error("Error upvoting thread:", error);
+        return { success: false, upvotes: 0 };
+    }
+};
+
+export const upvotePost = async (postId: string): Promise<{ success: boolean, upvotes: number }> => {
+    try {
+        const response = await axios.patch(`${API_URL}/api/community/posts/${postId}/upvote`, {}, {
+            headers: getAuthHeaders()
+        });
+        return { success: response.data.success, upvotes: response.data.upvotes };
+    } catch (error) {
+        console.error("Error upvoting post:", error);
+        return { success: false, upvotes: 0 };
+    }
+};
+
+export const markBestAnswer = async (postId: string): Promise<boolean> => {
+    try {
+        const response = await axios.patch(`${API_URL}/api/community/posts/${postId}/best-answer`, {}, {
+            headers: getAuthHeaders()
+        });
+        return response.data.success;
+    } catch (error) {
+        console.error("Error marking best answer:", error);
+        return false;
+    }
+};
+
+export const joinCommunity = () => {
+    if (socket) socket.emit('join-community');
+};
+
+export const onCommunityUpdate = (type: 'threads' | 'posts' | 'typing', callback: (data: any) => void) => {
+    if (!socket) return () => { };
+    let event = '';
+    if (type === 'threads') event = 'update-threads';
+    else if (type === 'posts') event = 'update-posts';
+    else if (type === 'typing') event = 'update-typing';
+
+    socket.on(event, callback);
+    return () => socket?.off(event, callback);
+};
+
+export const emitNewThread = (thread: any) => {
+    if (socket) socket.emit('new-thread', thread);
+};
+
+export const emitNewPost = (data: { threadId: string, post: any }) => {
+    if (socket) socket.emit('new-post', data);
+};
+
+export const emitCommunityTyping = (userName: string, userId: string) => {
+    if (socket) socket.emit('typing-community', { userName, userId });
+};
+
+export const sendTyping = (roomId: string, userName: string) => {
+    if (socket) socket.emit('typing', { roomId, userName });
+};
+
+export const onTyping = (callback: (data: { userName: string }) => void) => {
+    if (!socket) return () => { };
+    socket.on('user-typing', callback);
+    return () => socket?.off('user-typing', callback);
+};

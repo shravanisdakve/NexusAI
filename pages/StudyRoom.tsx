@@ -23,6 +23,8 @@ import {
     getRoomMessages, // Added
     sendChatMessage, // Added
     subscribeToMessages, // Added
+    sendTyping,
+    onTyping
 } from '../services/communityService';
 import { streamStudyBuddyChat, generateQuizQuestion, extractTextFromFile } from '../services/geminiService';
 import { startSession, endSession, recordQuizResult } from '../services/analyticsService';
@@ -100,6 +102,8 @@ const StudyRoom: React.FC = () => {
     const [isExtracting, setIsExtracting] = useState(false);
     const [sharedQuiz, setSharedQuiz] = useState<SharedQuiz | null>(null);
     const [showLeaderboard, setShowLeaderboard] = useState(false);
+    const [typingUsers, setTypingUsers] = useState<string[]>([]);
+    const typingTimeoutRef = useRef<{ [key: string]: NodeJS.Timeout }>({});
 
     const [elapsedTime, setElapsedTime] = useState(0); // Time in seconds
     const intervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -177,6 +181,8 @@ const StudyRoom: React.FC = () => {
                 email: currentUser.email // Pass email for UI mapping
             }); // USE REAL SOCKET
             setChatInput(''); // Clear input AFTER successful send
+            // Force clear typing for self
+            setTypingUsers(prev => prev.filter(u => u !== currentUser.displayName));
             console.log("handleSendChatMessage: Message sent via socket, input cleared.");
         } catch (error) {
             console.error("handleSendChatMessage: Error saving message:", error);
@@ -302,6 +308,20 @@ const StudyRoom: React.FC = () => {
             setAllMessages(msgs);
         });
 
+        const unsubTyping = onTyping((data: any) => {
+            if (data.roomId === roomId && data.userName !== currentUser?.displayName) {
+                setTypingUsers(prev => prev.includes(data.userName) ? prev : [...prev, data.userName]);
+
+                if (typingTimeoutRef.current[data.userName]) {
+                    clearTimeout(typingTimeoutRef.current[data.userName]);
+                }
+
+                typingTimeoutRef.current[data.userName] = setTimeout(() => {
+                    setTypingUsers(prev => prev.filter(u => u !== data.userName));
+                }, 3000);
+            }
+        });
+
         const unsubMessages = subscribeToMessages((rawMsg) => {
             console.log("Received socket message:", rawMsg);
             const newMessage: ChatMessage = {
@@ -346,6 +366,7 @@ const StudyRoom: React.FC = () => {
 
             unsubRoom();
             unsubMessages();
+            unsubTyping();
             unsubNotes();
 
             unsubResources();
@@ -753,6 +774,8 @@ const StudyRoom: React.FC = () => {
                                 currentUser={currentUser}
                                 chatEndRef={chatEndRef}
                                 onModerationRequest={handleModerationRequest}
+                                typingUsers={typingUsers}
+                                roomId={roomId}
                             />
                         )}
                         {activeTab === 'participants' && <ParticipantsPanel participants={participants} />}
@@ -899,7 +922,7 @@ const TabButton: React.FC<{ id: ActiveTab, activeTab: ActiveTab, setActiveTab: (
     </button>
 );
 
-const ChatPanel: React.FC<any> = ({ messages, input, setInput, onSend, currentUser, chatEndRef, onModerationRequest }) => {
+const ChatPanel: React.FC<any> = ({ messages, input, setInput, onSend, currentUser, chatEndRef, onModerationRequest, typingUsers, roomId }) => {
     const [showEmojis, setShowEmojis] = useState(false);
 
     const handleEmojiSelect = (emoji: string) => {
@@ -917,24 +940,52 @@ const ChatPanel: React.FC<any> = ({ messages, input, setInput, onSend, currentUs
             <div className="flex-1 overflow-y-auto pr-2">
                 {messages.map((msg: ChatMessage, i: number) => {
                     const isMe = msg.user?.email === currentUser?.email;
+                    const isMod = msg.user?.email === 'system-moderator' || msg.user?.displayName?.includes('Moderator');
+
                     return (
-                        <div key={msg.id || i} className={`flex items-start gap-3 my-4 ${isMe ? 'flex-row-reverse' : ''} group`}>
-                            <img src={`https://ui-avatars.com/api/?name=${msg.user?.displayName || '?'}&background=random&color=fff`} alt="avatar" className="w-8 h-8 rounded-full shadow-lg ring-2 ring-white/10" />
-                            <div className={`flex flex-col max-w-[85%] ${isMe ? 'items-end' : 'items-start'}`}>
-                                <div className="flex items-center gap-2 mb-1 opacity-70">
-                                    <span className="text-xs font-medium text-slate-300">{msg.user?.displayName}</span>
-                                    {msg.timestamp && <span className="text-[10px] text-slate-500">{new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>}
-                                </div>
-                                <div className={`p-3.5 text-sm shadow-md backdrop-blur-sm ${isMe
-                                    ? 'bg-violet-600/90 text-white rounded-2xl rounded-tr-sm'
-                                    : 'bg-slate-800/80 border border-slate-700/50 text-slate-200 rounded-2xl rounded-tl-sm'
+                        <div key={msg.id || i} className={`flex items-start gap-3 my-4 ${isMe ? 'flex-row-reverse' : ''} ${isMod ? 'justify-center w-full' : ''} group`}>
+                            {!isMod && (
+                                <img
+                                    src={`https://ui-avatars.com/api/?name=${msg.user?.displayName || '?'}&background=random&color=fff`}
+                                    alt="avatar"
+                                    className="w-8 h-8 rounded-full shadow-lg ring-2 ring-white/10"
+                                />
+                            )}
+                            <div className={`flex flex-col ${isMod ? 'max-w-[95%] w-full items-center' : `max-w-[85%] ${isMe ? 'items-end' : 'items-start'}`}`}>
+                                {!isMod && (
+                                    <div className="flex items-center gap-2 mb-1 opacity-70">
+                                        <span className="text-xs font-medium text-slate-300">{msg.user?.displayName}</span>
+                                        {msg.timestamp && <span className="text-[10px] text-slate-500">{new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>}
+                                    </div>
+                                )}
+                                <div className={`p-3.5 text-sm shadow-md backdrop-blur-sm relative ${isMod
+                                    ? 'bg-indigo-900/40 border border-indigo-500/50 text-indigo-100 rounded-xl text-center w-full py-2 px-6'
+                                    : isMe
+                                        ? 'bg-violet-600/90 text-white rounded-2xl rounded-tr-sm'
+                                        : 'bg-slate-800/80 border border-slate-700/50 text-slate-200 rounded-2xl rounded-tl-sm'
                                     }`}>
+                                    {isMod && (
+                                        <div className="flex items-center justify-center gap-2 mb-1">
+                                            <Bot size={14} className="text-indigo-400" />
+                                            <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-400">NexusAI Guardian</span>
+                                        </div>
+                                    )}
                                     {msg.parts[0].text}
                                 </div>
                             </div>
                         </div>
                     );
                 })}
+                {typingUsers.length > 0 && (
+                    <div className="flex items-center gap-2 text-[10px] text-slate-500 italic px-2 mb-2 animate-pulse">
+                        <div className="flex gap-1">
+                            <span className="w-1 h-1 bg-slate-500 rounded-full animate-bounce"></span>
+                            <span className="w-1 h-1 bg-slate-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></span>
+                            <span className="w-1 h-1 bg-slate-500 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></span>
+                        </div>
+                        {typingUsers.join(', ')} {typingUsers.length === 1 ? 'is' : 'are'} typing...
+                    </div>
+                )}
                 <div ref={chatEndRef}></div>
             </div>
             <div className="mt-auto flex gap-2 relative">
@@ -958,7 +1009,12 @@ const ChatPanel: React.FC<any> = ({ messages, input, setInput, onSend, currentUs
                 <Input
                     name="chat-message"
                     value={input}
-                    onChange={e => setInput(e.target.value)}
+                    onChange={e => {
+                        setInput(e.target.value);
+                        if (roomId && currentUser) {
+                            sendTyping(roomId, currentUser.displayName);
+                        }
+                    }}
                     onKeyPress={e => {
                         if (e.key === 'Enter' && !e.shiftKey) {
                             e.preventDefault();
@@ -1014,8 +1070,8 @@ const AiPanel: React.FC<any> = ({ messages, input, setInput, onSend, notes, isEx
                         </div>
                     )}
                     <div className={`p-4 rounded-2xl text-sm max-w-[85%] shadow-md backdrop-blur-sm leading-relaxed ${msg.role === 'model'
-                            ? 'bg-slate-800/90 border border-slate-700/50 text-slate-200 rounded-tl-none'
-                            : 'bg-indigo-600 text-white rounded-tr-none'
+                        ? 'bg-slate-800/90 border border-slate-700/50 text-slate-200 rounded-tl-none'
+                        : 'bg-indigo-600 text-white rounded-tr-none'
                         }`}>
                         {msg.parts[0].text}
                     </div>

@@ -1,6 +1,4 @@
 
-
-
 export interface Resource {
     id: string;
     title: string;
@@ -59,9 +57,11 @@ export interface Course {
     color: string;
 }
 
+export type MoodLabel = 'Happy' | 'Calm' | 'Overwhelmed' | 'Sad' | 'Angry';
+
 export interface Mood {
-    emoji: string;
-    label: string;
+    emoji?: string;
+    label: MoodLabel;
     timestamp: number;
 }
 
@@ -130,6 +130,7 @@ export interface GeminiRequest {
     difficulty?: string;
     subject?: string;
     year?: string;
+    persona?: string;
 }
 
 export interface GeminiResponse {
@@ -178,5 +179,36 @@ export interface StudyPlan {
     durationDays: number;
     startDate: number;
     days: StudyDay[];
+    createdAt: number;
+}
+export interface Thread {
+    id: string;
+    courseId: string;
+    title: string;
+    content: string;
+    category: string;
+    author: {
+        id: string;
+        displayName: string;
+        email: string;
+    };
+    upvotes: number;
+    repliesCount: number;
+    isVerified: boolean;
+    pyqTag?: string;
+    createdAt: number;
+}
+
+export interface Post {
+    id: string;
+    threadId: string;
+    content: string;
+    author: {
+        id: string;
+        displayName: string;
+        email: string;
+    };
+    upvotes: number;
+    isBestAnswer: boolean;
     createdAt: number;
 }

@@ -11,6 +11,8 @@ interface AuthContextType {
   logout: () => void;
   isAuthenticated: boolean;
   updateUserProfile: (updates: Partial<User>) => Promise<void>;
+  forgotPassword: (email: string) => Promise<void>;
+  resetPassword: (token: string, password: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -99,6 +101,28 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setUser(null);
   };
 
+  const forgotPassword = async (email: string) => {
+    try {
+      const response = await axios.post('/api/auth/forgot-password', { email });
+      if (!response.data.success) {
+        throw new Error(response.data.message || 'Failed to send reset email');
+      }
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Failed to send reset email due to a server error.');
+    }
+  };
+
+  const resetPassword = async (token: string, password: string) => {
+    try {
+      const response = await axios.post(`/api/auth/reset-password/${token}`, { password });
+      if (!response.data.success) {
+        throw new Error(response.data.message || 'Failed to reset password');
+      }
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Failed to reset password due to a server error.');
+    }
+  };
+
   // Kept from original file
   const updateUserProfile = async (updates: Partial<User>) => {
     if (!user) return;
@@ -116,7 +140,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       signup,
       logout,
       isAuthenticated: !!user,
-      updateUserProfile
+      updateUserProfile,
+      forgotPassword,
+      resetPassword
     }}>
       {children}
     </AuthContext.Provider>

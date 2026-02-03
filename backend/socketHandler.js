@@ -1,6 +1,10 @@
 const socketIo = require('socket.io');
 const Message = require('./models/Message');
+const StudyRoom = require('./models/StudyRoom');
 const { analyzeChatContext } = require('./services/geminiService');
+const { processModeration } = require('./services/moderatorService');
+
+const roomActivity = new Map(); // Track messages per room for autonomous tips
 
 const socketHandler = (server) => {
     const io = socketIo(server, {
@@ -16,17 +20,48 @@ const socketHandler = (server) => {
     io.on('connection', (socket) => {
         console.log('New client connected:', socket.id);
 
-        // Join Study Room
-        socket.on('join-room', (roomId) => {
-            socket.join(roomId);
-            console.log(`User ${socket.id} joined room: ${roomId}`);
+        // Community: Live Updates
+        socket.on('join-community', () => socket.join('community-global'));
+
+        socket.on('typing-community', (data) => {
+            socket.to('community-global').emit('update-typing', data);
+        });
+
+        // Study Room: Join
+        socket.on('join-room', async (roomId) => {
+            try {
+                const room = await StudyRoom.findById(roomId);
+                socket.join(roomId);
+                console.log(`User ${socket.id} joined room: ${roomId}`);
+            } catch (err) {
+                console.error("Join room error:", err);
+            }
+        });
+
+        // Typing Indicator
+        socket.on('typing', (data) => {
+            // data: { roomId, userName }
+            socket.to(data.roomId).emit('user-typing', data);
         });
 
         // Chat Message Event
         socket.on('send-message', async (data) => {
-            // data: { roomId, userId, senderName, content }
             try {
-                // Save to MongoDB
+                const modResult = await processModeration(data.content);
+
+                // Tier 1: Reflex
+                if (modResult.flagged && modResult.tier === 1) {
+                    socket.emit('receive-message', {
+                        id: `sys-${Date.now()}`,
+                        text: modResult.message,
+                        sender: 'System Moderator',
+                        userId: 'system-moderator',
+                        timestamp: new Date()
+                    });
+                    return;
+                }
+
+                // Save and Broadcast
                 const newMessage = new Message({
                     roomId: data.roomId,
                     userId: data.userId,
@@ -36,7 +71,6 @@ const socketHandler = (server) => {
                 });
                 await newMessage.save();
 
-                // Broadcast to room (including sender, or exclude sender depending on UI logic)
                 io.to(data.roomId).emit('receive-message', {
                     id: newMessage._id,
                     text: newMessage.content,
@@ -45,72 +79,66 @@ const socketHandler = (server) => {
                     email: data.email,
                     timestamp: newMessage.timestamp
                 });
+
+                // Tier 2: Vibe Check
+                if (modResult.flagged && modResult.tier === 2) {
+                    io.to(data.roomId).emit('receive-message', {
+                        id: `mod-${Date.now()}`,
+                        text: modResult.message,
+                        sender: 'AI Moderator',
+                        userId: 'system-moderator',
+                        timestamp: new Date()
+                    });
+                }
+
+                // --- AUTONOMOUS PROACTIVE MODERATION ---
+                // Every 7 messages, analyze the vibe or help if needed
+                const currentCount = (roomActivity.get(data.roomId) || 0) + 1;
+                roomActivity.set(data.roomId, currentCount);
+
+                if (currentCount >= 7 || modResult.tier === 3) {
+                    roomActivity.set(data.roomId, 0); // Reset
+                    setTimeout(async () => {
+                        try {
+                            const recentMessages = await Message.find({ roomId: data.roomId })
+                                .sort({ timestamp: -1 })
+                                .limit(10);
+                            const intervention = await analyzeChatContext(recentMessages.reverse());
+
+                            io.to(data.roomId).emit('receive-message', {
+                                id: `mod-${Date.now()}`,
+                                text: intervention,
+                                sender: 'AI Moderator',
+                                userId: 'system-moderator',
+                                timestamp: new Date()
+                            });
+                        } catch (err) {
+                            console.error("Autonomous AI Error:", err);
+                        }
+                    }, 2000);
+                }
+
             } catch (error) {
                 console.error("Error saving message:", error);
             }
         });
 
+        // Threads/Posts Global Sync
+        socket.on('new-thread', (thread) => {
+            io.to('community-global').emit('update-threads', thread);
+        });
+
+        socket.on('new-post', (data) => {
+            io.to('community-global').emit('update-posts', data);
+        });
+
         // Whiteboard Draw Event
         socket.on('draw', (data) => {
-            // data contains: { roomId, x0, y0, x1, y1, color, width }
             socket.to(data.roomId).emit('draw', data);
         });
 
-        // Whiteboard Clear Event
         socket.on('clear-whiteboard', (roomId) => {
             socket.to(roomId).emit('clear-whiteboard');
-        });
-
-        // AI Moderation Trigger
-        socket.on('request-moderation', async (data) => {
-            // data: { roomId } (context not strictly needed if we fetch from DB)
-            const { roomId } = data;
-
-            // Notify room that AI is thinking
-            io.to(roomId).emit('moderator-notified', { message: 'AI Moderator is analyzing the session...' });
-
-            try {
-                // Fetch last 50 messages
-                const recentMessages = await Message.find({ roomId })
-                    .sort({ timestamp: -1 })
-                    .limit(50);
-
-                // Chronological order for AI
-                const messagesForAI = recentMessages.reverse();
-
-                if (messagesForAI.length === 0) {
-                    io.to(roomId).emit('receive-message', {
-                        id: `mod-${Date.now()}`,
-                        text: "I'm here to help, but I don't see any messages yet! Start studying and I'll jump in.",
-                        sender: 'AI Moderator',
-                        userId: 'system-moderator',
-                        timestamp: new Date()
-                    });
-                    return;
-                }
-
-                // Analyze with Gemini
-                const intervention = await analyzeChatContext(messagesForAI);
-
-                // Send AI Response back to room
-                io.to(roomId).emit('receive-message', {
-                    id: `mod-${Date.now()}`,
-                    text: intervention,
-                    sender: 'AI Moderator',
-                    userId: 'system-moderator',
-                    timestamp: new Date()
-                });
-
-            } catch (error) {
-                console.error("Moderation Error:", error);
-                io.to(roomId).emit('receive-message', {
-                    id: `mod-${Date.now()}`,
-                    text: "I'm having a brief connection issue, but please continue studying!",
-                    sender: 'AI Moderator',
-                    userId: 'system-moderator',
-                    timestamp: new Date()
-                });
-            }
         });
 
         socket.on('disconnect', () => {

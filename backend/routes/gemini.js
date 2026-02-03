@@ -6,7 +6,7 @@ const router = express.Router();
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY, { apiVersion: 'v1beta' });
 
 // Helper to get model
-const getModel = (modelName = 'gemini-1.5-flash', systemInstruction = null) => {
+const getModel = (modelName = 'gemini-2.0-flash', systemInstruction = null) => {
     const config = { model: modelName };
     if (systemInstruction) {
         config.systemInstruction = systemInstruction;
@@ -18,7 +18,7 @@ const getModel = (modelName = 'gemini-1.5-flash', systemInstruction = null) => {
 router.post('/streamChat', async (req, res) => {
     try {
         const { message } = req.body;
-        const model = getModel('gemini-1.5-flash', 'You are an expert AI Tutor. Your goal is to help users understand complex topics by providing clear explanations, step-by-step examples, and asking probing questions to test their knowledge. Be patient, encouraging, and adapt your teaching style to the user\'s needs.');
+        const model = getModel('gemini-2.0-flash', 'You are an expert AI Tutor. Your goal is to help users understand complex topics by providing clear explanations, step-by-step examples, and asking probing questions to test their knowledge. Be patient, encouraging, and adapt your teaching style to the user\'s needs.');
 
         const chat = model.startChat({
             history: [],
@@ -57,7 +57,7 @@ Your knowledge is strictly limited to the text provided above. You CANNOT use an
 2. If the answer is in the notes, provide a comprehensive answer based exclusively on that text.
 3. If the answer is NOT in the notes, you MUST begin your response with the exact phrase: "Based on the provided notes, I can't find information on that topic." After this phrase, you may optionally and briefly mention what the notes DO cover. Do not try to answer the original question.`;
 
-        const model = getModel('gemini-1.5-flash', systemInstruction);
+        const model = getModel('gemini-2.0-flash', systemInstruction);
         const chat = model.startChat();
 
         const result = await chat.sendMessageStream(message);
@@ -80,7 +80,17 @@ Your knowledge is strictly limited to the text provided above. You CANNOT use an
 // --- CONCEPT VISUALIZER SERVICE ---
 router.post('/generateImage', async (req, res) => {
     try {
-        res.status(400).json({ error: "Image generation requires specific SDK support not currently configured for this endpoint." });
+        const { prompt, aspectRatio = '16:9' } = req.body;
+
+        // Use Pollinations.ai for fast, persistent pedagogical image generation
+        // Format: https://image.pollinations.ai/prompt/[prompt]?width=[w]&height=[h]&nologo=true
+        const width = aspectRatio === '16:9' ? 1280 : 1024;
+        const height = aspectRatio === '16:9' ? 720 : 1024;
+
+        const encodedPrompt = encodeURIComponent(prompt + " high quality educational 4k concept art diagram");
+        const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=${width}&height=${height}&nologo=true&seed=${Math.floor(Math.random() * 1000)}`;
+
+        res.json({ image: imageUrl });
     } catch (error) {
         console.error("Error in generateImage:", error);
         res.status(500).json({ error: error.message });
@@ -91,7 +101,7 @@ router.post('/generateImage', async (req, res) => {
 router.post('/summarizeText', async (req, res) => {
     try {
         const { text } = req.body;
-        const model = getModel('gemini-1.5-flash');
+        const model = getModel('gemini-2.0-flash');
         const prompt = `Summarize the following academic text or notes. Focus on extracting the key concepts, definitions, and main arguments. Present the summary in a clear, structured format, using bullet points or numbered lists where appropriate. Text: "${text}"`;
 
         const result = await model.generateContent(prompt);
@@ -106,7 +116,7 @@ router.post('/summarizeText', async (req, res) => {
 router.post('/summarizeAudioFromBase64', async (req, res) => {
     try {
         const { base64Data, mimeType } = req.body;
-        const model = getModel('gemini-1.5-flash');
+        const model = getModel('gemini-2.0-flash');
 
         const audioPart = {
             inlineData: {
@@ -130,7 +140,7 @@ router.post('/summarizeAudioFromBase64', async (req, res) => {
 router.post('/generateCode', async (req, res) => {
     try {
         const { prompt, language } = req.body;
-        const model = getModel('gemini-1.5-flash');
+        const model = getModel('gemini-2.0-flash');
         const fullPrompt = `You are an expert programming assistant. The user is asking for help with a coding task in ${language}. Provide a clear and accurate response. If generating code, wrap it in a single markdown code block (use triple backticks with ${language.toLowerCase()}). Task: "${prompt}"`;
 
         const result = await model.generateContent(fullPrompt);
@@ -145,7 +155,7 @@ router.post('/generateCode', async (req, res) => {
 router.post('/extractTextFromFile', async (req, res) => {
     try {
         const { base64Data, mimeType } = req.body;
-        const model = getModel('gemini-1.5-flash');
+        const model = getModel('gemini-2.0-flash');
 
         const filePart = {
             inlineData: {
@@ -154,7 +164,7 @@ router.post('/extractTextFromFile', async (req, res) => {
             },
         };
         const textPart = {
-            text: "Extract all text content from the provided document. Present it as clean, unformatted text. If the document is a presentation, extract text from all slides."
+            text: "You are an expert OCR and document parser. Extract all textual content from the provided document (PDF, image, or presentation). Preserve the logical structure (headings, lists, sections) but return it as clean, unformatted text. If there are mathematical formulas, represent them clearly in plain text. Ensure no data is skipped even if the document is long."
         };
 
         const result = await model.generateContent([textPart, filePart]);
@@ -170,7 +180,7 @@ router.post('/generateQuizQuestion', async (req, res) => {
     try {
         const { context } = req.body;
         const model = genAI.getGenerativeModel({
-            model: "gemini-1.5-flash",
+            model: "gemini-2.0-flash",
             generationConfig: { responseMimeType: "application/json" }
         });
 
@@ -199,7 +209,7 @@ router.post('/generateQuizQuestion', async (req, res) => {
 router.post('/getStudySuggestions', async (req, res) => {
     try {
         const { reportJson } = req.body;
-        const model = getModel('gemini-1.5-flash');
+        const model = getModel('gemini-2.0-flash');
         const prompt = `You are an expert academic advisor for engineering students (specifically Mumbai University context). 
         Based on the following JSON data of a student's weekly performance, provide 3-4 specific, actionable suggestions.
         Considering Mumbai University's pattern, emphasize the importance of consistent practice and concept clarity.
@@ -222,7 +232,7 @@ router.post('/generateFlashcards', async (req, res) => {
     try {
         const { context } = req.body;
         const model = genAI.getGenerativeModel({
-            model: "gemini-1.5-flash",
+            model: "gemini-2.0-flash",
             generationConfig: { responseMimeType: "application/json" }
         });
 
@@ -247,7 +257,7 @@ router.post('/generateFlashcards', async (req, res) => {
 router.post('/getSuggestionForMood', async (req, res) => {
     try {
         const { mood } = req.body;
-        const model = getModel('gemini-1.5-flash');
+        const model = getModel('gemini-2.0-flash');
         console.log(`Getting AI suggestion for mood: ${mood}`);
 
         const prompt = `A user in my learning app just reported their mood as '${mood}'.
@@ -270,7 +280,7 @@ router.post('/breakDownGoal', async (req, res) => {
     try {
         const { goalTitle } = req.body;
         const model = genAI.getGenerativeModel({
-            model: "gemini-1.5-flash",
+            model: "gemini-2.0-flash",
             generationConfig: { responseMimeType: "application/json" }
         });
 
@@ -293,7 +303,7 @@ router.post('/generateProjectIdeas', async (req, res) => {
     try {
         const { branch, interest, difficulty } = req.body;
         const model = genAI.getGenerativeModel({
-            model: "gemini-1.5-flash",
+            model: "gemini-2.0-flash",
             generationConfig: { responseMimeType: "application/json" }
         });
 
@@ -325,7 +335,7 @@ router.post('/generateMockPaper', async (req, res) => {
     try {
         const { branch, subject, year } = req.body;
         const model = genAI.getGenerativeModel({
-            model: "gemini-1.5-flash",
+            model: "gemini-2.0-flash",
             generationConfig: { responseMimeType: "application/json" }
         });
 
@@ -334,18 +344,18 @@ router.post('/generateMockPaper', async (req, res) => {
         Subject: ${subject}
         Year: ${year}
 
-        CRITICAL MU PAPER PATTERN:
-        - Total Marks: 80
-        - Time: 3 Hours
-        - Structure:
-            1. Q1 is COMPULSORY (20 marks): Contains 4-5 short questions (5 marks each).
-            2. Q2 to Q6 (20 marks each): Student must attempt any 3 out of these 5.
-            3. Each 20-mark question (Q2-Q6) usually has 2-3 sub-questions (e.g., 10+10 or 8+6+6).
+        MASTER SKELETON (Strict MU Rev-2019/2024 C-Scheme Pattern):
+        - Total Marks: 80 | Time: 3 Hours
+        - Q1: COMPULSORY (20 Marks) - 4 sub-questions of 5 marks each. Covering all modules.
+        - Q2 to Q6: Attempt ANY THREE (20 Marks each).
+        - SYLLABUS COVERAGE: Must include questions from all 6 modules.
+        - SUB-QUESTION PATTERN: Use MU standard distributions: (10+10) or (5+5+10) or (8+6+6).
+        - DIFFICULTY MIX: 20% Easy, 50% Moderate, 30% Hard.
+        - STEP MARKING: Ensure question phrasing allows for step-wise evaluation.
 
-        Return ONLY a JSON object.
-        Schema:
+        Return ONLY a JSON object matching this exact schema:
         {
-            "subject": "string",
+            "subject": "${subject}",
             "time": "3 Hours",
             "totalMarks": 80,
             "instructions": ["Q1 is compulsory", "Attempt any 3 from Q2-Q6", "Figures to the right indicate full marks"],
@@ -355,10 +365,10 @@ router.post('/generateMockPaper', async (req, res) => {
                     "title": "Compulsory Short Questions",
                     "totalMarks": 20,
                     "subQuestions": [
-                        { "text": "string", "marks": 5 },
-                        { "text": "string", "marks": 5 },
-                        { "text": "string", "marks": 5 },
-                        { "text": "string", "marks": 5 }
+                        { "text": "...", "marks": 5 },
+                        { "text": "...", "marks": 5 },
+                        { "text": "...", "marks": 5 },
+                        { "text": "...", "marks": 5 }
                     ]
                 },
                 {
@@ -366,11 +376,14 @@ router.post('/generateMockPaper', async (req, res) => {
                     "title": "Module 1 & 2 Focus",
                     "totalMarks": 20,
                     "subQuestions": [
-                        { "text": "string", "marks": 10 },
-                        { "text": "string", "marks": 10 }
+                        { "text": "...", "marks": 10 },
+                        { "text": "...", "marks": 10 }
                     ]
-                }
-                // ... continue for Q3, Q4, Q5, Q6
+                },
+                { "number": 3, "title": "Module 3 Focus", "totalMarks": 20, "subQuestions": [...] },
+                { "number": 4, "title": "Module 4 Focus", "totalMarks": 20, "subQuestions": [...] },
+                { "number": 5, "title": "Module 5 Focus", "totalMarks": 20, "subQuestions": [...] },
+                { "number": 6, "title": "Module 6 Focus", "totalMarks": 20, "subQuestions": [...] }
             ]
         }`;
 
@@ -386,21 +399,30 @@ router.post('/generateMockPaper', async (req, res) => {
 // --- VIVA SIMULATOR SERVICE ---
 router.post('/streamVivaChat', async (req, res) => {
     try {
-        const { message, subject, branch } = req.body;
-        const systemInstruction = `You are an expert External Examiner for Mumbai University. 
+        const { message, subject, branch, persona = 'Standard' } = req.body;
+
+        const systemInstruction = `You are an External Examiner for the Mumbai University (MU) Engineering Viva Voce. 
         Subject: ${subject}
         Branch: ${branch}
+        Current Mode: ${persona}
 
-        Your persona:
-        1. You are strict but fair.
-        2. You ask one academic question at a time related to experiments or core subject concepts.
-        3. If the user answers correctly, give a brief "Next question" or "Good. Now explain [related topic]".
-        4. If the user is wrong, point it out firmly and explain the concept briefly before moving on.
-        5. Use a formal, professional tone.
+        Core Behavior:
+        1. Ask One Question at a Time: Never stack questions. Wait for the student's response.
+        2. Context: Stick strictly to the MU syllabus for ${subject}.
+        3. Evaluation: After the student answers, evaluate their technical accuracy.
 
-        The goal is to simulate a high-pressure practical viva session.`;
+        Persona Guidelines (Mode: ${persona}):
+        - IF Mode = "The Griller": Strict but fair. Be skeptical and relentless. If the answer is correct but shallow, ask "Why?" or "How would this fail in a real scenario?". If wrong, bluntly state "Incorrect" and ask a harder follow-up. Do not offer hints. Use a formal, high-pressure tone equivalent to an external examiner at a top-tier Mumbai college.
+        - IF Mode = "Standard": Professional MU Examiner. Balanced approach. If the answer is wrong, say "Not quite, think about [Related Concept]" and move to the next question.
+        - IF Mode = "The Guide": Encouraging mentor. If the student struggles, provide a progressive hint. Use phrases like "You're close, consider the relationship between..."
+        
+        SYLLABUS DEPTH: For 3rd and 4th year subjects, focus on application-level questions rather than just definitions.
 
-        const model = getModel('gemini-1.5-flash', systemInstruction);
+        Fail State: If the student fails 3 consecutive questions, politely end the viva and suggest specific modules to revise.
+
+        The goal is to test their conceptual depth according to the chosen mode.`;
+
+        const model = getModel('gemini-2.0-flash', systemInstruction);
         const chat = model.startChat();
 
         const result = await chat.sendMessageStream(message);

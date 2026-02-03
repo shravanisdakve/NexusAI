@@ -85,6 +85,13 @@ const ProductivityInsights: React.FC = () => {
                         </div>
                         <span className="font-mono text-white">{report.quizAccuracy}%</span>
                     </div>
+                    <div className="flex justify-between items-center text-sm bg-slate-800 p-3 rounded-lg">
+                        <div className="flex items-center gap-2">
+                            <Target size={16} className="text-slate-400" />
+                            <span className="font-medium text-slate-300">Goal Progress</span>
+                        </div>
+                        <span className="font-mono text-white">{(report as any).goalProgress || 0}%</span>
+                    </div>
                 </div>
             )}
             <Link to="/insights">

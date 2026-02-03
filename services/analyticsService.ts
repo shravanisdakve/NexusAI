@@ -85,8 +85,23 @@ export const getProductivityReport = async (courseId: string | null = null) => {
 
         if (!data) return getEmptyReport();
 
-        // Transform UserProgress model to expected report format
-        // We need to calculate strengths and weaknesses from topicMastery
+        const totalAttempts = (data.topicMastery || []).reduce((acc: number, t: any) => acc + t.attempts, 0);
+        const avgAccuracy = totalAttempts > 0
+            ? Math.round((data.topicMastery || []).reduce((acc: number, t: any) => acc + (t.accuracy * t.attempts), 0) / totalAttempts)
+            : 0;
+
+        // Fetch Goal Progress
+        let goalProgress = 0;
+        try {
+            const goalsResponse = await axios.get(`${API_URL}/api/goals`, { headers: getAuthHeaders() });
+            const goals = goalsResponse.data.goals || [];
+            if (goals.length > 0) {
+                const completed = goals.filter((g: any) => g.status === 'Completed').length;
+                goalProgress = Math.round((completed / goals.length) * 100);
+            }
+        } catch (e) {
+            console.error("Error fetching goals for report:", e);
+        }
 
         const strengths = (data.topicMastery || [])
             .filter((t: any) => t.accuracy >= 70)
@@ -102,13 +117,13 @@ export const getProductivityReport = async (courseId: string | null = null) => {
 
         return {
             totalStudyTime: data.totalStudyTime || 0,
-            quizAccuracy: 0, // Calculated globally if needed, or per topic
+            quizAccuracy: avgAccuracy,
             totalQuizzes: data.quizzesTaken || 0,
-            correctQuizzes: 0, // Not stored primarily
+            goalProgress,
             strengths,
             weaknesses,
             completedPomodoros: data.pomodoroSessions || 0,
-            sessions: [] // Can be filled from recentActivity if needed
+            sessions: data.recentActivity || []
         };
 
     } catch (error) {

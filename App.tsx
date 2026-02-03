@@ -18,6 +18,7 @@ import SudokuGame from './pages/SudokuGame';
 import ZipGame from './pages/ZipGame';
 import SpeedMathGame from './pages/SpeedMathGame';
 import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 import Terms from './pages/Terms';
 import Privacy from './pages/Privacy';
 import ResourceLibrary from './pages/ResourceLibrary'; // Import the new page
@@ -63,6 +64,7 @@ const App: React.FC = () => {
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password/:token" element={<ResetPassword />} />
         <Route path="/terms" element={<Terms />} />
         <Route path="/privacy" element={<Privacy />} />
 

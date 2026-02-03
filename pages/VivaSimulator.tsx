@@ -15,6 +15,7 @@ const VivaSimulator: React.FC = () => {
     const navigate = useNavigate();
     const [subject, setSubject] = useState('');
     const [branch, setBranch] = useState(user?.branch || '');
+    const [persona, setPersona] = useState('Standard');
     const [isStarted, setIsStarted] = useState(false);
     const [messages, setMessages] = useState<Message[]>([]);
     const [input, setInput] = useState('');
@@ -36,7 +37,7 @@ const VivaSimulator: React.FC = () => {
         setMessages([{ role: 'user', text: initialPrompt }]);
 
         try {
-            const stream = await streamVivaChat(initialPrompt, subject, branch);
+            const stream = await streamVivaChat(initialPrompt, subject, branch, persona);
             if (stream) {
                 const reader = stream.getReader();
                 const decoder = new TextDecoder();
@@ -85,7 +86,7 @@ const VivaSimulator: React.FC = () => {
         setIsLoading(true);
 
         try {
-            const stream = await streamVivaChat(userMsg, subject, branch);
+            const stream = await streamVivaChat(userMsg, subject, branch, persona);
             if (stream) {
                 const reader = stream.getReader();
                 const decoder = new TextDecoder();
@@ -140,9 +141,26 @@ const VivaSimulator: React.FC = () => {
                             <Users className="text-emerald-400 w-8 h-8" />
                         </div>
                         <h3 className="text-2xl font-bold text-center text-white mb-2">Ready for the Viva?</h3>
-                        <p className="text-slate-400 text-center text-sm mb-8 leading-relaxed">
-                            Our AI External will ask you conceptual and practical questions to prepare you for the real deal.
+                        <p className="text-slate-400 text-center text-sm mb-6 leading-relaxed">
+                            Our AI External will prepare you for the real deal. Choose your examiner's persona:
                         </p>
+
+                        <div className="flex bg-slate-900/50 p-1 rounded-xl mb-8 border border-white/5">
+                            {[
+                                { id: 'The Guide', label: 'Easy', color: 'text-emerald-400' },
+                                { id: 'Standard', label: 'Medium', color: 'text-sky-400' },
+                                { id: 'The Griller', label: 'Hard', color: 'text-rose-400' }
+                            ].map((p) => (
+                                <button
+                                    key={p.id}
+                                    onClick={() => setPersona(p.id)}
+                                    className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${persona === p.id ? 'bg-slate-700 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+                                >
+                                    <span className={persona === p.id ? p.color : ''}>{p.id}</span>
+                                    <div className="text-[10px] opacity-60 font-medium">{p.label}</div>
+                                </button>
+                            ))}
+                        </div>
 
                         <div className="space-y-4">
                             <div>

@@ -3,8 +3,10 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const User = require('../models/User');
 const authMiddleware = require('../middleware/auth');
+const sendEmail = require('../services/emailService');
 
 const validatePassword = (password) => {
   if (password.length < 8) {
@@ -79,7 +81,7 @@ router.post("/signup", async (req, res) => {
 router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
-    
+
     if (!email || !password) {
       return res.status(400).json({ success: false, message: 'Email and password are required' });
     }
@@ -134,5 +136,83 @@ router.get('/verify', authMiddleware, async (req, res) => {
   }
 });
 
+
+// --- FORGOT PASSWORD ---
+router.post('/forgot-password', async (req, res) => {
+  try {
+    const { email } = req.body;
+    const user = await User.findOne({ email: email.toLowerCase() });
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found with this email' });
+    }
+
+    // Generate reset token
+    const resetToken = crypto.randomBytes(20).toString('hex');
+    user.resetPasswordToken = resetToken;
+    user.resetPasswordExpires = Date.now() + 3600000; // 1 hour
+
+    await user.save();
+
+    const resetUrl = `${process.env.FRONTEND_URL}/#/reset-password/${resetToken}`;
+
+    const message = `You are receiving this email because you (or someone else) have requested the reset of a password. Please make a POST request to: \n\n ${resetUrl}`;
+
+    try {
+      await sendEmail({
+        email: user.email,
+        subject: 'Password Reset Request',
+        html: `
+          <h3>Password Reset Request</h3>
+          <p>You requested to reset your password. Click the link below to reset it:</p>
+          <a href="${resetUrl}" clicktracking=off>${resetUrl}</a>
+          <p>If you did not request this, please ignore this email.</p>
+        `,
+      });
+
+      res.json({ success: true, message: 'Email sent' });
+    } catch (err) {
+      user.resetPasswordToken = undefined;
+      user.resetPasswordExpires = undefined;
+      await user.save();
+      console.error('Email send error:', err);
+      return res.status(500).json({ success: false, message: 'Email could not be sent' });
+    }
+  } catch (error) {
+    console.error('Forgot password error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// --- RESET PASSWORD ---
+router.post('/reset-password/:token', async (req, res) => {
+  try {
+    const { password } = req.body;
+    const user = await User.findOne({
+      resetPasswordToken: req.params.token,
+      resetPasswordExpires: { $gt: Date.now() },
+    });
+
+    if (!user) {
+      return res.status(400).json({ success: false, message: 'Invalid or expired token' });
+    }
+
+    const passwordError = validatePassword(password);
+    if (passwordError) {
+      return res.status(400).json({ success: false, message: passwordError });
+    }
+
+    user.password = await bcrypt.hash(password, 10);
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpires = undefined;
+
+    await user.save();
+
+    res.json({ success: true, message: 'Password reset successful' });
+  } catch (error) {
+    console.error('Reset password error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
 
 module.exports = router;
