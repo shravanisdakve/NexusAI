@@ -2,7 +2,8 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { PageHeader, Button, Input } from '../components/ui';
 import { useAuth } from '../contexts/AuthContext';
-import { type Course, type Mood as MoodType } from '../types';
+import { type Course, type Mood as MoodType, type StudyPlan } from '../types';
+import { getStudyPlan } from '../services/studyPlanService';
 import { getTimeOfDayGreeting, getMostUsedTool } from '../services/personalizationService';
 import { getProductivityReport } from '../services/analyticsService';
 import { getCourses, addCourse, deleteCourse } from '../services/courseService';
@@ -13,7 +14,7 @@ import {
     MessageSquare, Share2, FileText, Code, ArrowRight,
     Target, Lightbulb, Timer, Zap, BookOpen,
     Play, Pause, RefreshCw, PlusCircle, Trash2, User, Users, Star,
-    BarChart, Clock, Brain, TrendingUp, TrendingDown, Repeat, Sparkles, Calculator, Shield, Calendar
+    BarChart, Clock, Brain, TrendingUp, TrendingDown, Repeat, Sparkles, Calculator, Shield, Calendar, CheckCircle2, Circle
 } from 'lucide-react';
 
 const formatSeconds = (seconds: number) => {
@@ -89,6 +90,67 @@ const ProductivityInsights: React.FC = () => {
             <Link to="/insights">
                 <Button className="w-full mt-6 text-sm">View Detailed Insights</Button>
             </Link>
+        </div>
+    );
+};
+
+const ActivePlanWidget: React.FC = () => {
+    const [plan, setPlan] = useState<StudyPlan | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const navigate = useNavigate();
+
+    useEffect(() => {
+        const fetchPlan = async () => {
+            setIsLoading(true);
+            try {
+                const courses = await getCourses();
+                for (const course of courses) {
+                    const activePlan = await getStudyPlan(course.id);
+                    if (activePlan) {
+                        setPlan(activePlan);
+                        break;
+                    }
+                }
+            } catch (error) {
+                console.error("Error fetching active plan:", error);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        fetchPlan();
+    }, []);
+
+    if (isLoading) return null;
+    if (!plan) return null;
+
+    // Logic to find current day task
+    const daysSinceStart = Math.floor((Date.now() - plan.startDate) / (24 * 60 * 60 * 1000));
+    const currentDayPlan = plan.days[Math.min(daysSinceStart, plan.days.length - 1)];
+
+    return (
+        <div className="bg-slate-800/60 backdrop-blur-md rounded-xl p-6 ring-1 ring-slate-700 shadow-[0_0_20px_rgba(139,92,246,0.1)] mb-8">
+            <h3 className="text-xl font-bold text-slate-100 flex items-center mb-4">
+                <Calendar className="w-6 h-6 mr-3 text-violet-400" /> Today's Study Step
+            </h3>
+            <div className="space-y-4">
+                <div>
+                    <p className="text-sm font-semibold text-violet-400 uppercase tracking-wider mb-1 line-clamp-1">Goal: {plan.goal}</p>
+                    <h4 className="text-lg font-bold text-white">Day {currentDayPlan?.day || 1} of {plan.durationDays}</h4>
+                </div>
+                <div className="space-y-2">
+                    {currentDayPlan?.tasks.map((task: any) => (
+                        <div key={task._id || task.id} className="flex items-center gap-3 bg-slate-800 p-3 rounded-lg border border-slate-700">
+                            {task.completed ? <CheckCircle2 size={16} className="text-emerald-400" /> : <Circle size={16} className="text-slate-500" />}
+                            <span className={`text-sm ${task.completed ? 'line-through text-slate-500' : 'text-slate-200'} line-clamp-1`}>{task.title}</span>
+                        </div>
+                    ))}
+                </div>
+                <Link to="/notes" state={{ activeTab: 'plan', courseId: plan.courseId }}>
+                    <Button className="w-full mt-2 text-sm">
+                        View Full Plan
+                    </Button>
+                </Link>
+            </div>
         </div>
     );
 };
@@ -179,7 +241,7 @@ const MyCourses: React.FC = () => {
                         placeholder="e.g., Organic Chemistry"
                         className="text-sm flex-1"
                         autoComplete="off"
-                    autoFocus
+                        autoFocus
                     />
                     <Button type="submit" className="px-3 py-2 text-sm">Add</Button>
                     <Button type="button" variant="ghost" size="sm" onClick={() => setIsAdding(false)} className="px-3 py-2 text-sm text-slate-400">Cancel</Button>
@@ -356,6 +418,7 @@ const Dashboard: React.FC = () => {
                     </div>
                 )}
                 <ProductivityInsights />
+                <ActivePlanWidget />
                 <MyCourses />
             </div>
         </div>

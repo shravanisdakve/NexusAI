@@ -2,12 +2,14 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { getCourses, addCourse } from '../services/courseService';
 import { getNotes, addTextNote, uploadNoteFile, deleteNote, getFlashcards, addFlashcards, updateFlashcard, updateNoteContent } from '../services/notesService';
-import { type Note, type Course, type Flashcard as FlashcardType } from '../types';
+import { getStudyPlan, saveStudyPlan, updateTaskCompletion } from '../services/studyPlanService';
+import { type Note, type Course, type Flashcard as FlashcardType, type StudyPlan, type StudyTask } from '../types';
 import { PageHeader, Button, Input, Textarea, Select, Modal, Spinner } from '../components/ui';
-import { PlusCircle, Trash2, Upload, FileText, BookOpen, Layers, X, Brain, Edit, Save, ArrowLeft, Download, Eye, EyeOff } from 'lucide-react';
-import { generateFlashcards, extractTextFromFile } from '../services/geminiService';
-import { useNavigate } from 'react-router-dom';
+import { PlusCircle, Trash2, Upload, FileText, BookOpen, Layers, X, Brain, Edit, Save, ArrowLeft, Download, Eye, EyeOff, Calendar, Target, CheckCircle2, Circle, Users } from 'lucide-react';
+import { generateFlashcards, extractTextFromFile, generateStudyPlan } from '../services/geminiService';
+import { useNavigate, useLocation } from 'react-router-dom';
 import Flashcard from '../components/Flashcard';
+
 
 // Helper function
 const fileToBase64 = (file: File): Promise<string> => {
@@ -27,7 +29,182 @@ const fileToBase64 = (file: File): Promise<string> => {
 };
 
 
+const StudyPlanView: React.FC<{
+  courseId: string;
+  notes: Note[];
+  studyPlan: StudyPlan | null;
+  onPlanSaved: (plan: StudyPlan) => void;
+}> = ({ courseId, notes, studyPlan, onPlanSaved }) => {
+  const [goal, setGoal] = useState('');
+  const [duration, setDuration] = useState('7');
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  const handleGenerate = async () => {
+    if (!goal || !courseId) return;
+
+    setIsGenerating(true);
+    try {
+      const notesContext = notes
+        .map(n => n.content || '')
+        .filter(c => c.length > 0)
+        .join('\n\n');
+
+      const planJson = await generateStudyPlan(goal, parseInt(duration), notesContext);
+      const days = JSON.parse(planJson);
+
+      const newPlan = await saveStudyPlan({
+        courseId,
+        goal,
+        durationDays: parseInt(duration),
+        startDate: Date.now(),
+        days: days.map((d: any) => ({
+          ...d,
+          tasks: d.tasks.map((t: any) => ({
+            ...t,
+            id: `task_${Math.random().toString(36).substr(2, 9)}`,
+            completed: false
+          }))
+        }))
+      });
+
+      if (newPlan) {
+        onPlanSaved(newPlan);
+        alert("Personalized study plan created!");
+      }
+    } catch (error) {
+      console.error("Failed to generate study plan:", error);
+      alert("Failed to generate study plan. Please try again.");
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const toggleTask = async (dayIndex: number, taskId: string, currentStatus: boolean) => {
+    const updatedPlan = await updateTaskCompletion(courseId, dayIndex, taskId, !currentStatus);
+    if (updatedPlan) {
+      onPlanSaved(updatedPlan);
+    }
+  };
+
+  const getTaskIcon = (type: string) => {
+    switch (type) {
+      case 'note': return <FileText size={16} className="text-sky-400" />;
+      case 'quiz': return <Brain size={16} className="text-emerald-400" />;
+      case 'study-room': return <Users size={16} className="text-violet-400" />;
+      default: return <Target size={16} className="text-slate-400" />;
+    }
+  };
+
+  if (isGenerating) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-4">
+        <Spinner size="lg" />
+        <h3 className="text-xl font-bold text-white">AI is crafting your study journey...</h3>
+        <p className="text-slate-400 max-w-md">We're analyzing your notes and goal to build a path tailored specifically for you.</p>
+      </div>
+    );
+  }
+
+  if (!studyPlan) {
+    return (
+      <div className="flex-1 p-8 flex flex-col items-center justify-center text-center">
+        <div className="bg-slate-800/80 p-8 rounded-2xl max-w-xl ring-1 ring-slate-700 shadow-xl">
+          <Calendar className="w-12 h-12 text-violet-400 mx-auto mb-4" />
+          <h3 className="text-2xl font-bold text-white mb-2">Create Your AI Study Plan</h3>
+          <p className="text-slate-400 mb-8">
+            Tell the AI your goal (e.g., "Ace the Calculus midterm"), set your timeframe,
+            and we'll generate a day-by-day plan linked to your notes.
+          </p>
+
+          <div className="space-y-4 text-left">
+            <div>
+              <label className="block text-sm font-medium text-slate-300 mb-1">Academic Goal</label>
+              <Input
+                placeholder="e.g., Master organic chemistry mechanisms"
+                value={goal}
+                onChange={e => setGoal(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-300 mb-1">Timeframe (Days)</label>
+              <Select value={duration} onChange={e => setDuration(e.target.value)}>
+                {[3, 5, 7, 10, 14, 21, 30].map(d => (
+                  <option key={d} value={d}>{d} Days</option>
+                ))}
+              </Select>
+            </div>
+          </div>
+
+          <Button onClick={handleGenerate} className="w-full mt-8" disabled={!goal}>
+            Generate Personalized Plan
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-slate-900/40">
+      <div className="flex justify-between items-end bg-slate-800/80 p-6 rounded-xl ring-1 ring-slate-700">
+        <div>
+          <h3 className="text-sm font-semibold text-violet-400 uppercase tracking-wider mb-1">Current Focus</h3>
+          <h2 className="text-2xl font-bold text-white">{studyPlan.goal}</h2>
+          <p className="text-slate-400 mt-1">Starting {new Date(studyPlan.startDate).toLocaleDateString()}</p>
+        </div>
+        <Button variant="ghost" className="text-slate-400 hover:text-white text-sm" onClick={() => {
+          if (confirm("Create a new plan? This will replace your current one.")) {
+            onPlanSaved(null as any);
+          }
+        }}>
+          New Plan
+        </Button>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {studyPlan.days.map((day, idx) => {
+          const isCompleted = day.tasks.every(t => t.completed);
+          return (
+            <div key={idx} className={`bg-slate-800/60 p-5 rounded-xl ring-1 transition-all ${isCompleted ? 'ring-emerald-500/30 opacity-80' : 'ring-slate-700 hover:ring-slate-600'}`}>
+              <div className="flex justify-between items-center mb-4">
+                <h4 className="font-bold text-slate-200">Day {day.day}</h4>
+                {isCompleted && <CheckCircle2 className="text-emerald-400" size={18} />}
+              </div>
+
+              <div className="space-y-3">
+                {day.tasks.map((task) => (
+                  <div
+                    key={task.id}
+                    onClick={() => toggleTask(idx, (task._id || task.id)!, task.completed)}
+                    className={`group cursor-pointer p-3 rounded-lg border transition-all ${task.completed
+                        ? 'bg-emerald-900/10 border-emerald-500/20 text-slate-500'
+                        : 'bg-slate-700/50 border-transparent hover:border-violet-500/50 text-slate-200'
+                      }`}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="mt-1 flex-shrink-0">
+                        {task.completed ? <CheckCircle2 size={16} className="text-emerald-400" /> : <Circle size={16} className="text-slate-500 group-hover:text-violet-400" />}
+                      </div>
+                      <div className="flex-1 overflow-hidden">
+                        <div className="flex items-center gap-2 mb-0.5">
+                          {getTaskIcon(task.type)}
+                          <p className={`font-semibold text-sm truncate ${task.completed ? 'line-through' : ''}`}>{task.title}</p>
+                        </div>
+                        <p className="text-xs text-slate-400 line-clamp-2">{task.description}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
 const Notes: React.FC = () => {
+
   const navigate = useNavigate();
   const { user } = useAuth();
 
@@ -40,12 +217,26 @@ const Notes: React.FC = () => {
   const [editedContent, setEditedContent] = useState('');
 
   const [flashcards, setFlashcards] = useState<FlashcardType[]>([]);
+  const [studyPlan, setStudyPlan] = useState<StudyPlan | null>(null);
 
-  const [activeTab, setActiveTab] = useState<'notes' | 'flashcards'>('notes');
+  const [activeTab, setActiveTab] = useState<'notes' | 'flashcards' | 'plan'>('notes');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false); // Loading state for note-based generation
   const [isFileGenerating, setIsFileGenerating] = useState(false); // Loading state for file-based generation
   const [isSingleGenerating, setIsSingleGenerating] = useState<string | null>(null); // Track which note ID is generating
+
+  const location = useLocation();
+
+  // Handle deep linking from Dashboard
+  useEffect(() => {
+    if (location.state?.activeTab) {
+      setActiveTab(location.state.activeTab);
+    }
+    if (location.state?.courseId) {
+      setSelectedCourse(location.state.courseId);
+    }
+  }, [location]);
+
 
   // --- Data Fetching Effects ---
   useEffect(() => {
@@ -70,11 +261,14 @@ const Notes: React.FC = () => {
       setIsEditingNote(false);
       getNotes(selectedCourse).then(setNotes);
       getFlashcards(selectedCourse).then(setFlashcards);
+      getStudyPlan(selectedCourse).then(setStudyPlan);
     } else {
       setNotes([]);
       setFlashcards([]);
+      setStudyPlan(null);
       setActiveNote(null);
     }
+
   }, [selectedCourse]);
 
   // --- Handlers ---
@@ -288,7 +482,14 @@ const Notes: React.FC = () => {
               isActive={activeTab === 'flashcards'}
               onClick={() => setActiveTab('flashcards')}
             />
+            <TabButton
+              icon={Calendar}
+              label="Study Plan"
+              isActive={activeTab === 'plan'}
+              onClick={() => setActiveTab('plan')}
+            />
           </div>
+
 
           {/* --- Content Area --- */}
           {activeTab === 'notes' && (
@@ -323,7 +524,17 @@ const Notes: React.FC = () => {
               }}
             />
           )}
+
+          {activeTab === 'plan' && (
+            <StudyPlanView
+              courseId={selectedCourse}
+              notes={notes}
+              studyPlan={studyPlan}
+              onPlanSaved={setStudyPlan}
+            />
+          )}
         </div>
+
       ) : (
         <div className="flex-1 flex items-center justify-center bg-slate-800/50 rounded-xl ring-1 ring-slate-700">
           <p className="text-slate-400">Please select a course to view your notes.</p>

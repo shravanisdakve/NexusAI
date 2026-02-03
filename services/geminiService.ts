@@ -345,22 +345,24 @@ export const streamVivaChat = async (message: string, subject: string, branch: s
     return response.body;
 };
 
-// --- STUDY PLAN SERVICE ---
-export const generateStudyPlan = async (goal: string, timeframe: string, currentLevel: string, subjects: string[]): Promise<any> => {
+// --- STUDY PLAN GENERATION SERVICE ---
+export const generateStudyPlan = async (goal: string, durationDays: number, notesContext: string): Promise<string> => {
     const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/study-plan/generate`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ goal, timeframe, currentLevel, subjects }),
+        body: JSON.stringify({ goal, durationDays, notesContext }),
     });
 
     if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
     }
 
-    return await response.json();
+    const data = await response.json();
+    return data.planJson;
 };
+
 
 
 

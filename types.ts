@@ -154,3 +154,29 @@ export interface PomodoroState {
     mode: 'focus' | 'shortBreak' | 'longBreak';
     startTime: number | null;
 }
+
+export interface StudyTask {
+    id?: string;
+    _id?: string;
+    title: string;
+    description: string;
+    type: 'note' | 'quiz' | 'study-room' | 'review';
+    referenceId?: string;
+    completed: boolean;
+}
+
+export interface StudyDay {
+    day: number;
+    tasks: StudyTask[];
+}
+
+export interface StudyPlan {
+    id?: string;
+    _id?: string;
+    courseId: string;
+    goal: string;
+    durationDays: number;
+    startDate: number;
+    days: StudyDay[];
+    createdAt: number;
+}
