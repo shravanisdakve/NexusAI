@@ -9,6 +9,7 @@ export const streamChat = async (message: string, base64Data?: string, mimeType?
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
         body: JSON.stringify(requestBody),
     });
@@ -29,6 +30,7 @@ export const streamStudyBuddyChat = async (message: string, notes: string): Prom
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
         body: JSON.stringify(requestBody),
     });
@@ -49,6 +51,7 @@ export const generateImage = async (prompt: string, aspectRatio: string): Promis
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
         body: JSON.stringify(requestBody),
     });
@@ -72,6 +75,7 @@ export const summarizeText = async (text: string): Promise<string> => {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
         body: JSON.stringify(requestBody),
     });
@@ -95,6 +99,7 @@ export const summarizeAudioFromBase64 = async (base64Data: string, mimeType: str
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
         body: JSON.stringify(requestBody),
     });
@@ -118,6 +123,7 @@ export const generateCode = async (prompt: string, language: string): Promise<st
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
         body: JSON.stringify(requestBody),
     });
@@ -141,6 +147,7 @@ export const extractTextFromFile = async (base64Data: string, mimeType: string):
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
         body: JSON.stringify(requestBody),
     });
@@ -164,6 +171,7 @@ export const generateQuizQuestion = async (context: string): Promise<string> => 
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
         body: JSON.stringify(requestBody),
     });
@@ -186,6 +194,7 @@ export const generateQuizSet = async (context: string, count: number = 5): Promi
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
         body: JSON.stringify(requestBody), // 'count' is technically extra but handled by backend
     });
@@ -209,6 +218,7 @@ export const getStudySuggestions = async (reportJson: string): Promise<string> =
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
         body: JSON.stringify(requestBody),
     });
@@ -232,6 +242,7 @@ export const generateFlashcards = async (context: string): Promise<string> => {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
         body: JSON.stringify(requestBody),
     });
@@ -257,6 +268,7 @@ export const getSuggestionForMood = async (mood: string): Promise<string> => {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
             },
             body: JSON.stringify(requestBody),
         });
@@ -284,6 +296,7 @@ export const breakDownGoal = async (goalTitle: string): Promise<string> => {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
         body: JSON.stringify(requestBody),
     });
@@ -310,6 +323,7 @@ export const generateProjectIdeas = async (branch: string, interest: string, dif
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
         body: JSON.stringify(requestBody),
     });
@@ -333,6 +347,7 @@ export const generateMockPaper = async (branch: string, subject: string, year: s
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
         body: JSON.stringify(requestBody),
     });
@@ -356,6 +371,7 @@ export const streamVivaChat = async (message: string, subject: string, branch: s
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
         body: JSON.stringify(requestBody),
     });
@@ -374,6 +390,7 @@ export const generateStudyPlan = async (goal: string, durationDays: number, note
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
         body: JSON.stringify({ goal, durationDays, notesContext }),
     });
@@ -392,6 +409,7 @@ export const streamFeynmanChat = async (message: string, topic: string, notes: s
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
         body: JSON.stringify(requestBody),
     });
@@ -409,6 +427,7 @@ export const getFeynmanFeedback = async (topic: string, explanation: string, not
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
         body: JSON.stringify({ topic, explanation, notes }),
     });

@@ -10,27 +10,12 @@ export interface SubjectMarks {
     status: 'Pass' | 'Fail';
 }
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
-=======
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 export interface GraceReport {
     ordinance5042A: { eligible: boolean; marksRecommended: number; details: string };
     ordinance5044A: { eligible: boolean; marksRecommended: number; details: string };
     ordinance229A: { eligible: boolean; marksRecommended: number };
 }
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 export const calculateGrace = async (subjects: SubjectMarks[], totalAggregate: number, extracurriculars: boolean) => {
     try {
         const response = await axios.post(`${API_URL}/calculate-grace`, {
