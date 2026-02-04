@@ -108,4 +108,15 @@ UserSchema.methods.addXP = async function (amount) {
   return { leveledUp, level: this.level, xp: this.xp };
 };
 
+// Add method to award badge
+UserSchema.methods.awardBadge = async function (badgeName) {
+  if (!this.badges.includes(badgeName)) {
+    this.badges.push(badgeName);
+    this.xp = (this.xp || 0) + 100; // Bonus for earning a badge
+    await this.save();
+    return { success: true, badge: badgeName, xpEarned: 100 };
+  }
+  return { success: false, message: "Badge already earned" };
+};
+
 module.exports = mongoose.model("User", UserSchema);
