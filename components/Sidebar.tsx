@@ -5,7 +5,7 @@ import { Modal, Input, Button, Spinner } from './ui'; // Import necessary UI com
 // --- END FIX ---
 import { useAuth } from '../contexts/AuthContext';
 // --- FIX: Added Edit3 icon ---
-import { LayoutDashboard, MessageSquare, Share2, FileText, Code, BrainCircuit, LogOut, BarChart2, Users, ClipboardList, Edit3, GraduationCap, Binary, Briefcase, Shield, Bell } from 'lucide-react';
+import { LayoutDashboard, MessageSquare, Share2, FileText, Code, BrainCircuit, LogOut, BarChart2, Users, ClipboardList, Edit3, GraduationCap, Binary, Briefcase, Shield, Bell, Layers } from 'lucide-react';
 // --- END FIX ---
 
 
@@ -83,6 +83,7 @@ const ProfileEditModal: React.FC<ProfileEditModalProps> = ({ isOpen, onClose, cu
 const navigation = [
     { name: 'Study Hub', href: '/', icon: LayoutDashboard },
     { name: 'MU Curriculum', href: '/curriculum', icon: GraduationCap },
+    { name: 'Branch Specialty', href: '/engineering-lab', icon: Layers },
     { name: 'Math symbolic Engine', href: '/math-lab', icon: Binary },
     { name: 'Placement Arena', href: '/placement', icon: Briefcase },
     { name: 'University Hub', href: '/university-status', icon: Bell },
@@ -157,15 +158,15 @@ const Sidebar: React.FC = () => {
                 <div className="mt-auto pt-6 border-t border-white/5">
                     <div className="px-3 py-3 rounded-xl bg-surface/50 border border-white/5"> {/* Updated user card */}
                         {user && (
-                            <div className="flex items-center space-x-3 mb-4">
-                                <img src={`https://ui-avatars.com/api/?name=${user.displayName || 'User'}&background=random`} alt="User avatar" className="w-10 h-10 rounded-full" />
-                                <div className="flex-1 overflow-hidden"> {/* Ensure text truncates */}
-                                    <p className="font-semibold text-sm text-white truncate">{user.displayName || 'User'}</p>
-                                    <p className="text-xs text-slate-400 truncate">{user.email}</p>
-                                    {/* Removed university display as it wasn't part of mock user */}
-                                    {/* {user.university && <p className="text-xs text-slate-500 truncate">{user.university}</p>} */}
+                            <div className="flex items-center space-x-3 mb-6">
+                                <img src={`https://ui-avatars.com/api/?name=${user.displayName || 'User'}&background=random`} alt="User avatar" className="w-10 h-10 rounded-full border border-violet-500/20" />
+                                <div className="flex-1 overflow-hidden">
+                                    <p className="font-bold text-sm text-white truncate">{user.displayName || 'User'}</p>
+                                    <div className="flex items-center gap-1.5 mt-0.5">
+                                        <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+                                        <span className="text-[10px] text-slate-500 uppercase font-black tracking-widest">Active: {user.branch || 'CO'}</span>
+                                    </div>
                                 </div>
-                                {/* --- FIX: Added Edit Button --- */}
                                 <Button
                                     variant="ghost"
                                     size="sm"
@@ -175,14 +176,24 @@ const Sidebar: React.FC = () => {
                                 >
                                     <Edit3 size={16} />
                                 </Button>
-                                {/* --- END FIX --- */}
                             </div>
                         )}
+
+                        {/* Anuvadini AI Mock Toggle */}
+                        <div className="flex items-center justify-between p-2 mb-4 bg-slate-900/50 rounded-lg border border-white/5">
+                            <span className="text-[10px] font-bold text-slate-500 uppercase ml-1">Anuvadini AI</span>
+                            <div className="flex gap-1">
+                                <button className="px-1.5 py-0.5 rounded bg-violet-600 text-[10px] text-white font-bold">EN</button>
+                                <button className="px-1.5 py-0.5 rounded hover:bg-white/5 text-[10px] text-slate-500 font-bold">मरा</button>
+                                <button className="px-1.5 py-0.5 rounded hover:bg-white/5 text-[10px] text-slate-500 font-bold">हिं</button>
+                            </div>
+                        </div>
+
                         <button
                             onClick={handleLogout}
-                            className="w-full flex items-center justify-center px-4 py-2 text-sm font-medium rounded-lg transition-colors duration-200 text-slate-300 hover:bg-red-500/20 hover:text-red-400" // Centered text
+                            className="w-full flex items-center justify-center px-4 py-2 text-sm font-medium rounded-lg transition-colors duration-200 text-slate-300 hover:bg-red-500/20 hover:text-red-400 border border-transparent hover:border-red-500/20"
                         >
-                            <LogOut className="mr-2 h-5 w-5" /> {/* Adjusted margin */}
+                            <LogOut className="mr-2 h-5 w-5" />
                             Logout
                         </button>
                     </div>
