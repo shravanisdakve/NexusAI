@@ -3,6 +3,7 @@ const router = express.Router();
 const Note = require('../models/Note');
 const Flashcard = require('../models/Flashcard');
 const Quiz = require('../models/Quiz');
+const User = require('../models/User');
 const auth = require('../middleware/auth');
 const multer = require('multer');
 const path = require('path');
@@ -102,6 +103,10 @@ router.post('/:courseId/text', auth, async (req, res) => {
 
         await note.save();
 
+        // Award XP for creating a note
+        const user = await User.findById(req.user.id);
+        if (user) await user.addXP(20);
+
         res.status(201).json({
             success: true,
             note: {
@@ -158,6 +163,10 @@ router.post('/:courseId/file', auth, upload.single('file'), async (req, res) => 
         });
 
         await note.save();
+
+        // Award XP for uploading a file
+        const user = await User.findById(req.user.id);
+        if (user) await user.addXP(30);
 
         res.status(201).json({
             success: true,
@@ -334,6 +343,10 @@ router.post('/:courseId/flashcards', auth, async (req, res) => {
 
         const savedFlashcards = await Flashcard.insertMany(flashcardDocs);
 
+        // Award XP for creating flashcards
+        const user = await User.findById(req.user.id);
+        if (user) await user.addXP(savedFlashcards.length * 5);
+
         res.status(201).json({
             success: true,
             flashcards: savedFlashcards.map(card => ({
@@ -480,6 +493,15 @@ router.put('/:courseId/quizzes/:quizId', auth, async (req, res) => {
         if (completed !== undefined) quiz.completed = completed;
 
         await quiz.save();
+
+        // Award XP for completing a quiz
+        if (completed) {
+            const user = await User.findById(req.user.id);
+            if (user) {
+                // Award XP based on score (e.g., score of 80/100 -> 80 XP)
+                await user.addXP(score);
+            }
+        }
 
         res.json({
             success: true,

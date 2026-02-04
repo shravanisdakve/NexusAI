@@ -4,6 +4,7 @@ import { Users, Send, RefreshCw, ArrowLeft, Terminal, AlertCircle } from 'lucide
 import { streamVivaChat } from '../services/geminiService';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface Message {
     role: 'user' | 'model';
@@ -12,6 +13,7 @@ interface Message {
 
 const VivaSimulator: React.FC = () => {
     const { user } = useAuth();
+    const { language } = useLanguage();
     const navigate = useNavigate();
     const [subject, setSubject] = useState('');
     const [branch, setBranch] = useState(user?.branch || '');
@@ -37,7 +39,7 @@ const VivaSimulator: React.FC = () => {
         setMessages([{ role: 'user', text: initialPrompt }]);
 
         try {
-            const stream = await streamVivaChat(initialPrompt, subject, branch, persona);
+            const stream = await streamVivaChat(initialPrompt, subject, branch, persona, language);
             if (stream) {
                 const reader = stream.getReader();
                 const decoder = new TextDecoder();
@@ -86,7 +88,7 @@ const VivaSimulator: React.FC = () => {
         setIsLoading(true);
 
         try {
-            const stream = await streamVivaChat(userMsg, subject, branch, persona);
+            const stream = await streamVivaChat(userMsg, subject, branch, persona, language);
             if (stream) {
                 const reader = stream.getReader();
                 const decoder = new TextDecoder();

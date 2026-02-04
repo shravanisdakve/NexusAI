@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Brain, Send, User, Bot, Sparkles, MessageSquare, CheckCircle, AlertCircle, RefreshCcw } from 'lucide-react';
 import { Button, Spinner } from './ui';
 import { streamFeynmanChat, getFeynmanFeedback } from '../services/geminiService';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface Message {
     role: 'user' | 'model';
@@ -29,6 +30,7 @@ const FeynmanAssistant: React.FC<FeynmanAssistantProps> = ({ topic, notes }) => 
     const [showFeedback, setShowFeedback] = useState(false);
     const [feedback, setFeedback] = useState<Feedback | null>(null);
     const [isGeneratingFeedback, setIsGeneratingFeedback] = useState(false);
+    const { language } = useLanguage();
 
     const chatEndRef = useRef<HTMLDivElement>(null);
 
@@ -45,7 +47,7 @@ const FeynmanAssistant: React.FC<FeynmanAssistantProps> = ({ topic, notes }) => 
         setIsLoading(true);
 
         try {
-            const stream = await streamFeynmanChat(userMessage, topic, notes);
+            const stream = await streamFeynmanChat(userMessage, topic, notes, language);
             if (!stream) throw new Error('Failed to get stream');
 
             const reader = stream.getReader();

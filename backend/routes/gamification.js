@@ -6,7 +6,7 @@ const auth = require('../middleware/auth');
 // Get User Gamification Stats
 router.get('/stats', auth, async (req, res) => {
     try {
-        const user = await User.findById(req.user.id);
+        const user = await User.findById(req.user.id); // auth middleware uses id
         if (!user) {
             return res.status(404).json({ success: false, message: 'User not found' });
         }
@@ -28,7 +28,59 @@ router.get('/stats', auth, async (req, res) => {
     }
 });
 
-// Award XP (Internal or Admin protected normally, but for now open to auth users for interactions)
+// Update Streak Logic
+router.post('/update-streak', auth, async (req, res) => {
+    try {
+        const user = await User.findById(req.user.id);
+        if (!user) {
+            return res.status(404).json({ success: false, message: 'User not found' });
+        }
+
+        const now = new Date();
+        const lastActive = user.lastActive ? new Date(user.lastActive) : null;
+
+        if (!lastActive) {
+            user.streak = 1;
+            user.xp = (user.xp || 0) + 10; // First checkin bonus
+        } else {
+            const diffTime = now.getTime() - lastActive.getTime();
+            const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+            const isSameDay = now.toDateString() === lastActive.toDateString();
+            const isYesterday = new Date(now.getTime() - 86400000).toDateString() === lastActive.toDateString();
+
+            if (isSameDay) {
+                // Already updated today
+                return res.json({ success: true, streak: user.streak, message: 'Already updated today' });
+            } else if (isYesterday) {
+                // Streak continues
+                user.streak = (user.streak || 0) + 1;
+                user.xp = (user.xp || 0) + 50; // Streak bonus
+                user.coins = (user.coins || 0) + 5;
+            } else {
+                // Streak broken
+                user.streak = 1;
+                user.xp = (user.xp || 0) + 10;
+            }
+        }
+
+        user.lastActive = now;
+        await user.save();
+
+        res.json({
+            success: true,
+            streak: user.streak,
+            xpEarned: user.xp,
+            message: 'Streak updated successfully'
+        });
+
+    } catch (error) {
+        console.error('Error updating streak:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
+// Award XP
 router.post('/award-xp', auth, async (req, res) => {
     const { amount, reason } = req.body;
     try {
@@ -37,22 +89,13 @@ router.post('/award-xp', auth, async (req, res) => {
             return res.status(404).json({ success: false, message: 'User not found' });
         }
 
-        user.xp = (user.xp || 0) + amount;
-
-        // Simple level up logic: Level = 1 + floor(xp / 1000)
-        const newLevel = 1 + Math.floor(user.xp / 1000);
-        if (newLevel > user.level) {
-            user.level = newLevel;
-            // Maybe award a coin for leveling up?
-            user.coins = (user.coins || 0) + 10;
-        }
-
-        await user.save();
+        const result = await user.addXP(amount);
 
         res.json({
             success: true,
-            newXP: user.xp,
-            newLevel: user.level,
+            newXP: result.xp,
+            newLevel: result.level,
+            leveledUp: result.leveledUp,
             message: `Awarded ${amount} XP for ${reason}`
         });
 
@@ -62,4 +105,6 @@ router.post('/award-xp', auth, async (req, res) => {
     }
 });
 
+
 module.exports = router;
+

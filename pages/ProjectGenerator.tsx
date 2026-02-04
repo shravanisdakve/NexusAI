@@ -3,6 +3,7 @@ import { PageHeader, Button, Input, Select } from '../components/ui';
 import { Lightbulb, Sparkles, Code, ArrowRight } from 'lucide-react';
 import { generateProjectIdeas } from '../services/geminiService';
 import { useAuth } from '../contexts/AuthContext';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface ProjectIdea {
     title: string;
@@ -12,6 +13,7 @@ interface ProjectIdea {
 
 const ProjectGenerator: React.FC = () => {
     const { user } = useAuth();
+    const { language } = useLanguage();
     const [interest, setInterest] = useState('');
     const [difficulty, setDifficulty] = useState('Intermediate');
     const [branch, setBranch] = useState(user?.branch || '');
@@ -22,7 +24,7 @@ const ProjectGenerator: React.FC = () => {
         e.preventDefault();
         setLoading(true);
         try {
-            const result = await generateProjectIdeas(branch, interest, difficulty);
+            const result = await generateProjectIdeas(branch, interest, difficulty, language);
             // Result is expected to be a JSON string, parse it
             const parsedIdeas = JSON.parse(result);
             setIdeas(parsedIdeas);

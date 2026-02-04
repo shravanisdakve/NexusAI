@@ -282,6 +282,71 @@ function getProviderForFeature(feature) {
 }
 
 /**
+ * Generate text using Gemini API
+ */
+async function generateWithGemini(prompt, options = {}) {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+        throw new Error('Gemini API key not configured. Check GEMINI_API_KEY.');
+    }
+
+    const { GoogleGenerativeAI } = require('@google/generative-ai');
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const modelName = options.model || (options.fast ? 'gemini-1.5-flash' : 'gemini-1.5-pro');
+
+    const config = {
+        model: modelName,
+        generationConfig: {
+            temperature: options.temperature || 0.7,
+            maxOutputTokens: options.maxTokens || 2048,
+            responseMimeType: options.json ? "application/json" : "text/plain"
+        }
+    };
+
+    if (options.systemInstruction) {
+        config.systemInstruction = options.systemInstruction;
+    }
+
+    const model = genAI.getGenerativeModel(config);
+    const result = await model.generateContent(prompt);
+    return result.response.text();
+}
+
+/**
+ * Stream text using Gemini API
+ */
+async function* streamWithGemini(prompt, options = {}) {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+        throw new Error('Gemini API key not configured.');
+    }
+
+    const { GoogleGenerativeAI } = require('@google/generative-ai');
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const modelName = options.model || (options.fast ? 'gemini-1.5-flash' : 'gemini-1.5-pro');
+
+    const config = {
+        model: modelName,
+        generationConfig: {
+            temperature: options.temperature || 0.7,
+            maxOutputTokens: options.maxTokens || 2048
+        }
+    };
+
+    if (options.systemInstruction) {
+        config.systemInstruction = options.systemInstruction;
+    }
+
+    const model = genAI.getGenerativeModel(config);
+    const result = await model.generateContentStream(prompt);
+
+    for await (const chunk of result.stream) {
+        const text = chunk.text();
+        if (text) yield text;
+    }
+}
+
+/**
  * Main unified generation function
  */
 async function generate(prompt, options = {}) {
@@ -289,20 +354,32 @@ async function generate(prompt, options = {}) {
 
     console.log(`[AIProvider] Using ${provider} for feature: ${options.feature || 'default'}`);
 
-    switch (provider) {
-        case PROVIDERS.GROQ:
-            return generateWithGroq(prompt, options);
-        case PROVIDERS.OPENROUTER:
-        case PROVIDERS.MISTRAL: // Route via OpenRouter
-        case PROVIDERS.TOGETHER: // Route via OpenRouter
-            const modelConfig = MODEL_CONFIG[provider];
-            // Only set options.model if not manually overridden by the caller
-            if (!options.model && modelConfig) {
-                options.model = options.json ? modelConfig.json : (options.fast ? modelConfig.fast : modelConfig.default);
-            }
-            return generateWithOpenRouter(prompt, options);
-        default:
-            throw new Error(`Provider ${provider} requires Gemini fallback. Configure GROQ_API_KEY or OPENROUTER_API_KEY.`);
+    try {
+        switch (provider) {
+            case PROVIDERS.GROQ:
+                return await generateWithGroq(prompt, options);
+            case PROVIDERS.OPENROUTER:
+            case PROVIDERS.MISTRAL:
+            case PROVIDERS.TOGETHER:
+                const modelConfig = MODEL_CONFIG[provider];
+                if (!options.model && modelConfig) {
+                    options.model = options.json ? modelConfig.json : (options.fast ? modelConfig.fast : modelConfig.default);
+                }
+                return await generateWithOpenRouter(prompt, options);
+            case PROVIDERS.GEMINI:
+                return await generateWithGemini(prompt, options);
+            default:
+                throw new Error(`Provider ${provider} not supported.`);
+        }
+    } catch (error) {
+        console.error(`[AIProvider] Error with ${provider}:`, error.message);
+
+        // Fallback to Gemini if not already using it
+        if (provider !== PROVIDERS.GEMINI && process.env.GEMINI_API_KEY) {
+            console.log(`[AIProvider] Falling back to Gemini...`);
+            return await generateWithGemini(prompt, options);
+        }
+        throw error;
     }
 }
 
@@ -314,21 +391,35 @@ async function* stream(prompt, options = {}) {
 
     console.log(`[AIProvider] Streaming with ${provider} for feature: ${options.feature || 'default'}`);
 
-    switch (provider) {
-        case PROVIDERS.GROQ:
-            yield* streamWithGroq(prompt, options);
-            break;
-        case PROVIDERS.OPENROUTER:
-        case PROVIDERS.MISTRAL:
-        case PROVIDERS.TOGETHER:
-            const modelConfig = MODEL_CONFIG[provider];
-            if (!options.model && modelConfig) {
-                options.model = options.json ? modelConfig.json : (options.fast ? modelConfig.fast : modelConfig.default);
-            }
-            yield* streamWithOpenRouter(prompt, options);
-            break;
-        default:
-            throw new Error(`Streaming with ${provider} requires Gemini fallback. Configure GROQ_API_KEY or OPENROUTER_API_KEY.`);
+    try {
+        switch (provider) {
+            case PROVIDERS.GROQ:
+                yield* streamWithGroq(prompt, options);
+                break;
+            case PROVIDERS.OPENROUTER:
+            case PROVIDERS.MISTRAL:
+            case PROVIDERS.TOGETHER:
+                const modelConfig = MODEL_CONFIG[provider];
+                if (!options.model && modelConfig) {
+                    options.model = options.json ? modelConfig.json : (options.fast ? modelConfig.fast : modelConfig.default);
+                }
+                yield* streamWithOpenRouter(prompt, options);
+                break;
+            case PROVIDERS.GEMINI:
+                yield* streamWithGemini(prompt, options);
+                break;
+            default:
+                throw new Error(`Streaming with ${provider} not supported.`);
+        }
+    } catch (error) {
+        console.error(`[AIProvider] Stream error with ${provider}:`, error.message);
+        // We can't easily fallback mid-stream, but we can try starting a new stream
+        if (provider !== PROVIDERS.GEMINI && process.env.GEMINI_API_KEY) {
+            console.log(`[AIProvider] Falling back to Gemini for stream...`);
+            yield* streamWithGemini(prompt, options);
+        } else {
+            throw error;
+        }
     }
 }
 

@@ -3,8 +3,8 @@ import { GeminiRequest, GeminiResponse } from '../types';
 const API_URL = import.meta.env.VITE_API_BASE_URL || '';
 
 // --- AI TUTOR SERVICE ---
-export const streamChat = async (message: string, base64Data?: string, mimeType?: string): Promise<ReadableStream<Uint8Array> | null> => {
-    const requestBody: GeminiRequest = { message, base64Data, mimeType };
+export const streamChat = async (message: string, base64Data?: string, mimeType?: string, language?: string): Promise<ReadableStream<Uint8Array> | null> => {
+    const requestBody: GeminiRequest = { message, base64Data, mimeType, language };
     const response = await fetch(`${API_URL}/api/gemini/streamChat`, {
         method: 'POST',
         headers: {
@@ -24,8 +24,8 @@ export const streamChat = async (message: string, base64Data?: string, mimeType?
 
 
 // --- STUDY BUDDY (NOTES-BASED) SERVICE ---
-export const streamStudyBuddyChat = async (message: string, notes: string): Promise<ReadableStream<Uint8Array> | null> => {
-    const requestBody: GeminiRequest = { message, notes };
+export const streamStudyBuddyChat = async (message: string, notes: string, language?: string): Promise<ReadableStream<Uint8Array> | null> => {
+    const requestBody: GeminiRequest = { message, notes, language };
     const response = await fetch(`${API_URL}/api/gemini/streamStudyBuddyChat`, {
         method: 'POST',
         headers: {
@@ -165,8 +165,8 @@ export const extractTextFromFile = async (base64Data: string, mimeType: string):
 };
 
 // --- QUIZ GENERATION SERVICE ---
-export const generateQuizQuestion = async (context: string): Promise<string> => {
-    const requestBody: GeminiRequest = { context };
+export const generateQuizQuestion = async (context: string, language?: string): Promise<string> => {
+    const requestBody: GeminiRequest = { context, language };
     const response = await fetch(`${API_URL}/api/gemini/generateQuizQuestion`, {
         method: 'POST',
         headers: {
@@ -188,8 +188,8 @@ export const generateQuizQuestion = async (context: string): Promise<string> => 
     return data.question;
 };
 
-export const generateQuizSet = async (context: string, count: number = 5): Promise<string> => {
-    const requestBody: GeminiRequest = { context, count };
+export const generateQuizSet = async (context: string, count: number = 5, language?: string): Promise<string> => {
+    const requestBody: GeminiRequest = { context, count, language };
     const response = await fetch(`${API_URL}/api/gemini/generateQuizSet`, {
         method: 'POST',
         headers: {
@@ -236,8 +236,8 @@ export const getStudySuggestions = async (reportJson: string): Promise<string> =
 };
 
 // --- FLASHCARD GENERATION SERVICE ---
-export const generateFlashcards = async (context: string): Promise<string> => {
-    const requestBody: GeminiRequest = { context };
+export const generateFlashcards = async (context: string, language?: string): Promise<string> => {
+    const requestBody: GeminiRequest = { context, language };
     const response = await fetch(`${API_URL}/api/gemini/generateFlashcards`, {
         method: 'POST',
         headers: {
@@ -311,8 +311,8 @@ export const breakDownGoal = async (goalTitle: string): Promise<string> => {
 };
 
 // --- PROJECT IDEA GENERATOR SERVICE ---
-export const generateProjectIdeas = async (branch: string, interest: string, difficulty: string): Promise<string> => {
-    const requestBody: GeminiRequest = { branch, interest, difficulty };
+export const generateProjectIdeas = async (branch: string, interest: string, difficulty: string, language?: string): Promise<string> => {
+    const requestBody: GeminiRequest = { branch, interest, difficulty, language };
     // Enhanced prompt handled in backend, passing context in request potentially?
     // Actually, let's update the backend prompt in gemini.js instead as that's where the prompt is constructed.
     // But for this service, we just pass the params.
@@ -341,8 +341,8 @@ export const generateProjectIdeas = async (branch: string, interest: string, dif
 };
 
 // --- MOCK PAPER GENERATOR SERVICE ---
-export const generateMockPaper = async (branch: string, subject: string, year: string): Promise<any> => {
-    const requestBody: GeminiRequest = { branch, subject, year };
+export const generateMockPaper = async (branch: string, subject: string, year: string, language?: string): Promise<any> => {
+    const requestBody: GeminiRequest = { branch, subject, year, language };
     const response = await fetch(`${API_URL}/api/gemini/generateMockPaper`, {
         method: 'POST',
         headers: {
@@ -365,8 +365,8 @@ export const generateMockPaper = async (branch: string, subject: string, year: s
 };
 
 // --- VIVA SIMULATOR SERVICE ---
-export const streamVivaChat = async (message: string, subject: string, branch: string, persona: string): Promise<ReadableStream<Uint8Array> | null> => {
-    const requestBody: GeminiRequest = { message, subject, branch, persona };
+export const streamVivaChat = async (message: string, subject: string, branch: string, persona: string, language?: string): Promise<ReadableStream<Uint8Array> | null> => {
+    const requestBody: GeminiRequest = { message, subject, branch, persona, language };
     const response = await fetch(`${API_URL}/api/gemini/streamVivaChat`, {
         method: 'POST',
         headers: {
@@ -385,14 +385,14 @@ export const streamVivaChat = async (message: string, subject: string, branch: s
 };
 
 // --- STUDY PLAN GENERATION SERVICE ---
-export const generateStudyPlan = async (goal: string, durationDays: number, notesContext: string): Promise<string> => {
+export const generateStudyPlan = async (goal: string, durationDays: number, notesContext: string, language?: string): Promise<string> => {
     const response = await fetch(`${API_URL}/api/study-plan/generate`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
-        body: JSON.stringify({ goal, durationDays, notesContext }),
+        body: JSON.stringify({ goal, durationDays, notesContext, language }),
     });
 
     if (!response.ok) {
@@ -403,8 +403,8 @@ export const generateStudyPlan = async (goal: string, durationDays: number, note
     return data.planJson;
 };
 // --- FEYNMAN TECHNIQUE SERVICE ---
-export const streamFeynmanChat = async (message: string, topic: string, notes: string): Promise<ReadableStream<Uint8Array> | null> => {
-    const requestBody: GeminiRequest = { message, notes, topic };
+export const streamFeynmanChat = async (message: string, topic: string, notes: string, language?: string): Promise<ReadableStream<Uint8Array> | null> => {
+    const requestBody: GeminiRequest = { message, notes, topic, language };
     const response = await fetch(`${API_URL}/api/gemini/streamFeynmanChat`, {
         method: 'POST',
         headers: {
@@ -422,14 +422,14 @@ export const streamFeynmanChat = async (message: string, topic: string, notes: s
     return response.body;
 };
 
-export const getFeynmanFeedback = async (topic: string, explanation: string, notes: string): Promise<any> => {
+export const getFeynmanFeedback = async (topic: string, explanation: string, notes: string, language?: string): Promise<any> => {
     const response = await fetch(`${API_URL}/api/gemini/getFeynmanFeedback`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
-        body: JSON.stringify({ topic, explanation, notes }),
+        body: JSON.stringify({ topic, explanation, notes, language }),
     });
 
     if (!response.ok) {

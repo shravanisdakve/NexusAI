@@ -7,6 +7,7 @@ import { streamChat, generateQuizQuestion } from '../services/geminiService';
 import { trackToolUsage } from '../services/personalizationService';
 import { startSession, endSession, recordQuizResult, getProductivityReport } from '../services/analyticsService';
 import { createChatSession, addMessageToSession } from '../services/aiChatService'; // Added import
+import { useLanguage } from '../contexts/LanguageContext';
 import { Bot, User, Send, Mic, Volume2, VolumeX, Lightbulb, Sparkles, Calendar, Image as ImageIcon, X, Paperclip } from 'lucide-react';
 
 interface Quiz {
@@ -68,6 +69,7 @@ const AiTutor: React.FC = () => {
     });
 
     const [sessionId, setSessionId] = useState<string | null>(null);
+    const { language } = useLanguage();
     const [selectedImage, setSelectedImage] = useState<{ base64: string, type: string, name: string } | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -184,6 +186,9 @@ const AiTutor: React.FC = () => {
         } catch (error) {
             console.error("Failed to save auto-speak setting to localStorage", error);
         }
+        if (!isAutoSpeaking) {
+            speechSynthesis.cancel();
+        }
     }, [isAutoSpeaking]);
 
     const handleSpeak = (text: string) => {
@@ -250,7 +255,8 @@ const AiTutor: React.FC = () => {
             const stream = await streamChat(
                 contextPrompt,
                 imgData?.base64.split(',')[1], // Just the base64 part
-                imgData?.type
+                imgData?.type,
+                language
             );
 
             if (!stream) throw new Error("Failed to start stream");
@@ -553,7 +559,10 @@ const AiTutor: React.FC = () => {
                             <Mic className="w-5 h-5" />
                         </Button>
                         <Button
-                            onClick={() => setIsAutoSpeaking(prev => !prev)}
+                            onClick={() => {
+                                speechSynthesis.cancel();
+                                setIsAutoSpeaking(prev => !prev);
+                            }}
                             className={`px-4 py-3 ${isAutoSpeaking ? 'bg-violet-600 hover:bg-violet-700' : 'bg-slate-700 hover:bg-slate-600'}`}
                             aria-label={isAutoSpeaking ? 'Disable automatic speaking' : 'Enable automatic speaking'}
                         >

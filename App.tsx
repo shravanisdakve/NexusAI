@@ -27,8 +27,7 @@ import ProjectGenerator from './pages/ProjectGenerator';
 import MockPaperGenerator from './pages/MockPaperGenerator';
 import ATKTCalculator from './pages/ATKTCalculator';
 import CurriculumExplorer from './pages/CurriculumExplorer';
-import EngineeringLab from './pages/EngineeringLab';
-import MathLab from './pages/MathLab';
+
 import PlacementArena from './pages/PlacementArena';
 import TCSNQTSimulator from './pages/TCSNQTSimulator';
 import UniversityStatus from './pages/UniversityStatus';
@@ -78,8 +77,7 @@ const App: React.FC = () => {
         <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
         <Route path="/resources" element={<ProtectedRoute><ResourceLibrary /></ProtectedRoute>} />
         <Route path="/curriculum" element={<ProtectedRoute><CurriculumExplorer /></ProtectedRoute>} />
-        <Route path="/engineering-lab" element={<ProtectedRoute><EngineeringLab /></ProtectedRoute>} />
-        <Route path="/math-lab" element={<ProtectedRoute><MathLab /></ProtectedRoute>} />
+
         <Route path="/placement" element={<ProtectedRoute><PlacementArena /></ProtectedRoute>} />
         <Route path="/placement/tcs-nqt" element={<ProtectedRoute><TCSNQTSimulator /></ProtectedRoute>} />
         <Route path="/university-status" element={<ProtectedRoute><UniversityStatus /></ProtectedRoute>} />

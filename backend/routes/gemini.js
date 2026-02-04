@@ -17,8 +17,16 @@ const getModel = (modelName = 'gemini-2.0-flash', systemInstruction = null) => {
 // --- AI TUTOR SERVICE ---
 router.post('/streamChat', async (req, res) => {
     try {
-        const { message } = req.body;
-        const model = getModel('gemini-2.0-flash', 'You are an expert AI Tutor. Your goal is to help users understand complex topics by providing clear explanations, step-by-step examples, and asking probing questions to test their knowledge. Be patient, encouraging, and adapt your teaching style to the user\'s needs.');
+        const { message, language } = req.body;
+        let systemInstruction = 'You are an expert AI Tutor. Your goal is to help users understand complex topics by providing clear explanations, step-by-step examples, and asking probing questions to test their knowledge. Be patient, encouraging, and adapt your teaching style to the user\'s needs.';
+
+        if (language === 'mr') {
+            systemInstruction += ' IMPORTANT: Respond ONLY in MARATHI (मराठी).';
+        } else if (language === 'hi') {
+            systemInstruction += ' IMPORTANT: Respond ONLY in HINDI (हिंदी).';
+        }
+
+        const model = getModel('gemini-2.0-flash', systemInstruction);
 
         const chat = model.startChat({
             history: [],
@@ -47,8 +55,8 @@ router.post('/streamChat', async (req, res) => {
 // --- STUDY BUDDY (NOTES-BASED) SERVICE ---
 router.post('/streamStudyBuddyChat', async (req, res) => {
     try {
-        const { message, notes } = req.body;
-        const systemInstruction = `You are an expert AI Study Buddy. The user has provided the following notes to study from:
+        const { message, notes, language } = req.body;
+        let systemInstruction = `You are an expert AI Study Buddy. The user has provided the following notes to study from:
 ---
 ${notes || 'No notes provided yet.'}
 ---
@@ -56,6 +64,12 @@ Your knowledge is strictly limited to the text provided above. You CANNOT use an
 1. First, determine if the user's question can be answered using ONLY the provided notes.
 2. If the answer is in the notes, provide a comprehensive answer based exclusively on that text.
 3. If the answer is NOT in the notes, you MUST begin your response with the exact phrase: "Based on the provided notes, I can't find information on that topic." After this phrase, you may optionally and briefly mention what the notes DO cover. Do not try to answer the original question.`;
+
+        if (language === 'mr') {
+            systemInstruction += ' IMPORTANT: Respond ONLY in MARATHI (मराठी).';
+        } else if (language === 'hi') {
+            systemInstruction += ' IMPORTANT: Respond ONLY in HINDI (हिंदी).';
+        }
 
         const model = getModel('gemini-2.0-flash', systemInstruction);
         const chat = model.startChat();
@@ -100,9 +114,15 @@ router.post('/generateImage', async (req, res) => {
 // --- NOTE SUMMARIZATION SERVICE ---
 router.post('/summarizeText', async (req, res) => {
     try {
-        const { text } = req.body;
+        const { text, language } = req.body;
         const model = getModel('gemini-2.0-flash');
-        const prompt = `Summarize the following academic text or notes. Focus on extracting the key concepts, definitions, and main arguments. Present the summary in a clear, structured format, using bullet points or numbered lists where appropriate. Text: "${text}"`;
+        let prompt = `Summarize the following academic text or notes. Focus on extracting the key concepts, definitions, and main arguments. Present the summary in a clear, structured format, using bullet points or numbered lists where appropriate. Text: "${text}"`;
+
+        if (language === 'mr') {
+            prompt += ' IMPORTANT: Return the entire summary ONLY in MARATHI (मराठी).';
+        } else if (language === 'hi') {
+            prompt += ' IMPORTANT: Return the entire summary ONLY in HINDI (हिंदी).';
+        }
 
         const result = await model.generateContent(prompt);
         res.json({ summary: result.response.text() });
@@ -199,14 +219,22 @@ router.post('/extractTextFromFile', async (req, res) => {
 // --- QUIZ GENERATION SERVICE ---
 router.post('/generateQuizQuestion', async (req, res) => {
     try {
-        const { context } = req.body;
+        const { context, language } = req.body;
         const model = genAI.getGenerativeModel({
             model: "gemini-2.0-flash",
             generationConfig: { responseMimeType: "application/json" }
         });
 
-        const prompt = `Based on the following context, generate a single multiple-choice quiz question to test understanding. The question should focus on a key concept from the text. 
-        RETURN ONLY RAW JSON. Do not wrap in markdown or code blocks.
+        let prompt = `Based on the following context, generate a single multiple-choice quiz question to test understanding. The question should focus on a key concept from the text. 
+        RETURN ONLY RAW JSON. Do not wrap in markdown or code blocks.`;
+
+        if (language === 'mr') {
+            prompt += ' IMPORTANT: All textual fields in the JSON (topic, question, options) MUST be in MARATHI (मराठी).';
+        } else if (language === 'hi') {
+            prompt += ' IMPORTANT: All textual fields in the JSON (topic, question, options) MUST be in HINDI (हिंदी).';
+        }
+
+        prompt += `
         
         Context: "${context.substring(0, 4000)}"
         
@@ -229,15 +257,23 @@ router.post('/generateQuizQuestion', async (req, res) => {
 
 router.post('/generateQuizSet', async (req, res) => {
     try {
-        const { context, count = 5 } = req.body;
+        const { context, count = 5, language } = req.body;
         const model = genAI.getGenerativeModel({
             model: "gemini-2.0-flash",
             generationConfig: { responseMimeType: "application/json" }
         });
 
-        const prompt = `Based on the provided notes/context, generate a set of ${count} multiple-choice quiz questions.
+        let prompt = `Based on the provided notes/context, generate a set of ${count} multiple-choice quiz questions.
         Focus on testing key concepts, definitions, and applications.
-        RETURN ONLY RAW JSON. Do not wrap in markdown or code blocks.
+        RETURN ONLY RAW JSON. Do not wrap in markdown or code blocks.`;
+
+        if (language === 'mr') {
+            prompt += ' IMPORTANT: All textual fields in the JSON (topic, question, options) MUST be in MARATHI (मराठी).';
+        } else if (language === 'hi') {
+            prompt += ' IMPORTANT: All textual fields in the JSON (topic, question, options) MUST be in HINDI (हिंदी).';
+        }
+
+        prompt += `
 
         Context: "${context.substring(0, 8000)}"
 
@@ -262,11 +298,19 @@ router.post('/generateQuizSet', async (req, res) => {
 // --- AI STUDY SUGGESTIONS SERVICE ---
 router.post('/getStudySuggestions', async (req, res) => {
     try {
-        const { reportJson } = req.body;
+        const { reportJson, language } = req.body;
         const model = getModel('gemini-2.0-flash');
-        const prompt = `You are an expert academic advisor for engineering students (specifically Mumbai University context). 
+        let prompt = `You are an expert academic advisor for engineering students (specifically Mumbai University context). 
         Based on the following JSON data of a student's weekly performance, provide 3-4 specific, actionable suggestions.
-        Considering Mumbai University's pattern, emphasize the importance of consistent practice and concept clarity.
+        Considering Mumbai University's pattern, emphasize the importance of consistent practice and concept clarity.`;
+
+        if (language === 'mr') {
+            prompt += ' IMPORTANT: Return your suggestions ONLY in MARATHI (मराठी).';
+        } else if (language === 'hi') {
+            prompt += ' IMPORTANT: Return your suggestions ONLY in HINDI (हिंदी).';
+        }
+
+        prompt += `
         
         Student Performance Data:
         ${reportJson}
@@ -284,14 +328,22 @@ router.post('/getStudySuggestions', async (req, res) => {
 // --- FLASHCARD GENERATION SERVICE ---
 router.post('/generateFlashcards', async (req, res) => {
     try {
-        const { context } = req.body;
+        const { context, language } = req.body;
         const model = genAI.getGenerativeModel({
             model: "gemini-2.0-flash",
             generationConfig: { responseMimeType: "application/json" }
         });
 
-        const prompt = `Based on the following context, generate a list of flashcards. Each flashcard should have a 'front' (a question or term) and a 'back' (the answer or definition).
-        RETURN ONLY RAW JSON. Do not wrap in markdown or code blocks.
+        let prompt = `Based on the following context, generate a list of flashcards. Each flashcard should have a 'front' (a question or term) and a 'back' (the answer or definition).
+        RETURN ONLY RAW JSON. Do not wrap in markdown or code blocks.`;
+
+        if (language === 'mr') {
+            prompt += ' IMPORTANT: All textual fields in the JSON (front, back) MUST be in MARATHI (मराठी).';
+        } else if (language === 'hi') {
+            prompt += ' IMPORTANT: All textual fields in the JSON (front, back) MUST be in HINDI (हिंदी).';
+        }
+
+        prompt += `
         
         Context: "${context.substring(0, 4000)}"
         
@@ -333,15 +385,23 @@ router.post('/getSuggestionForMood', async (req, res) => {
 // --- GOAL BREAKDOWN SERVICE ---
 router.post('/breakDownGoal', async (req, res) => {
     try {
-        const { goalTitle } = req.body;
+        const { goalTitle, language } = req.body;
         const model = genAI.getGenerativeModel({
             model: "gemini-2.0-flash",
             generationConfig: { responseMimeType: "application/json" }
         });
 
-        const prompt = `A user has set the following academic goal: "${goalTitle}".
+        let prompt = `A user has set the following academic goal: "${goalTitle}".
         Break this high-level goal down into a short list of 3-5 small, actionable sub-tasks.
-        Return ONLY a JSON array of strings.
+        Return ONLY a JSON array of strings.`;
+
+        if (language === 'mr') {
+            prompt += ' IMPORTANT: All sub-tasks in the array MUST be in MARATHI (मराठी).';
+        } else if (language === 'hi') {
+            prompt += ' IMPORTANT: All sub-tasks in the array MUST be in HINDI (हिंदी).';
+        }
+
+        prompt += `
         Example: ["Understand JSX syntax", "Learn about components and props"]`;
 
         const result = await model.generateContent(prompt);
@@ -357,13 +417,13 @@ router.post('/breakDownGoal', async (req, res) => {
 // --- PROJECT IDEA GENERATOR SERVICE ---
 router.post('/generateProjectIdeas', async (req, res) => {
     try {
-        const { branch, interest, difficulty } = req.body;
+        const { branch, interest, difficulty, language } = req.body;
         const model = genAI.getGenerativeModel({
             model: "gemini-2.0-flash",
             generationConfig: { responseMimeType: "application/json" }
         });
 
-        const prompt = `Generate 5 unique and innovative engineering project ideas.
+        let prompt = `Generate 5 unique and innovative engineering project ideas.
         Branch: ${branch}
         Area of Interest: ${interest}
         Difficulty Level: ${difficulty}
@@ -371,7 +431,15 @@ router.post('/generateProjectIdeas', async (req, res) => {
         Context: The student is likely from Mumbai University. innovative projects that solve local problems (Mumbai/India) or follow current industry trends are highly appreciated. 
         Ensure a mix of software, hardware (if applicable), and research-based ideas.
 
-        Return ONLY a JSON array of objects.
+        Return ONLY a JSON array of objects.`;
+
+        if (language === 'mr') {
+            prompt += ' IMPORTANT: All textual fields in the JSON (title, description, techStack) MUST be in MARATHI (मराठी).';
+        } else if (language === 'hi') {
+            prompt += ' IMPORTANT: All textual fields in the JSON (title, description, techStack) MUST be in HINDI (हिंदी).';
+        }
+
+        prompt += `
         Schema:
         [
             { "title": "string", "description": "string", "techStack": ["string", "string"] }
@@ -390,13 +458,13 @@ router.post('/generateProjectIdeas', async (req, res) => {
 // --- MOCK PAPER GENERATOR SERVICE ---
 router.post('/generateMockPaper', async (req, res) => {
     try {
-        const { branch, subject, year } = req.body;
+        const { branch, subject, year, language } = req.body;
         const model = genAI.getGenerativeModel({
             model: "gemini-2.0-flash",
             generationConfig: { responseMimeType: "application/json" }
         });
 
-        const prompt = `Generate a comprehensive engineering exam mock question paper for Mumbai University.
+        let prompt = `Generate a comprehensive engineering exam mock question paper for Mumbai University.
         Branch: ${branch}
         Subject: ${subject}
         Year: ${year}
@@ -410,7 +478,15 @@ router.post('/generateMockPaper', async (req, res) => {
         - DIFFICULTY MIX: 20% Easy, 50% Moderate, 30% Hard.
         - STEP MARKING: Ensure question phrasing allows for step-wise evaluation.
 
-        Return ONLY a JSON object matching this exact schema:
+        Return ONLY a JSON object matching this exact schema:`;
+
+        if (language === 'mr') {
+            prompt += ' IMPORTANT: All human-readable textual fields in the JSON (subject, instructions, question titles, subQuestion text) MUST be in MARATHI (मराठी).';
+        } else if (language === 'hi') {
+            prompt += ' IMPORTANT: All human-readable textual fields in the JSON (subject, instructions, question titles, subQuestion text) MUST be in HINDI (हिंदी).';
+        }
+
+        prompt += `
         {
             "subject": "${subject}",
             "time": "3 Hours",
@@ -457,9 +533,9 @@ router.post('/generateMockPaper', async (req, res) => {
 // --- VIVA SIMULATOR SERVICE ---
 router.post('/streamVivaChat', async (req, res) => {
     try {
-        const { message, subject, branch, persona = 'Standard' } = req.body;
+        const { message, subject, branch, persona = 'Standard', language } = req.body;
 
-        const systemInstruction = `You are an External Examiner for the Mumbai University (MU) Engineering Viva Voce. 
+        let systemInstruction = `You are an External Examiner for the Mumbai University (MU) Engineering Viva Voce. 
         Subject: ${subject}
         Branch: ${branch}
         Current Mode: ${persona}
@@ -479,6 +555,12 @@ router.post('/streamVivaChat', async (req, res) => {
         Fail State: If the student fails 3 consecutive questions, politely end the viva and suggest specific modules to revise.
 
         The goal is to test their conceptual depth according to the chosen mode.`;
+
+        if (language === 'mr') {
+            systemInstruction += ' IMPORTANT: Respond ONLY in MARATHI (मराठी).';
+        } else if (language === 'hi') {
+            systemInstruction += ' IMPORTANT: Respond ONLY in HINDI (हिंदी).';
+        }
 
         const model = getModel('gemini-2.0-flash', systemInstruction);
         const chat = model.startChat();
@@ -503,9 +585,9 @@ router.post('/streamVivaChat', async (req, res) => {
 // --- FEYNMAN TECHNIQUE SERVICE ---
 router.post('/streamFeynmanChat', async (req, res) => {
     try {
-        const { message, topic, notes } = req.body;
+        const { message, topic, notes, language } = req.body;
 
-        const systemInstruction = `You are a curious, non-expert student (a 10-year-old named "Nino") who wants to learn about "${topic}".
+        let systemInstruction = `You are a curious, non-expert student (a 10-year-old named "Nino") who wants to learn about "${topic}".
         The user is trying to teach you this concept using the Feynman Technique.
         
         Your Goal:
@@ -525,6 +607,12 @@ router.post('/streamFeynmanChat', async (req, res) => {
         - If the user is being too formal, ask for a real-world example from Mumbai/India context.
         
         Wait for the user to start teaching you.`;
+
+        if (language === 'mr') {
+            systemInstruction += ' IMPORTANT: Respond ONLY in MARATHI (मराठी).';
+        } else if (language === 'hi') {
+            systemInstruction += ' IMPORTANT: Respond ONLY in HINDI (हिंदी).';
+        }
 
         const model = getModel('gemini-2.0-flash', systemInstruction);
         const chat = model.startChat();
@@ -548,13 +636,13 @@ router.post('/streamFeynmanChat', async (req, res) => {
 
 router.post('/getFeynmanFeedback', async (req, res) => {
     try {
-        const { topic, explanation, notes } = req.body;
+        const { topic, explanation, notes, language } = req.body;
         const model = genAI.getGenerativeModel({
             model: "gemini-2.0-flash",
             generationConfig: { responseMimeType: "application/json" }
         });
 
-        const prompt = `You are an expert pedagogy analyzer. Evaluate the user's explanation of "${topic}" using the Feynman Technique principles.
+        let prompt = `You are an expert pedagogy analyzer. Evaluate the user's explanation of "${topic}" using the Feynman Technique principles.
         
         Context (Reference Notes):
         ${notes}
@@ -562,7 +650,15 @@ router.post('/getFeynmanFeedback', async (req, res) => {
         User's Explanation:
         "${explanation}"
         
-        Analyze the following and return ONLY a JSON object:
+        Analyze the following and return ONLY a JSON object:`;
+
+        if (language === 'mr') {
+            prompt += ' IMPORTANT: All textual fields in the JSON (verdict, improvement, gaps, analogySuggestions) MUST be in MARATHI (मराठी).';
+        } else if (language === 'hi') {
+            prompt += ' IMPORTANT: All textual fields in the JSON (verdict, improvement, gaps, analogySuggestions) MUST be in HINDI (हिंदी).';
+        }
+
+        prompt += `
         1. Clarity Score (1-10)
         2. Jargon Detected (List of complex words used without explanation)
         3. Knowledge Gaps (What key parts of the concept were missed or explained incorrectly?)

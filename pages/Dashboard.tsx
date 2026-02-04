@@ -18,7 +18,7 @@ import {
     Pin, X, Plus, ChevronDown, GraduationCap, Binary, Briefcase
 } from 'lucide-react';
 import { XPBar, StreakCounter, BadgeSmall } from '@/components/gamification/XPComponents';
-import { getUserStats, UserStats } from '@/services/gamificationService';
+import { getUserStats, updateStreak, UserStats } from '@/services/gamificationService';
 
 const formatSeconds = (seconds: number) => {
     if (seconds < 60) return `${seconds}s`;
@@ -287,7 +287,7 @@ const tools = [
     { key: 'gpa', name: 'GPA Calculator', href: '/gpa-calculator', description: 'Calculate your SGPA/CGPA easily.', icon: Calculator, color: 'text-violet-400', bgColor: 'bg-violet-900/50' },
     { key: 'project', name: 'Project Ideas', href: '/project-generator', description: 'Get AI-powered project ideas.', icon: Lightbulb, color: 'text-amber-400', bgColor: 'bg-amber-900/50' },
     { key: 'curriculum', name: 'MU Curriculum', href: '/curriculum', description: 'Interactive syllabus twin.', icon: GraduationCap, color: 'text-blue-400', bgColor: 'bg-blue-900/50' },
-    { key: 'math-lab', name: 'MU Math Lab', href: '/math-lab', description: 'Symbolic math & 3D graphing.', icon: Binary, color: 'text-indigo-400', bgColor: 'bg-indigo-900/50' },
+
     { key: 'placement', name: 'Placement Arena', href: '/placement', description: 'TCS/Capgemini simulators.', icon: Briefcase, color: 'text-amber-400', bgColor: 'bg-amber-900/50' },
     { key: 'kt', name: 'ATKT Navigator', href: '/kt-calculator', description: 'Ordinance & grace calculator.', icon: Shield, color: 'text-rose-400', bgColor: 'bg-rose-900/50' },
     { key: 'paper', name: 'Mock Papers', href: '/mock-paper', description: 'Real MU exam pattern mocks.', icon: FileText, color: 'text-sky-400', bgColor: 'bg-sky-900/50' },
@@ -345,11 +345,16 @@ const Dashboard: React.FC = () => {
     const dropdownRef = React.useRef<HTMLDivElement>(null);
 
     useEffect(() => {
-        const fetchStats = async () => {
-            const data = await getUserStats();
-            if (data.success) setStats(data.stats);
+        const refreshStats = async () => {
+            try {
+                await updateStreak();
+                const data = await getUserStats();
+                if (data.success) setStats(data.stats);
+            } catch (error) {
+                console.error("Error refreshing stats:", error);
+            }
         };
-        fetchStats();
+        refreshStats();
     }, []);
 
     useEffect(() => {
@@ -443,7 +448,11 @@ const Dashboard: React.FC = () => {
 
             {stats && (
                 <div className="max-w-md mb-12">
-                    <XPBar xp={stats.xp} level={stats.level} nextLevelXP={2500} />
+                    <XPBar
+                        xp={stats.xp}
+                        level={stats.level}
+                        nextLevelXP={500 * stats.level * (stats.level + 1)}
+                    />
                 </div>
             )}
 

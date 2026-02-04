@@ -9,7 +9,10 @@ interface XPBarProps {
 }
 
 export const XPBar: React.FC<XPBarProps> = ({ xp, level, nextLevelXP }) => {
-    const progress = (xp / nextLevelXP) * 100;
+    const minXP = level === 1 ? 0 : 500 * level * (level - 1);
+    const range = nextLevelXP - minXP;
+    const currentProgress = xp - minXP;
+    const progress = Math.min(Math.max((currentProgress / range) * 100, 0), 100);
 
     return (
         <div className="w-full space-y-2">
@@ -33,6 +36,7 @@ export const XPBar: React.FC<XPBarProps> = ({ xp, level, nextLevelXP }) => {
         </div>
     );
 };
+
 
 export const StreakCounter: React.FC<{ streak: number }> = ({ streak }) => (
     <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-500">

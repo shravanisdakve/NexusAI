@@ -45,3 +45,20 @@ export const awardXP = async (amount: number, reason: string) => {
         return { success: false };
     }
 };
+
+export const updateStreak = async () => {
+    try {
+        const token = localStorage.getItem('token');
+        const config = {
+            headers: {
+                Authorization: `Bearer ${token}`
+            }
+        };
+        const response = await axios.post(`${API_URL}/update-streak`, {}, config);
+        return response.data;
+    } catch (error) {
+        console.error('Error updating streak:', error);
+        return { success: false };
+    }
+};
+
