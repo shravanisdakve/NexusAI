@@ -1,7 +1,7 @@
 import React from 'react';
 import { Button } from './ui';
 // --- FIX: Add UserPlus icon ---
-import { Mic, MicOff, Video, VideoOff, ScreenShare, ScreenShareOff, PhoneOff, Smile, Music, Share2, Clock, UserPlus } from 'lucide-react';
+import { Mic, MicOff, Video, VideoOff, ScreenShare, ScreenShareOff, PhoneOff, Smile, Music, Share2, Clock, UserPlus, Palette } from 'lucide-react';
 // --- END FIX ---
 
 
@@ -20,7 +20,9 @@ interface RoomControlsProps {
   roomId: string;
   formattedSessionTime: string;
   showMusicPlayer: boolean; // NEW: Prop to control MusicPlayer visibility
+  showWhiteboard: boolean; // NEW: Prop to control Whiteboard visibility
   children?: React.ReactNode; // NEW: To render the MusicPlayer as a child
+  onToggleWhiteboard: () => void; // NEW: Callback to toggle whiteboard
   // --- FIX: Added onAddTestUser prop ---
   onAddTestUser: () => void;
   // --- END FIX ---
@@ -44,6 +46,8 @@ const RoomControls: React.FC<RoomControlsProps> = ({
   formattedSessionTime,
   onAddTestUser, // Destructure the new prop
   showMusicPlayer, // Destructure new prop
+  showWhiteboard, // Destructure new prop
+  onToggleWhiteboard, // Destructure new prop
   children // Destructure new prop
 }) => {
   const [showReactions, setShowReactions] = React.useState(false);
@@ -99,6 +103,16 @@ const RoomControls: React.FC<RoomControlsProps> = ({
           aria-label={isScreenSharing ? 'Stop sharing screen' : 'Share screen'}
         >
           {isScreenSharing ? <ScreenShareOff size={20} /> : <ScreenShare size={20} />}
+        </Button>
+
+        {/* Whiteboard Toggle */}
+        <Button
+          onClick={onToggleWhiteboard}
+          className={`p-3 rounded-full ${showWhiteboard ? 'bg-violet-600 hover:bg-violet-700' : 'bg-slate-700 hover:bg-slate-600'}`}
+          aria-label="Toggle Whiteboard"
+          title="Toggle Shared Whiteboard"
+        >
+          <Palette size={20} />
         </Button>
 
         {/* Reactions Button */}

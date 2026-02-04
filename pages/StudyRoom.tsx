@@ -30,7 +30,7 @@ import { streamStudyBuddyChat, generateQuizQuestion, extractTextFromFile } from 
 import { startSession, endSession, recordQuizResult } from '../services/analyticsService';
 import { getStudyPlan, updateTaskCompletion } from '../services/studyPlanService';
 // --- REMOVED Clock import here ---
-import { Bot, User, Send, MessageSquare, Users, Brain, UploadCloud, Lightbulb, FileText, Paperclip, FolderOpen, AlertTriangle, Info, Palette, Briefcase } from 'lucide-react';
+import { Bot, User, Send, MessageSquare, Users, Brain, UploadCloud, Lightbulb, FileText, Paperclip, FolderOpen, AlertTriangle, Info, Palette, Briefcase, X } from 'lucide-react';
 import { Input, Button, Textarea, Spinner } from '../components/ui';
 import RoomControls from '../components/RoomControls'; //
 import VideoTile from '../components/VideoTile';
@@ -43,7 +43,7 @@ import StudyToolsPanel from '../components/StudyToolsPanel';
 // --- REMOVED PomodoroTimer (moved to ToolsPanel) ---
 
 // --- Helper Types & Constants ---
-type ActiveTab = 'chat' | 'participants' | 'ai' | 'notes' | 'whiteboard' | 'tools';
+type ActiveTab = 'chat' | 'participants' | 'ai' | 'notes' | 'tools';
 
 
 // --- System Email ---
@@ -88,6 +88,7 @@ const StudyRoom: React.FC = () => {
     const [isUploading, setIsUploading] = useState(false);
     const [reactions, setReactions] = useState<Reaction[]>([]);
     const [showMusicPlayer, setShowMusicPlayer] = useState(false);
+    const [showWhiteboard, setShowWhiteboard] = useState(false);
     const [showShareModal, setShowShareModal] = useState(false);
     const [allMessages, setAllMessages] = useState<ChatMessage[]>([]);
     const [chatInput, setChatInput] = useState('');
@@ -777,11 +778,30 @@ const StudyRoom: React.FC = () => {
                                 </button>
                             </div>
                         )}
-                        <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <VideoTile stream={localStream} displayName={currentUser?.displayName || 'You'} isMuted={isMuted} isLocal={true} isScreenSharing={isScreenSharing} />
-                            {participants.filter(p => p.email !== currentUser?.email).map(p => (
-                                <VideoTile key={p.email} displayName={p.displayName} isMuted={false} />
-                            ))}
+                        <div className="flex-1 min-h-0 relative">
+                            {showWhiteboard ? (
+                                <div className="absolute inset-0 flex flex-col bg-slate-800/50 rounded-2xl border border-white/5 overflow-hidden animate-in fade-in-50 zoom-in-95">
+                                    <div className="flex items-center justify-between p-3 bg-black/40 border-b border-white/5">
+                                        <div className="flex items-center gap-2">
+                                            <Palette size={16} className="text-violet-400" />
+                                            <span className="text-sm font-medium">Shared Whiteboard</span>
+                                        </div>
+                                        <button onClick={() => setShowWhiteboard(false)} className="text-slate-400 hover:text-white">
+                                            <X size={18} />
+                                        </button>
+                                    </div>
+                                    <div className="flex-1 relative">
+                                        <Whiteboard roomId={roomId || ''} />
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 h-full">
+                                    <VideoTile stream={localStream} displayName={currentUser?.displayName || 'You'} isMuted={isMuted} isLocal={true} isScreenSharing={isScreenSharing} />
+                                    {participants.filter(p => p.email !== currentUser?.email).map(p => (
+                                        <VideoTile key={p.email} displayName={p.displayName} isMuted={false} />
+                                    ))}
+                                </div>
+                            )}
                         </div>
 
                     </main>
@@ -794,7 +814,6 @@ const StudyRoom: React.FC = () => {
                             <TabButton id="chat" activeTab={activeTab} setActiveTab={setActiveTab} icon={MessageSquare} label="Chat" />
                             <TabButton id="ai" activeTab={activeTab} setActiveTab={setActiveTab} icon={Brain} label="AI" />
                             <TabButton id="notes" activeTab={activeTab} setActiveTab={setActiveTab} icon={FileText} label="Notes" />
-                            <TabButton id="whiteboard" activeTab={activeTab} setActiveTab={setActiveTab} icon={Palette} label="Board" />
                             <TabButton id="tools" activeTab={activeTab} setActiveTab={setActiveTab} icon={Briefcase} label="Tools" />
                             <TabButton id="participants" activeTab={activeTab} setActiveTab={setActiveTab} icon={Users} label="" count={participants.length} />
                         </div>
@@ -839,11 +858,6 @@ const StudyRoom: React.FC = () => {
                                 isUploading={isUploading} // Pass loading state for file upload
                             />
                         )}
-                        {activeTab === 'whiteboard' && (
-                            <div className="flex-1 p-4 h-full">
-                                <Whiteboard roomId={roomId || ''} />
-                            </div>
-                        )}
                         {activeTab === 'tools' && (
                             <StudyToolsPanel
                                 notes={notes}
@@ -870,11 +884,13 @@ const StudyRoom: React.FC = () => {
                     onHangUp={handleHangUp}
                     onReact={handleReaction}
                     onToggleMusic={() => setShowMusicPlayer(p => !p)}
+                    onToggleWhiteboard={() => setShowWhiteboard(p => !p)}
                     onShare={() => setShowShareModal(true)}
                     roomId={roomId || ''}
                     formattedSessionTime={formatElapsedTime(elapsedTime)} // Pass formatted time
                     onAddTestUser={handleAddTestUser}
                     showMusicPlayer={showMusicPlayer} // Pass showMusicPlayer state
+                    showWhiteboard={showWhiteboard} // Pass showWhiteboard state
                 >
                     <MusicPlayer visible={showMusicPlayer} onClose={() => setShowMusicPlayer(false)} />
                 </RoomControls>
