@@ -25,6 +25,7 @@ import ResourceLibrary from './pages/ResourceLibrary'; // Import the new page
 import GPACalculator from './pages/GPACalculator';
 import ProjectGenerator from './pages/ProjectGenerator';
 import MockPaperGenerator from './pages/MockPaperGenerator';
+<<<<<<< Updated upstream
 import ATKTCalculator from '@/pages/ATKTCalculator';
 import CurriculumExplorer from './pages/CurriculumExplorer';
 import EngineeringLab from './pages/EngineeringLab';
@@ -32,6 +33,9 @@ import MathLab from './pages/MathLab';
 import PlacementArena from './pages/PlacementArena';
 import TCSNQTSimulator from './pages/TCSNQTSimulator';
 import UniversityStatus from './pages/UniversityStatus';
+=======
+import ATKTCalculator from './pages/ATKTCalculator';
+>>>>>>> Stashed changes
 import VivaSimulator from './pages/VivaSimulator';
 import StudyPlan from './pages/StudyPlan';
 import { useAuth } from './contexts/AuthContext';

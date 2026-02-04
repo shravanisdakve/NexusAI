@@ -70,6 +70,9 @@ app.use('/api/games', require('./routes/games'));
 app.use('/api/resources', require('./routes/resources'));
 app.use('/api/study-plan', require('./routes/studyPlan'));
 app.use('/api/goals', require('./routes/goals'));
+app.use('/api/atkt', require('./routes/atkt'));
+app.use('/api/curriculum', require('./routes/curriculum'));
+app.use('/api/placement', require('./routes/placement'));
 app.use('/api/ai-chat', require('./routes/aiChat'));
 
 // 6. Health Check Route
