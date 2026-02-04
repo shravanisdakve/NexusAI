@@ -5,7 +5,7 @@ import { Modal, Input, Button, Spinner } from './ui'; // Import necessary UI com
 // --- END FIX ---
 import { useAuth } from '../contexts/AuthContext';
 // --- FIX: Added Edit3 icon ---
-import { LayoutDashboard, MessageSquare, Share2, FileText, Code, BrainCircuit, LogOut, BarChart2, Users, ClipboardList, Edit3 } from 'lucide-react';
+import { LayoutDashboard, MessageSquare, Share2, FileText, Code, BrainCircuit, LogOut, BarChart2, Users, ClipboardList, Edit3, GraduationCap, Binary, Briefcase, Shield, Bell } from 'lucide-react';
 // --- END FIX ---
 
 
@@ -82,11 +82,13 @@ const ProfileEditModal: React.FC<ProfileEditModalProps> = ({ isOpen, onClose, cu
 
 const navigation = [
     { name: 'Study Hub', href: '/', icon: LayoutDashboard },
-    { name: 'Insights', href: '/insights', icon: BarChart2 },
+    { name: 'MU Curriculum', href: '/curriculum', icon: GraduationCap },
+    { name: 'Math symbolic Engine', href: '/math-lab', icon: Binary },
+    { name: 'Placement Arena', href: '/placement', icon: Briefcase },
+    { name: 'University Hub', href: '/university-status', icon: Bell },
     { name: 'Notes', href: '/notes', icon: FileText },
     { name: 'AI Tutor', href: '/tutor', icon: MessageSquare },
     { name: 'Study Room', href: '/study-lobby', icon: Users },
-    //   { name: 'Community', href: '/insights?tab=community', icon: Users }, // Assuming Community page removed/merged
 ];
 
 const Sidebar: React.FC = () => {

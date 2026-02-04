@@ -7,7 +7,7 @@ import { streamChat, generateQuizQuestion } from '../services/geminiService';
 import { trackToolUsage } from '../services/personalizationService';
 import { startSession, endSession, recordQuizResult, getProductivityReport } from '../services/analyticsService';
 import { createChatSession, addMessageToSession } from '../services/aiChatService'; // Added import
-import { Bot, User, Send, Mic, Volume2, VolumeX, Lightbulb, Sparkles, Calendar } from 'lucide-react';
+import { Bot, User, Send, Mic, Volume2, VolumeX, Lightbulb, Sparkles, Calendar, Image as ImageIcon, X, Paperclip } from 'lucide-react';
 
 interface Quiz {
     topic: string;
@@ -67,7 +67,9 @@ const AiTutor: React.FC = () => {
         }
     });
 
-    const [sessionId, setSessionId] = useState<string | null>(null); // New State
+    const [sessionId, setSessionId] = useState<string | null>(null);
+    const [selectedImage, setSelectedImage] = useState<{ base64: string, type: string, name: string } | null>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     const recognitionRef = useRef<any | null>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -193,15 +195,38 @@ const AiTutor: React.FC = () => {
         speechSynthesis.speak(utterance);
     };
 
+    const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            setSelectedImage({
+                base64: reader.result as string,
+                type: file.type,
+                name: file.name
+            });
+        };
+        reader.readAsDataURL(file);
+    };
+
     const handleSend = useCallback(async (messageToSend?: string, isVoiceInput = false) => {
         const currentMessage = messageToSend || input;
         if (!currentMessage.trim() || isLoading) return;
 
         speechSynthesis.cancel();
 
-        const newUserMessage: ChatMessage = { role: 'user', parts: [{ text: currentMessage }] };
-        const newModelMessage: ChatMessage = { role: 'model', parts: [{ text: '' }] }; // Placeholder for model response
+        const newUserMessage: ChatMessage = {
+            role: 'user',
+            parts: [{ text: currentMessage }],
+            attachment: selectedImage ? { name: selectedImage.name, type: selectedImage.type, size: 0 } : undefined
+        };
+        const newModelMessage: ChatMessage = { role: 'model', parts: [{ text: '' }] };
         setMessages(prev => [...prev, newUserMessage, newModelMessage]);
+
+        const imgData = selectedImage;
+        setSelectedImage(null); // Clear after sending
+
         setInput('');
         setIsLoading(true);
         setError(null);
@@ -222,7 +247,11 @@ const AiTutor: React.FC = () => {
                 contextPrompt = `[MODE: ACTIVE RECALL - Ask tough questions to probe understanding.] User says: ${currentMessage}`;
             }
 
-            const stream = await streamChat(contextPrompt);
+            const stream = await streamChat(
+                contextPrompt,
+                imgData?.base64.split(',')[1], // Just the base64 part
+                imgData?.type
+            );
 
             if (!stream) throw new Error("Failed to start stream");
 
@@ -469,45 +498,71 @@ const AiTutor: React.FC = () => {
                     <div ref={messagesEndRef} />
                 </div>
                 {error && <p className="text-red-400 text-sm text-center my-2">{error}</p>}
-                <div className="mt-4 flex items-center gap-2">
-                    <Input
-                        id="chat-input"
-                        name="chatInput"
-                        type="text"
-                        value={input}
-                        onChange={(e) => setInput(e.target.value)}
-                        onKeyPress={(e) => e.key === 'Enter' && !isLoading && handleSend()}
-                        placeholder="Ask a question or start speaking..."
-                        disabled={isLoading || !!quiz}
-                        className="flex-1"
-                        autoComplete="off"
-                    />
-                    <Button
-                        onClick={handleQuizMe}
-                        disabled={isLoading || !!quiz}
-                        className="px-4 py-3 bg-slate-700 hover:bg-slate-600"
-                        aria-label="Quiz me"
-                    >
-                        <Lightbulb className="w-5 h-5" />
-                    </Button>
-                    <Button
-                        onClick={handleListen}
-                        disabled={isLoading || !!quiz}
-                        className={`px-4 py-3 ${isListening ? 'bg-red-600 hover:bg-red-700' : 'bg-slate-700 hover:bg-slate-600'}`}
-                        aria-label={isListening ? 'Stop listening' : 'Start listening'}
-                    >
-                        <Mic className="w-5 h-5" />
-                    </Button>
-                    <Button
-                        onClick={() => setIsAutoSpeaking(prev => !prev)}
-                        className={`px-4 py-3 ${isAutoSpeaking ? 'bg-violet-600 hover:bg-violet-700' : 'bg-slate-700 hover:bg-slate-600'}`}
-                        aria-label={isAutoSpeaking ? 'Disable automatic speaking' : 'Enable automatic speaking'}
-                    >
-                        {isAutoSpeaking ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
-                    </Button>
-                    <Button onClick={() => handleSend()} isLoading={isLoading} disabled={!input.trim() || !!quiz} className="px-4 py-3">
-                        {!isLoading && <Send className="w-5 h-5" />}
-                    </Button>
+                <div className="mt-4 flex flex-col gap-2">
+                    {selectedImage && (
+                        <div className="flex items-center gap-2 p-2 bg-slate-900/80 rounded-lg border border-slate-700 w-fit animate-in slide-in-from-bottom-2">
+                            <ImageIcon size={16} className="text-sky-400" />
+                            <span className="text-xs text-slate-300 max-w-[200px] truncate">{selectedImage.name}</span>
+                            <button onClick={() => setSelectedImage(null)} className="text-slate-500 hover:text-rose-400">
+                                <X size={14} />
+                            </button>
+                        </div>
+                    )}
+                    <div className="flex items-center gap-2">
+                        <input
+                            type="file"
+                            ref={fileInputRef}
+                            onChange={handleImageUpload}
+                            accept="image/*"
+                            className="hidden"
+                        />
+                        <Button
+                            onClick={() => fileInputRef.current?.click()}
+                            disabled={isLoading || !!quiz}
+                            className="px-4 py-3 bg-slate-700 hover:bg-slate-600"
+                            aria-label="Upload image"
+                        >
+                            <Paperclip className="w-5 h-5" />
+                        </Button>
+                        <Input
+                            id="chat-input"
+                            name="chatInput"
+                            type="text"
+                            value={input}
+                            onChange={(e) => setInput(e.target.value)}
+                            onKeyPress={(e) => e.key === 'Enter' && !isLoading && handleSend()}
+                            placeholder="Ask a question or share a diagram..."
+                            disabled={isLoading || !!quiz}
+                            className="flex-1"
+                            autoComplete="off"
+                        />
+                        <Button
+                            onClick={handleQuizMe}
+                            disabled={isLoading || !!quiz}
+                            className="px-4 py-3 bg-slate-700 hover:bg-slate-600"
+                            aria-label="Quiz me"
+                        >
+                            <Lightbulb className="w-5 h-5" />
+                        </Button>
+                        <Button
+                            onClick={handleListen}
+                            disabled={isLoading || !!quiz}
+                            className={`px-4 py-3 ${isListening ? 'bg-red-600 hover:bg-red-700' : 'bg-slate-700 hover:bg-slate-600'}`}
+                            aria-label={isListening ? 'Stop listening' : 'Start listening'}
+                        >
+                            <Mic className="w-5 h-5" />
+                        </Button>
+                        <Button
+                            onClick={() => setIsAutoSpeaking(prev => !prev)}
+                            className={`px-4 py-3 ${isAutoSpeaking ? 'bg-violet-600 hover:bg-violet-700' : 'bg-slate-700 hover:bg-slate-600'}`}
+                            aria-label={isAutoSpeaking ? 'Disable automatic speaking' : 'Enable automatic speaking'}
+                        >
+                            {isAutoSpeaking ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
+                        </Button>
+                        <Button onClick={() => handleSend()} isLoading={isLoading} disabled={!input.trim() || !!quiz} className="px-4 py-3">
+                            {!isLoading && <Send className="w-5 h-5" />}
+                        </Button>
+                    </div>
                 </div>
             </div>
         </div>

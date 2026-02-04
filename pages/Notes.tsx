@@ -394,7 +394,24 @@ const Notes: React.FC = () => {
     let extractedContent = '';
     try {
       const base64Data = await fileToBase64(file);
-      extractedContent = await extractTextFromFile(base64Data, file.type);
+
+      let mimeType = file.type;
+      if (!mimeType) {
+        const extension = file.name.split('.').pop()?.toLowerCase();
+        const mimeMap: { [key: string]: string } = {
+          'pdf': 'application/pdf',
+          'txt': 'text/plain',
+          'md': 'text/plain',
+          'png': 'image/png',
+          'jpg': 'image/jpeg',
+          'jpeg': 'image/jpeg',
+          'pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+          'ppt': 'application/vnd.ms-powerpoint'
+        };
+        mimeType = mimeMap[extension || ''] || 'application/octet-stream';
+      }
+
+      extractedContent = await extractTextFromFile(base64Data, mimeType);
       console.log(`Extracted ${extractedContent.length} characters from ${file.name}`);
 
       if (!extractedContent || extractedContent.trim().length === 0) {
@@ -956,7 +973,7 @@ const AddNoteModal: React.FC<{ isOpen: boolean, onClose: () => void, courseId: s
                 type="file"
                 className="hidden"
                 onChange={e => setFile(e.target.files ? e.target.files[0] : null)}
-                accept=".txt,.md,.pdf,.pptx,.mp3,.wav,.ogg,.aac"
+                accept=".txt,.md,.pdf,.pptx,.ppt,.png,.jpg,.jpeg,.mp3,.wav,.ogg,.aac"
               />
             </label>
           </div>
@@ -1024,7 +1041,7 @@ const FlashcardsView: React.FC<{
           ref={fileInputRef}
           onChange={handleFileChange}
           style={{ display: 'none' }}
-          accept=".txt,.md,.pdf,.pptx"
+          accept=".txt,.md,.pdf,.pptx,.ppt,.png,.jpg,.jpeg"
         />
 
         <div className="flex gap-4 mb-6">

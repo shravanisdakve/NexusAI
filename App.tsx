@@ -26,6 +26,12 @@ import GPACalculator from './pages/GPACalculator';
 import ProjectGenerator from './pages/ProjectGenerator';
 import KTCalculator from './pages/KTCalculator';
 import MockPaperGenerator from './pages/MockPaperGenerator';
+import ATKTCalculator from './pages/ATKTCalculator';
+import CurriculumExplorer from './pages/CurriculumExplorer';
+import MathLab from './pages/MathLab';
+import PlacementArena from './pages/PlacementArena';
+import TCSNQTSimulator from './pages/TCSNQTSimulator';
+import UniversityStatus from './pages/UniversityStatus';
 import VivaSimulator from './pages/VivaSimulator';
 import StudyPlan from './pages/StudyPlan';
 import { useAuth } from './contexts/AuthContext';
@@ -71,9 +77,14 @@ const App: React.FC = () => {
         {/* Protected Routes */}
         <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
         <Route path="/resources" element={<ProtectedRoute><ResourceLibrary /></ProtectedRoute>} />
+        <Route path="/curriculum" element={<ProtectedRoute><CurriculumExplorer /></ProtectedRoute>} />
+        <Route path="/math-lab" element={<ProtectedRoute><MathLab /></ProtectedRoute>} />
+        <Route path="/placement" element={<ProtectedRoute><PlacementArena /></ProtectedRoute>} />
+        <Route path="/placement/tcs-nqt" element={<ProtectedRoute><TCSNQTSimulator /></ProtectedRoute>} />
+        <Route path="/university-status" element={<ProtectedRoute><UniversityStatus /></ProtectedRoute>} />
         <Route path="/gpa-calculator" element={<ProtectedRoute><GPACalculator /></ProtectedRoute>} />
         <Route path="/project-generator" element={<ProtectedRoute><ProjectGenerator /></ProtectedRoute>} />
-        <Route path="/kt-calculator" element={<ProtectedRoute><KTCalculator /></ProtectedRoute>} />
+        <Route path="/kt-calculator" element={<ProtectedRoute><ATKTCalculator /></ProtectedRoute>} />
         <Route path="/mock-paper" element={<ProtectedRoute><MockPaperGenerator /></ProtectedRoute>} />
         <Route path="/viva-simulator" element={<ProtectedRoute><VivaSimulator /></ProtectedRoute>} />
         <Route path="/insights" element={<ProtectedRoute><Insights /></ProtectedRoute>} />

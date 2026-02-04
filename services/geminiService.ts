@@ -3,8 +3,8 @@ import { GeminiRequest, GeminiResponse } from '../types';
 const API_URL = import.meta.env.VITE_API_BASE_URL || '';
 
 // --- AI TUTOR SERVICE ---
-export const streamChat = async (message: string): Promise<ReadableStream<Uint8Array> | null> => {
-    const requestBody: GeminiRequest = { message };
+export const streamChat = async (message: string, base64Data?: string, mimeType?: string): Promise<ReadableStream<Uint8Array> | null> => {
+    const requestBody: GeminiRequest = { message, base64Data, mimeType };
     const response = await fetch(`${API_URL}/api/gemini/streamChat`, {
         method: 'POST',
         headers: {
@@ -385,7 +385,37 @@ export const generateStudyPlan = async (goal: string, durationDays: number, note
     const data = await response.json();
     return data.planJson;
 };
+// --- FEYNMAN TECHNIQUE SERVICE ---
+export const streamFeynmanChat = async (message: string, topic: string, notes: string): Promise<ReadableStream<Uint8Array> | null> => {
+    const requestBody: GeminiRequest = { message, notes, topic };
+    const response = await fetch(`${API_URL}/api/gemini/streamFeynmanChat`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody),
+    });
 
+    if (!response.ok) {
+        const errorData: GeminiResponse = await response.json();
+        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+    }
 
+    return response.body;
+};
 
+export const getFeynmanFeedback = async (topic: string, explanation: string, notes: string): Promise<any> => {
+    const response = await fetch(`${API_URL}/api/gemini/getFeynmanFeedback`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ topic, explanation, notes }),
+    });
 
+    if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    return response.json();
+};

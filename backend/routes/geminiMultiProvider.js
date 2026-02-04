@@ -157,12 +157,20 @@ router.post('/generateCode', async (req, res) => {
 // --- TEXT EXTRACTION FROM FILE SERVICE (Gemini only - needs multimodal) ---
 router.post('/extractTextFromFile', async (req, res) => {
     try {
-        const { base64Data, mimeType } = req.body;
+        let { base64Data, mimeType } = req.body;
 
         // File processing requires Gemini's multimodal capabilities
         const model = getGeminiModel('gemini-2.0-flash');
         if (!model) {
             return res.status(503).json({ error: 'File extraction requires Gemini API. Please configure GEMINI_API_KEY or wait and try again.' });
+        }
+
+        // Fallback for missing or generic mime types
+        if (!mimeType || mimeType === 'application/octet-stream') {
+            // Very basic guessing based on common magic numbers in base64 could be done here, 
+            // but for now we'll just log it.
+            console.warn("[extractTextFromFile] Missing or generic mimeType, using application/pdf as fallback");
+            mimeType = 'application/pdf'; // Common fallback
         }
 
         const filePart = {
@@ -171,12 +179,27 @@ router.post('/extractTextFromFile', async (req, res) => {
                 mimeType: mimeType,
             },
         };
+
         const textPart = {
-            text: "You are an expert OCR and document parser. Extract all textual content from the provided document (PDF, image, or presentation). Preserve the logical structure (headings, lists, sections) but return it as clean, unformatted text. If there are mathematical formulas, represent them clearly in plain text. Ensure no data is skipped even if the document is long."
+            text: `You are an expert OCR and document parser. 
+            Extract all textual content from the provided document. This document could be a PDF, an image (possibly of handwritten notes), or a presentation (PPTX).
+            
+            DIRECTIONS:
+            1. Extract ALL text. For handwritten notes, be extremely thorough and use your best judgment to decipher messy handwriting.
+            2. Preserve the logical structure (headings, bullet points, sections, slide numbers).
+            3. For mathematical formulas, represent them clearly in plain text or LaTeX-like notation.
+            4. If it's a presentation, extract the content slide by slide.
+            5. Return ONLY the clean, unformatted continuous text. Do not include any meta-commentary like "Here is the text".`
         };
 
         const result = await model.generateContent([textPart, filePart]);
-        res.json({ text: result.response.text() });
+        const extractedText = result.response.text();
+
+        if (!extractedText || extractedText.trim().length === 0) {
+            throw new Error("No text could be extracted from this file. It might be empty or in an unsupported format.");
+        }
+
+        res.json({ text: extractedText });
     } catch (error) {
         console.error("Error in extractTextFromFile:", error);
         res.status(500).json({ error: error.message });

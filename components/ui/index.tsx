@@ -6,11 +6,15 @@ import { Clipboard, Check, X } from 'lucide-react';
 interface PageHeaderProps {
     title: string;
     subtitle: string;
+    icon?: React.ReactNode;
 }
-export const PageHeader: React.FC<PageHeaderProps> = ({ title, subtitle }) => (
-    <div className="mb-8">
-        <h1 className="text-4xl font-extrabold text-white tracking-tight">{title}</h1>
-        <p className="mt-2 text-slate-400 text-lg">{subtitle}</p>
+export const PageHeader: React.FC<PageHeaderProps> = ({ title, subtitle, icon }) => (
+    <div className="mb-8 flex items-start gap-4">
+        {icon && <div className="p-3 bg-slate-800/50 rounded-xl border border-slate-700/50 shadow-lg">{icon}</div>}
+        <div>
+            <h1 className="text-4xl font-extrabold text-white tracking-tight">{title}</h1>
+            <p className="mt-2 text-slate-400 text-lg max-w-2xl">{subtitle}</p>
+        </div>
     </div>
 );
 
@@ -253,6 +257,17 @@ export const Toast: React.FC<ToastProps> = ({ message, type = 'info', onClose })
         </div>
     );
 };
+
+// Card Component
+interface CardProps {
+    children: React.ReactNode;
+    className?: string;
+}
+export const Card: React.FC<CardProps> = ({ children, className = '' }) => (
+    <div className={`bg-slate-800/40 backdrop-blur-md border border-slate-700/50 rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 ${className}`}>
+        {children}
+    </div>
+);
 
 export const ToastContainer: React.FC<{ toasts: { id: string; message: string; type: any }[]; onRemove: (id: string) => void }> = ({ toasts, onRemove }) => (
     <div className="fixed bottom-6 right-6 z-[100] flex flex-col gap-3">
