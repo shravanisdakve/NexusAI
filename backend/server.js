@@ -61,7 +61,7 @@ if (process.env.NODE_ENV !== 'production') {
 
 // 5. Routes
 app.use('/api/auth', require('./routes/auth'));
-app.use('/api/gemini', require('./routes/gemini'));
+app.use('/api/gemini', require('./routes/geminiMultiProvider'));
 app.use('/api/analytics', require('./routes/analytics'));
 app.use('/api/community', require('./routes/community'));
 app.use('/api/notes', require('./routes/notes'));
