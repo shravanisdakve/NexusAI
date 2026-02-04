@@ -2,9 +2,7 @@ const express = require('express');
 const router = express.Router();
 const StudyPlan = require('../models/StudyPlan');
 const auth = require('../middleware/auth');
-const { GoogleGenerativeAI } = require('@google/generative-ai');
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY, { apiVersion: 'v1beta' });
+const aiProvider = require('../services/aiProvider');
 
 // Test route to verify router is loaded
 router.get('/test', (req, res) => {
@@ -76,16 +74,11 @@ router.patch('/task', auth, async (req, res) => {
     }
 });
 
-// AI Generation Route
+// AI Generation Route (Using Multi-Provider)
 router.post('/generate', auth, async (req, res) => {
     console.log(`[StudyPlan] GENERATE request received`);
     try {
         const { goal, durationDays, notesContext } = req.body;
-
-        // Use gemini-1.5-flash for broader free-tier availability
-        const model = genAI.getGenerativeModel({
-            model: "gemini-2.0-flash",
-        });
 
         const prompt = `You are an expert personalized academic advisor. 
         A student wants to achieve the following goal: "${goal}" in ${durationDays} days.
@@ -115,8 +108,11 @@ router.post('/generate', auth, async (req, res) => {
             }
         ]`;
 
-        const result = await model.generateContent(prompt);
-        const responseText = result.response.text().replace(/```json|```/g, '').trim();
+        const result = await aiProvider.generate(prompt, {
+            feature: 'studyPlan',
+            json: true
+        });
+        const responseText = result.replace(/```json|```/g, '').trim();
 
         console.log(`[StudyPlan] AI generated plan successfully`);
         res.json({ planJson: responseText });
@@ -127,3 +123,4 @@ router.post('/generate', auth, async (req, res) => {
 });
 
 module.exports = router;
+
