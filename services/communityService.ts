@@ -88,7 +88,9 @@ export const addRoom = async (name: string, courseId: string, maxUsers: number, 
 // --- Socket Events Wrappers ---
 
 export const joinRoom = (roomId: string, user?: any) => {
-    if (socket) {
+    if (socket && user) {
+        socket.emit('join-room', roomId, { id: user.id, displayName: user.displayName, email: user.email });
+    } else if (socket) {
         socket.emit('join-room', roomId);
     }
 };
@@ -183,7 +185,16 @@ export const requestModeration = (roomId: string) => {
 export const saveRoomMessages = async (roomId: string, messages: any[]) => { };
 export const getRoomAINotes = async (roomId: string) => '';
 export const saveRoomAINotes = async (roomId: string, content: string) => { };
-export const onRoomUpdate = (roomId: string, callback: any) => { return () => { } };
+export const onRoomUpdate = (roomId: string, callback: (room: any) => void) => {
+    if (!socket) return () => { };
+
+    const handler = (room: any) => {
+        callback(room);
+    };
+
+    socket.on('room-update', handler);
+    return () => socket?.off('room-update', handler);
+};
 export const onNotesUpdate = (roomId: string, callback: any) => { return () => { } };
 export const saveUserNotes = async (roomId: string, userId: string, content: string) => { };
 export const onUserNotesUpdate = (roomId: string, userId: string, callback: any) => { return () => { } };

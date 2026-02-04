@@ -18,60 +18,111 @@ export const PageHeader: React.FC<PageHeaderProps> = ({ title, subtitle }) => (
 // Button Component
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   isLoading?: boolean;
+  variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger' | 'success';
+  size?: 'sm' | 'md' | 'lg';
+  fullWidth?: boolean;
 }
+
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, children, isLoading, ...props }, ref) => {
+  ({ className = '', children, isLoading, variant = 'primary', size = 'md', fullWidth = false, disabled, ...props }, ref) => {
+
+    // Variant styles
+    const variantStyles = {
+      primary: 'bg-violet-600 hover:bg-violet-700 text-white shadow-sm hover:shadow-md active:bg-violet-800 focus:ring-violet-500',
+      secondary: 'bg-slate-700 hover:bg-slate-600 text-white shadow-sm hover:shadow-md active:bg-slate-800 focus:ring-slate-500',
+      outline: 'bg-transparent border-2 border-violet-600 text-violet-400 hover:bg-violet-600/10 active:bg-violet-600/20 focus:ring-violet-500',
+      ghost: 'bg-transparent text-slate-300 hover:bg-slate-700/50 hover:text-white active:bg-slate-700 focus:ring-slate-500',
+      danger: 'bg-red-600 hover:bg-red-700 text-white shadow-sm hover:shadow-md active:bg-red-800 focus:ring-red-500',
+      success: 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm hover:shadow-md active:bg-emerald-800 focus:ring-emerald-500',
+    };
+
+    // Size styles
+    const sizeStyles = {
+      sm: 'px-3 py-1.5 text-sm',
+      md: 'px-6 py-3 text-base',
+      lg: 'px-8 py-4 text-lg',
+    };
+
+    // Base styles - always applied
+    const baseStyles = 'inline-flex items-center justify-center font-medium rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-900';
+
+    // Disabled styles
+    const disabledStyles = (disabled || isLoading) ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:transform hover:translateY-[-1px] active:translateY-[0px]';
+
+    // Width
+    const widthStyle = fullWidth ? 'w-full' : '';
+
+    const combinedClassName = `
+      ${baseStyles}
+      ${variantStyles[variant]}
+      ${sizeStyles[size]}
+      ${disabledStyles}
+      ${widthStyle}
+      ${className}
+    `.trim().replace(/\s+/g, ' ');
+
     return (
       <button
         ref={ref}
-        className={`inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-violet-600 hover:bg-violet-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-violet-500 focus:ring-offset-slate-900 disabled:bg-slate-500 disabled:cursor-not-allowed transition-colors duration-200 ${className}`}
-        disabled={isLoading}
+        className={combinedClassName}
+        disabled={disabled || isLoading}
+        aria-disabled={disabled || isLoading}
+        aria-busy={isLoading}
         {...props}
       >
-        {isLoading ? <Spinner /> : children}
+        {isLoading ? <Spinner size="sm" className="mr-2" /> : null}
+        {children}
       </button>
     );
   }
 );
 
+Button.displayName = 'Button';
+
 // Input Component
 export const Input = React.forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement>>(
-  ({ className, ...props }, ref) => {
+  ({ className = '', ...props }, ref) => {
     return (
       <input
         ref={ref}
-        className={`w-full bg-slate-800 border border-slate-700 rounded-md py-3 px-4 text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-violet-500 transition-colors duration-200 ${className}`}
+        className={`w-full bg-slate-800 border-2 border-slate-600 rounded-lg py-3 px-4 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-violet-500 focus:ring-offset-2 focus:ring-offset-slate-900 hover:border-slate-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 ${className}`}
         {...props}
       />
     );
   }
 );
+
+Input.displayName = 'Input';
 
 // Textarea Component
 export const Textarea = React.forwardRef<HTMLTextAreaElement, React.TextareaHTMLAttributes<HTMLTextAreaElement>>(
-  ({ className, ...props }, ref) => {
+  ({ className = '', ...props }, ref) => {
     return (
       <textarea
         ref={ref}
-        className={`w-full bg-slate-800 border border-slate-700 rounded-md py-3 px-4 text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-violet-500 transition-colors duration-200 ${className}`}
+        className={`w-full bg-slate-800 border-2 border-slate-600 rounded-lg py-3 px-4 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-violet-500 focus:ring-offset-2 focus:ring-offset-slate-900 hover:border-slate-500 disabled:opacity-50 disabled:cursor-not-allowed resize-none transition-all duration-200 ${className}`}
         {...props}
       />
     );
   }
 );
 
+Textarea.displayName = 'Textarea';
+
 // Select Component
 export const Select = React.forwardRef<HTMLSelectElement, React.SelectHTMLAttributes<HTMLSelectElement>>(
-  ({ className, ...props }, ref) => {
+  ({ className = '', ...props }, ref) => {
     return (
       <select
         ref={ref}
-        className={`w-full bg-slate-800 border border-slate-700 rounded-md py-2 px-3 text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-violet-500 transition-colors duration-200 ${className}`}
+        className={`w-full bg-slate-800 border-2 border-slate-600 rounded-lg py-3 px-4 text-white focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-violet-500 focus:ring-offset-2 focus:ring-offset-slate-900 hover:border-slate-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 cursor-pointer ${className}`}
         {...props}
       />
     );
   }
 );
+
+Select.displayName = 'Select';
 
 // Spinner Component
 // Spinner Component

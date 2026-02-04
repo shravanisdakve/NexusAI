@@ -68,6 +68,41 @@ router.post('/rooms', auth, async (req, res) => {
     }
 });
 
+// @route   GET /api/community/rooms/:roomId
+// @desc    Get a specific room's details with participants
+// @access  Private
+router.get('/rooms/:roomId', auth, async (req, res) => {
+    try {
+        const room = await StudyRoom.findById(req.params.roomId)
+            .populate('createdBy', 'displayName')
+            .populate('participants.user', 'displayName email');
+
+        if (!room) {
+            return res.status(404).json({ success: false, message: 'Room not found' });
+        }
+
+        res.json({
+            success: true,
+            room: {
+                id: room._id,
+                name: room.name,
+                courseId: room.courseId,
+                maxUsers: room.maxUsers,
+                users: room.participants.map(p => ({
+                    email: p.user.email,
+                    displayName: p.user.displayName
+                })),
+                createdBy: room.createdBy.displayName,
+                technique: room.technique,
+                topic: room.topic
+            }
+        });
+    } catch (error) {
+        console.error('Error fetching room:', error);
+        res.status(500).json({ success: false, message: 'Server Error' });
+    }
+});
+
 // @route   GET /api/community/rooms/:roomId/messages
 // @desc    Get chat history for a room
 // @access  Private

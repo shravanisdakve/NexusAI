@@ -28,13 +28,53 @@ const socketHandler = (server) => {
         });
 
         // Study Room: Join
-        socket.on('join-room', async (roomId) => {
+        socket.on('join-room', async (roomId, user) => {
             try {
-                const room = await StudyRoom.findById(roomId);
+                const room = await StudyRoom.findById(roomId)
+                    .populate('createdBy', 'displayName')
+                    .populate('participants.user', 'displayName email');
+
+                if (!room) {
+                    socket.emit('room-error', { message: 'Room not found' });
+                    return;
+                }
+
+                // Add user to participants if not already in
+                if (user && user.id) {
+                    const existingParticipant = room.participants.find(
+                        p => p.user && p.user._id && p.user._id.toString() === user.id
+                    );
+
+                    if (!existingParticipant) {
+                        room.participants.push({ user: user.id });
+                        await room.save();
+                        // Re-populate after save
+                        await room.populate('participants.user', 'displayName email');
+                    }
+                }
+
                 socket.join(roomId);
-                console.log(`User ${socket.id} joined room: ${roomId}`);
+                console.log(`User ${user?.displayName || socket.id} joined room: ${roomId}`);
+
+                // Broadcast updated room to all clients in the room
+                const roomData = {
+                    id: room._id,
+                    name: room.name,
+                    courseId: room.courseId,
+                    maxUsers: room.maxUsers,
+                    users: room.participants.map(p => ({
+                        email: p.user?.email || '',
+                        displayName: p.user?.displayName || 'Unknown'
+                    })),
+                    createdBy: room.createdBy?.displayName || 'Unknown',
+                    technique: room.technique,
+                    topic: room.topic
+                };
+
+                io.to(roomId).emit('room-update', roomData);
             } catch (err) {
                 console.error("Join room error:", err);
+                socket.emit('room-error', { message: 'Error joining room' });
             }
         });
 

@@ -792,9 +792,6 @@ const AddNoteModal: React.FC<{ isOpen: boolean, onClose: () => void, courseId: s
 }) => {
 
   const [title, setTitle] = useState('');
-  // --- FIX: Removed content state for text notes ---
-  // const [content, setContent] = useState('');
-  // --- END FIX ---
   const [file, setFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [noteType, setNoteType] = useState<'text' | 'file'>('file');

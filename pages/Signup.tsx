@@ -119,6 +119,7 @@ const Signup: React.FC = () => {
                 id="displayName"
                 name="displayName"
                 type="text"
+                autoComplete="name"
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
                 placeholder="John Doe"
@@ -134,6 +135,7 @@ const Signup: React.FC = () => {
                 id="college"
                 name="college"
                 type="text"
+                autoComplete="organization"
                 value={college}
                 onChange={(e) => setCollege(e.target.value)}
                 placeholder="e.g., Massachusetts Institute of Technology"
@@ -149,6 +151,7 @@ const Signup: React.FC = () => {
               <Select
                   id="branch"
                   name="branch"
+                  autoComplete="organization-level-2"
                   value={branch}
                   onChange={(e) => setBranch(e.target.value)}
                   required
@@ -170,6 +173,7 @@ const Signup: React.FC = () => {
               <Select
                   id="year"
                   name="year"
+                  autoComplete="organization-level-3"
                   value={year}
                   onChange={(e) => setYear(e.target.value)}
                   required
@@ -191,6 +195,7 @@ const Signup: React.FC = () => {
                 id="email-signup"
                 name="email"
                 type="email"
+                autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
@@ -206,6 +211,7 @@ const Signup: React.FC = () => {
                     id="password-signup"
                     name="password"
                     type={showPassword ? 'text' : 'password'}
+                    autoComplete="new-password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
@@ -229,6 +235,7 @@ const Signup: React.FC = () => {
                     id="confirm-password-signup"
                     name="confirmPassword"
                     type={showConfirmPassword ? 'text' : 'password'}
+                    autoComplete="new-password"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     placeholder="••••••••"

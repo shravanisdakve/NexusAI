@@ -29,7 +29,7 @@ import {
 import { streamStudyBuddyChat, generateQuizQuestion, extractTextFromFile } from '../services/geminiService';
 import { startSession, endSession, recordQuizResult } from '../services/analyticsService';
 // --- REMOVED Clock import here ---
-import { Bot, User, Send, MessageSquare, Users, Brain, UploadCloud, Lightbulb, FileText, Paperclip, Smile, FolderOpen, AlertTriangle, Info, Palette } from 'lucide-react';
+import { Bot, User, Send, MessageSquare, Users, Brain, UploadCloud, Lightbulb, FileText, Paperclip, FolderOpen, AlertTriangle, Info, Palette } from 'lucide-react';
 import { Input, Button, Textarea, Spinner } from '../components/ui';
 import RoomControls from '../components/RoomControls'; //
 import VideoTile from '../components/VideoTile';
@@ -52,7 +52,7 @@ interface Quiz {
     userAnswerIndex?: number;
 }
 
-const EMOJIS = ['👍', '❤️', '😂', '🎉', '🤔', '🙏'];
+
 const SYSTEM_EMAIL = 'system@nexus.ai';
 
 const formatElapsedTime = (totalSeconds: number): string => {
@@ -923,12 +923,6 @@ const TabButton: React.FC<{ id: ActiveTab, activeTab: ActiveTab, setActiveTab: (
 );
 
 const ChatPanel: React.FC<any> = ({ messages, input, setInput, onSend, currentUser, chatEndRef, onModerationRequest, typingUsers, roomId }) => {
-    const [showEmojis, setShowEmojis] = useState(false);
-
-    const handleEmojiSelect = (emoji: string) => {
-        setInput(input + emoji);
-        setShowEmojis(false);
-    };
 
     const handleSend = () => {
         if (!input.trim()) return;
@@ -998,14 +992,7 @@ const ChatPanel: React.FC<any> = ({ messages, input, setInput, onSend, currentUs
                     <Bot size={16} />
                 </Button>
 
-                {showEmojis && (
-                    <div className="absolute bottom-14 left-0 bg-slate-900 p-2 rounded-lg grid grid-cols-3 gap-2">
-                        {EMOJIS.map(emoji => (
-                            <button key={emoji} onClick={() => handleEmojiSelect(emoji)} className="text-2xl p-1 hover:bg-slate-700 rounded">{emoji}</button>
-                        ))}
-                    </div>
-                )}
-                <Button onClick={() => setShowEmojis(p => !p)} className="px-3 bg-slate-700 hover:bg-slate-600"><Smile size={16} /></Button>
+
                 <Input
                     name="chat-message"
                     value={input}
