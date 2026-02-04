@@ -369,13 +369,33 @@ export const streamVivaChat = async (message: string, subject: string, branch: s
 };
 
 // --- STUDY PLAN GENERATION SERVICE ---
-export const generateStudyPlan = async (goal: string, durationDays: number, notesContext: string): Promise<string> => {
+export const generateStudyPlan = async (goal: string, timeframe: string, level: string, subjects: string[]): Promise<any> => {
+    const token = localStorage.getItem('token');
+
+    /* 
+       Note: The backend expects { goal, durationDays, notesContext }.
+       We map the UI parameters to these fields.
+       - timeframe -> durationDays (passed as string, prompt handles it)
+       - level + subjects -> notesContext
+    */
+    const notesContext = `Student Level: ${level}. Topics to cover: ${subjects.join(', ')}.`;
+
+    const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+    };
+
+    if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+    }
+
     const response = await fetch(`${API_URL}/api/study-plan/generate`, {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ goal, durationDays, notesContext }),
+        headers: headers,
+        body: JSON.stringify({
+            goal,
+            durationDays: timeframe,
+            notesContext
+        }),
     });
 
     if (!response.ok) {
@@ -383,7 +403,13 @@ export const generateStudyPlan = async (goal: string, durationDays: number, note
     }
 
     const data = await response.json();
-    return data.planJson;
+    try {
+        // The backend returns a JSON string in 'planJson', so we must parse it
+        return JSON.parse(data.planJson);
+    } catch (e) {
+        console.error("Failed to parse generated study plan JSON:", e);
+        throw new Error("Received invalid JSON format from AI generation.");
+    }
 };
 // --- FEYNMAN TECHNIQUE SERVICE ---
 export const streamFeynmanChat = async (message: string, topic: string, notes: string): Promise<ReadableStream<Uint8Array> | null> => {
