@@ -65,6 +65,17 @@ router.post('/update-streak', auth, async (req, res) => {
         }
 
         user.lastActive = now;
+
+        // --- Early Bird Achievement ---
+        const hour = now.getHours();
+        if (hour >= 5 && hour < 9) { // 5 AM to 9 AM
+            if (!user.badges.includes('Early Bird')) {
+                user.badges.push('Early Bird');
+                user.xp += 100;
+            }
+        }
+        // ------------------------------
+
         await user.save();
 
         res.json({
@@ -101,6 +112,34 @@ router.post('/award-xp', auth, async (req, res) => {
 
     } catch (error) {
         console.error('Error awarding XP:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
+// Award Badge
+router.post('/award-badge', auth, async (req, res) => {
+    const { badgeName } = req.body;
+    try {
+        const user = await User.findById(req.user.id);
+        if (!user) {
+            return res.status(404).json({ success: false, message: 'User not found' });
+        }
+
+        const result = await user.awardBadge(badgeName);
+
+        if (result.success) {
+            res.json({
+                success: true,
+                badge: result.badge,
+                xpEarned: result.xpEarned,
+                message: `Congratulations! You've earned the ${badgeName} badge!`
+            });
+        } else {
+            res.json({ success: false, message: result.message });
+        }
+
+    } catch (error) {
+        console.error('Error awarding badge:', error);
         res.status(500).json({ success: false, message: 'Server error' });
     }
 });

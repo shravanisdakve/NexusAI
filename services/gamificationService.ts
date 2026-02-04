@@ -77,4 +77,19 @@ export const updateStreak = async () => {
         return { success: false };
     }
 };
+export const awardBadge = async (badgeName: string) => {
+    try {
+        const token = localStorage.getItem('token');
+        const config = {
+            headers: {
+                Authorization: `Bearer ${token}`
+            }
+        };
+        const response = await axios.post(`${API_URL}/award-badge`, { badgeName }, config);
+        return response.data;
+    } catch (error) {
+        console.error('Error awarding badge:', error);
+        return { success: false };
+    }
+};
 
