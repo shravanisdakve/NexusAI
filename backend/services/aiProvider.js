@@ -12,37 +12,51 @@ const Groq = require('groq-sdk');
 const PROVIDERS = {
     GROQ: 'groq',
     OPENROUTER: 'openrouter',
-    GEMINI: 'gemini'
+    GEMINI: 'gemini',
+    // Virtual providers (routed via OpenRouter)
+    MISTRAL: 'mistral',
+    TOGETHER: 'together'
 };
 
 // Feature-to-Provider mapping (customize based on your needs)
 const FEATURE_PROVIDER_MAP = {
-    'chat': PROVIDERS.GROQ,           // AI Tutor - high volume
-    'studyBuddy': PROVIDERS.GROQ,     // Study Buddy chat
-    'quiz': PROVIDERS.GROQ,           // Quiz generation
+    'chat': PROVIDERS.GROQ,           // AI Tutor - requires speed
+    'studyBuddy': PROVIDERS.GROQ,     // Study Buddy - high volume
+    'quiz': PROVIDERS.GROQ,           // Quiz generation - JSON needs
     'flashcards': PROVIDERS.GROQ,     // Flashcard generation
-    'code': PROVIDERS.GROQ,           // Code helper
-    'summarize': PROVIDERS.GROQ,      // Text summarization
-    'viva': PROVIDERS.GROQ,           // Viva simulator
-    'studyPlan': PROVIDERS.GROQ,      // Study plan generation
-    'projectIdeas': PROVIDERS.GROQ,   // Project idea generation
-    'mockPaper': PROVIDERS.GROQ,      // Mock paper generation
+    'code': PROVIDERS.GROQ,           // Code helper - Llama is great at code
+    'summarize': PROVIDERS.MISTRAL,   // Text summarization - Mistral is concise
+    'viva': PROVIDERS.GROQ,           // Viva simulator - speed matters
+    'studyPlan': PROVIDERS.MISTRAL,   // Study plan - reasoning matters
+    'projectIdeas': PROVIDERS.MISTRAL,// Project ideas - creativity
+    'mockPaper': PROVIDERS.MISTRAL,   // Mock paper - complex structure
     'goals': PROVIDERS.GROQ,          // Goal breakdown
     'mood': PROVIDERS.GROQ,           // Mood suggestions
-    'suggestions': PROVIDERS.GROQ,    // Study suggestions
+    'suggestions': PROVIDERS.MISTRAL, // Study suggestions
 };
 
 // Model configurations for each provider
 const MODEL_CONFIG = {
     [PROVIDERS.GROQ]: {
-        default: 'llama-3.3-70b-versatile',      // Best for complex tasks
-        fast: 'llama-3.1-8b-instant',            // Fast responses
-        json: 'llama-3.3-70b-versatile',         // JSON generation
+        default: 'llama-3.3-70b-versatile',
+        fast: 'llama-3.1-8b-instant',
+        json: 'llama-3.3-70b-versatile',
     },
     [PROVIDERS.OPENROUTER]: {
         default: 'meta-llama/llama-3.1-8b-instruct:free',
         fast: 'meta-llama/llama-3.1-8b-instruct:free',
         json: 'meta-llama/llama-3.1-8b-instruct:free',
+    },
+    // Virtual configurations (routed via OpenRouter)
+    [PROVIDERS.MISTRAL]: {
+        default: 'mistralai/mistral-large-2411', // Often free/cheap on OpenRouter
+        fast: 'mistralai/mistral-7b-instruct',
+        json: 'mistralai/mistral-large-2411',
+    },
+    [PROVIDERS.TOGETHER]: {
+        default: 'togethercomputer/llama-2-70b-chat',
+        fast: 'togethercomputer/llama-2-7b-chat',
+        json: 'togethercomputer/llama-2-70b-chat',
     }
 };
 
@@ -64,16 +78,16 @@ async function generateWithGroq(prompt, options = {}) {
         throw new Error('Groq client not initialized. Check GROQ_API_KEY.');
     }
 
-    const model = options.json 
-        ? MODEL_CONFIG[PROVIDERS.GROQ].json 
+    const model = options.json
+        ? MODEL_CONFIG[PROVIDERS.GROQ].json
         : (options.fast ? MODEL_CONFIG[PROVIDERS.GROQ].fast : MODEL_CONFIG[PROVIDERS.GROQ].default);
 
     const messages = [];
-    
+
     if (options.systemInstruction) {
         messages.push({ role: 'system', content: options.systemInstruction });
     }
-    
+
     messages.push({ role: 'user', content: prompt });
 
     const completion = await client.chat.completions.create({
@@ -96,16 +110,16 @@ async function* streamWithGroq(prompt, options = {}) {
         throw new Error('Groq client not initialized. Check GROQ_API_KEY.');
     }
 
-    const model = options.fast 
-        ? MODEL_CONFIG[PROVIDERS.GROQ].fast 
+    const model = options.fast
+        ? MODEL_CONFIG[PROVIDERS.GROQ].fast
         : MODEL_CONFIG[PROVIDERS.GROQ].default;
 
     const messages = [];
-    
+
     if (options.systemInstruction) {
         messages.push({ role: 'system', content: options.systemInstruction });
     }
-    
+
     messages.push({ role: 'user', content: prompt });
 
     const stream = await client.chat.completions.create({
@@ -133,16 +147,17 @@ async function generateWithOpenRouter(prompt, options = {}) {
         throw new Error('OpenRouter API key not configured. Check OPENROUTER_API_KEY.');
     }
 
-    const model = options.json 
-        ? MODEL_CONFIG[PROVIDERS.OPENROUTER].json 
-        : (options.fast ? MODEL_CONFIG[PROVIDERS.OPENROUTER].fast : MODEL_CONFIG[PROVIDERS.OPENROUTER].default);
+    // Use passed model OR fallback to OpenRouter config
+    const model = options.model || (options.json
+        ? MODEL_CONFIG[PROVIDERS.OPENROUTER].json
+        : (options.fast ? MODEL_CONFIG[PROVIDERS.OPENROUTER].fast : MODEL_CONFIG[PROVIDERS.OPENROUTER].default));
 
     const messages = [];
-    
+
     if (options.systemInstruction) {
         messages.push({ role: 'system', content: options.systemInstruction });
     }
-    
+
     messages.push({ role: 'user', content: prompt });
 
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
@@ -179,16 +194,16 @@ async function* streamWithOpenRouter(prompt, options = {}) {
         throw new Error('OpenRouter API key not configured.');
     }
 
-    const model = options.fast 
-        ? MODEL_CONFIG[PROVIDERS.OPENROUTER].fast 
-        : MODEL_CONFIG[PROVIDERS.OPENROUTER].default;
+    const model = options.model || (options.fast
+        ? MODEL_CONFIG[PROVIDERS.OPENROUTER].fast
+        : MODEL_CONFIG[PROVIDERS.OPENROUTER].default);
 
     const messages = [];
-    
+
     if (options.systemInstruction) {
         messages.push({ role: 'system', content: options.systemInstruction });
     }
-    
+
     messages.push({ role: 'user', content: prompt });
 
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
@@ -226,7 +241,7 @@ async function* streamWithOpenRouter(prompt, options = {}) {
         for (const line of lines) {
             const data = line.slice(6);
             if (data === '[DONE]') continue;
-            
+
             try {
                 const parsed = JSON.parse(data);
                 const content = parsed.choices[0]?.delta?.content;
@@ -246,19 +261,23 @@ async function* streamWithOpenRouter(prompt, options = {}) {
 function getProviderForFeature(feature) {
     // Check if we have API keys configured and fallback accordingly
     const preferredProvider = FEATURE_PROVIDER_MAP[feature] || PROVIDERS.GROQ;
-    
+
+    // Direct Groq Support
     if (preferredProvider === PROVIDERS.GROQ && process.env.GROQ_API_KEY) {
         return PROVIDERS.GROQ;
     }
-    
-    if (preferredProvider === PROVIDERS.OPENROUTER && process.env.OPENROUTER_API_KEY) {
-        return PROVIDERS.OPENROUTER;
+
+    // OpenRouter handling (supports generic OpenRouter, plus Mistral/Together routing)
+    if ((preferredProvider === PROVIDERS.OPENROUTER ||
+        preferredProvider === PROVIDERS.MISTRAL ||
+        preferredProvider === PROVIDERS.TOGETHER) && process.env.OPENROUTER_API_KEY) {
+        return preferredProvider;
     }
-    
+
     // Fallback chain: GROQ -> OpenRouter -> Gemini
     if (process.env.GROQ_API_KEY) return PROVIDERS.GROQ;
     if (process.env.OPENROUTER_API_KEY) return PROVIDERS.OPENROUTER;
-    
+
     return PROVIDERS.GEMINI; // Fallback to Gemini if no other keys
 }
 
@@ -267,13 +286,20 @@ function getProviderForFeature(feature) {
  */
 async function generate(prompt, options = {}) {
     const provider = options.provider || getProviderForFeature(options.feature);
-    
+
     console.log(`[AIProvider] Using ${provider} for feature: ${options.feature || 'default'}`);
-    
+
     switch (provider) {
         case PROVIDERS.GROQ:
             return generateWithGroq(prompt, options);
         case PROVIDERS.OPENROUTER:
+        case PROVIDERS.MISTRAL: // Route via OpenRouter
+        case PROVIDERS.TOGETHER: // Route via OpenRouter
+            const modelConfig = MODEL_CONFIG[provider];
+            // Only set options.model if not manually overridden by the caller
+            if (!options.model && modelConfig) {
+                options.model = options.json ? modelConfig.json : (options.fast ? modelConfig.fast : modelConfig.default);
+            }
             return generateWithOpenRouter(prompt, options);
         default:
             throw new Error(`Provider ${provider} requires Gemini fallback. Configure GROQ_API_KEY or OPENROUTER_API_KEY.`);
@@ -285,14 +311,20 @@ async function generate(prompt, options = {}) {
  */
 async function* stream(prompt, options = {}) {
     const provider = options.provider || getProviderForFeature(options.feature);
-    
+
     console.log(`[AIProvider] Streaming with ${provider} for feature: ${options.feature || 'default'}`);
-    
+
     switch (provider) {
         case PROVIDERS.GROQ:
             yield* streamWithGroq(prompt, options);
             break;
         case PROVIDERS.OPENROUTER:
+        case PROVIDERS.MISTRAL:
+        case PROVIDERS.TOGETHER:
+            const modelConfig = MODEL_CONFIG[provider];
+            if (!options.model && modelConfig) {
+                options.model = options.json ? modelConfig.json : (options.fast ? modelConfig.fast : modelConfig.default);
+            }
             yield* streamWithOpenRouter(prompt, options);
             break;
         default:
