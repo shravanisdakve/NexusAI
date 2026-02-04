@@ -83,10 +83,11 @@ export default function SpeedMathGame() {
     setCurrentQ(generateQuestion(lvl));
   };
 
-  const nextQuestion = () => {
+  const nextQuestion = (finalScore?: number) => {
     if (questionNo === 10) {
       setGameOver(true);
-      if (score === 10) {
+      const s = finalScore !== undefined ? finalScore : score;
+      if (s === 10) {
         awardBadge("Math Wizard");
       }
       return;
@@ -97,10 +98,12 @@ export default function SpeedMathGame() {
   };
 
   const handleAnswer = (option: number) => {
+    let newScore = score;
     if (option === currentQ?.answer) {
-      setScore(s => s + 1);
+      newScore = score + 1;
+      setScore(newScore);
     }
-    nextQuestion();
+    nextQuestion(newScore);
   };
   const [startTime, setStartTime] = useState<number>(0);
 
