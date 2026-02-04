@@ -5,11 +5,19 @@ import {
     CheckCircle2,
     AlertCircle,
     Info,
+<<<<<<< Updated upstream
+=======
+    Download,
+>>>>>>> Stashed changes
     Trophy,
     GraduationCap,
     TrendingUp
 } from 'lucide-react';
+<<<<<<< Updated upstream
 import { calculateGrace, checkProgression, SubjectMarks } from '@/services/atkService';
+=======
+import { calculateGrace, checkProgression, SubjectMarks } from '../services/atkService';
+>>>>>>> Stashed changes
 import { motion, AnimatePresence } from 'framer-motion';
 
 const ATKTCalculator: React.FC = () => {
@@ -74,6 +82,10 @@ const ATKTCalculator: React.FC = () => {
             />
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+<<<<<<< Updated upstream
+=======
+                {/* Input Section */}
+>>>>>>> Stashed changes
                 <div className="lg:col-span-2 space-y-6">
                     <Card className="p-6 bg-slate-800/50 border-slate-700 backdrop-blur-sm">
                         <div className="flex items-center justify-between mb-6">
@@ -183,6 +195,10 @@ const ATKTCalculator: React.FC = () => {
                     </Button>
                 </div>
 
+<<<<<<< Updated upstream
+=======
+                {/* Report Section */}
+>>>>>>> Stashed changes
                 <div className="space-y-6">
                     <AnimatePresence>
                         {report && (
@@ -233,11 +249,40 @@ const ATKTCalculator: React.FC = () => {
                                                 style={{ width: `${Math.min(100, (cumulativeCredits / progression.threshold) * 100)}%` }}
                                             />
                                         </div>
+<<<<<<< Updated upstream
                                     </Card>
                                 )}
                             </motion.div>
                         )}
                     </AnimatePresence>
+=======
+                                        <div className="flex justify-between mt-2 text-[10px] font-mono text-slate-500">
+                                            <span>CREDITS: {cumulativeCredits}</span>
+                                            <span>TARGET: {progression.threshold}</span>
+                                        </div>
+                                    </Card>
+                                )}
+
+                                <Card className="p-4 bg-slate-800/80 border-slate-700 text-xs text-slate-400 italic">
+                                    <div className="flex gap-2">
+                                        <Info className="w-4 h-4 shrink-0 text-amber-400" />
+                                        <p>
+                                            Disclaimer: This report is based on Mumbai University Ordinances 0.5042-A, 0.5044-A, 0.229-A and NEP 2024-25 progression rules. Actual results depend on the university's final decision and individual eligibility criteria.
+                                        </p>
+                                    </div>
+                                </Card>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+
+                    {!report && (
+                        <div className="h-full flex flex-col items-center justify-center p-8 text-center bg-slate-800/20 rounded-3xl border border-dashed border-slate-700">
+                            <AlertCircle className="w-12 h-12 text-slate-600 mb-4" />
+                            <h3 className="text-slate-400 font-medium">No Data Processed</h3>
+                            <p className="text-slate-500 text-sm mt-2">Enter your academic scores to receive a detailed ordinance analysis.</p>
+                        </div>
+                    )}
+>>>>>>> Stashed changes
                 </div>
             </div>
         </div>
