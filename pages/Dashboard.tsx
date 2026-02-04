@@ -18,7 +18,7 @@ import {
     Pin, X, Plus, ChevronDown, GraduationCap, Binary, Briefcase
 } from 'lucide-react';
 import { XPBar, StreakCounter, BadgeSmall } from '@/components/gamification/XPComponents';
-import { getUserStats, updateStreak, UserStats } from '@/services/gamificationService';
+import { getUserStats, updateStreak, awardBadge, UserStats } from '@/services/gamificationService';
 
 const formatSeconds = (seconds: number) => {
     if (seconds < 60) return `${seconds}s`;
@@ -349,7 +349,17 @@ const Dashboard: React.FC = () => {
             try {
                 await updateStreak();
                 const data = await getUserStats();
-                if (data.success) setStats(data.stats);
+                if (data.success) {
+                    setStats(data.stats);
+
+                    // Early Bird Logic: If user is active between 4 AM and 8 AM
+                    const hour = new Date().getHours();
+                    if (hour >= 4 && hour < 8 && !data.stats.badges.includes('Early Bird')) {
+                        await awardBadge('Early Bird');
+                        const updatedData = await getUserStats();
+                        if (updatedData.success) setStats(updatedData.stats);
+                    }
+                }
             } catch (error) {
                 console.error("Error refreshing stats:", error);
             }
@@ -439,8 +449,11 @@ const Dashboard: React.FC = () => {
                     <div className="flex items-center gap-6 bg-slate-800/50 p-4 rounded-2xl border border-white/5 backdrop-blur-sm">
                         <StreakCounter streak={stats.streak} />
                         <div className="flex gap-2">
-                            <BadgeSmall name="Early Bird" />
-                            <BadgeSmall name="Math Wizard" icon={<Binary className="w-5 h-5" />} />
+                            {stats.badges.includes('Early Bird') && <BadgeSmall name="Early Bird" />}
+                            {stats.badges.includes('Math Wizard') && <BadgeSmall name="Math Wizard" icon={<Binary className="w-5 h-5" />} />}
+                            {stats.badges.filter(b => b !== 'Early Bird' && b !== 'Math Wizard').map(badge => (
+                                <BadgeSmall key={badge} name={badge} />
+                            ))}
                         </div>
                     </div>
                 )}
