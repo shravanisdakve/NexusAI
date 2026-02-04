@@ -46,13 +46,7 @@ import StudyToolsPanel from '../components/StudyToolsPanel';
 type ActiveTab = 'chat' | 'participants' | 'ai' | 'notes' | 'whiteboard' | 'tools';
 
 
-interface Quiz {
-    topic: string;
-    question: string;
-    options: string[];
-    correctOptionIndex: number;
-    userAnswerIndex?: number;
-}
+// --- System Email ---
 
 
 const SYSTEM_EMAIL = 'system@nexus.ai';

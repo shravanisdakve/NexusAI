@@ -3,16 +3,16 @@ import { X, Play, Pause, Volume2, VolumeX, Music } from 'lucide-react';
 
 // --- FIX: Replaced web links with your local files from the /public folder ---
 const tracks = [
-  { 
-    name: 'Music 1', 
+  {
+    name: 'Music 1',
     url: '/music1.mp3' // This path works because music1.mp3 is in /public
   },
-  { 
-    name: 'Music 2', 
+  {
+    name: 'Music 2',
     url: '/music2.mp3' // This path works because music2.mp3 is in /public
   },
-  { 
-    name: 'Lofi music', 
+  {
+    name: 'Lofi music',
     url: '/music3.mp3' // This path works because music3.mp3 is in /public
   },
 ];
@@ -26,7 +26,7 @@ const MusicPlayer: React.FC<{ onClose: () => void }> = ({ onClose }) => {
 
   const handlePlayPause = (index: number) => {
     console.log(`handlePlayPause: Clicked track index=${index}, currentTrackIndex=${currentTrackIndex}`);
-    
+
     if (index === currentTrackIndex) {
       setIsPlaying(prev => !prev);
       console.log(`Toggling play state for index ${index}`);
@@ -45,23 +45,23 @@ const MusicPlayer: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) {
-        console.log("Audio element ref not found");
-        return;
+      console.log("Audio element ref not found");
+      return;
     }
 
     if (currentTrackIndex !== null && tracks[currentTrackIndex]) {
-        const newSrc = tracks[currentTrackIndex].url;
-        if (audio.src !== newSrc) {
-            console.log(`Setting audio source to: ${newSrc}`);
-            audio.src = newSrc;
-        }
+      const newSrc = tracks[currentTrackIndex].url;
+      if (audio.src !== newSrc) {
+        console.log(`Setting audio source to: ${newSrc}`);
+        audio.src = newSrc;
+      }
     } else {
-        if (audio.src) {
-             console.log("No track selected, clearing src and pausing");
-             audio.src = '';
-             audio.pause();
-        }
-        return; 
+      if (audio.src) {
+        console.log("No track selected, clearing src and pausing");
+        audio.src = '';
+        audio.pause();
+      }
+      return;
     }
 
     if (isPlaying) {
@@ -71,11 +71,11 @@ const MusicPlayer: React.FC<{ onClose: () => void }> = ({ onClose }) => {
         playPromise.then(() => {
           console.log("Playback started successfully.");
         }).catch(error => {
-          console.error("Audio play failed:", error); 
+          console.error("Audio play failed:", error);
           setIsPlaying(false);
         });
       } else {
-          console.log("audio.play() did not return a promise.");
+        console.log("audio.play() did not return a promise.");
       }
     } else {
       console.log("Pausing audio.");
@@ -86,8 +86,8 @@ const MusicPlayer: React.FC<{ onClose: () => void }> = ({ onClose }) => {
 
   useEffect(() => {
     if (audioRef.current) {
-        console.log(`Setting audio muted state to: ${isMuted}`);
-        audioRef.current.muted = isMuted;
+      console.log(`Setting audio muted state to: ${isMuted}`);
+      audioRef.current.muted = isMuted;
     }
   }, [isMuted]);
 
@@ -115,11 +115,11 @@ const MusicPlayer: React.FC<{ onClose: () => void }> = ({ onClose }) => {
       <audio
         ref={audioRef}
         onEnded={() => {
-            console.log("Track ended.");
-            setIsPlaying(false); 
+          console.log("Track ended.");
+          setIsPlaying(false);
         }}
         onError={(e) => {
-             console.error("Audio Element Error:", e);
+          console.error("Audio Element Error:", e);
         }}
       />
     </div>

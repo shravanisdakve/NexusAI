@@ -29,7 +29,7 @@ import MockPaperGenerator from './pages/MockPaperGenerator';
 import VivaSimulator from './pages/VivaSimulator';
 import StudyPlan from './pages/StudyPlan';
 import { useAuth } from './contexts/AuthContext';
-import { Spinner } from './components/ui';
+import { Spinner } from '@/components/ui';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated, loading } = useAuth(); // Using isAuthenticated and loading from useAuth

@@ -81,126 +81,125 @@ const ProfileEditModal: React.FC<ProfileEditModalProps> = ({ isOpen, onClose, cu
 
 
 const navigation = [
-  { name: 'Study Hub', href: '/', icon: LayoutDashboard },
-  { name: 'Insights', href: '/insights', icon: BarChart2 },
-  { name: 'Notes', href: '/notes', icon: FileText },
-  { name: 'AI Tutor', href: '/tutor', icon: MessageSquare },
-  { name: 'Study Room', href: '/study-lobby', icon: Users },
-//   { name: 'Community', href: '/insights?tab=community', icon: Users }, // Assuming Community page removed/merged
+    { name: 'Study Hub', href: '/', icon: LayoutDashboard },
+    { name: 'Insights', href: '/insights', icon: BarChart2 },
+    { name: 'Notes', href: '/notes', icon: FileText },
+    { name: 'AI Tutor', href: '/tutor', icon: MessageSquare },
+    { name: 'Study Room', href: '/study-lobby', icon: Users },
+    //   { name: 'Community', href: '/insights?tab=community', icon: Users }, // Assuming Community page removed/merged
 ];
 
 const Sidebar: React.FC = () => {
-  // --- FIX: Added updateUserProfile and modal state ---
-  const { currentUser, logout, updateUserProfile } = useAuth(); // Get updateUserProfile
-  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false); // Add modal state
-  // --- END FIX ---
-  const navigate = useNavigate();
+    // --- FIX: Added updateUserProfile and modal state ---
+    const { user, logout, updateUserProfile } = useAuth(); // Get updateUserProfile
+    const [isProfileModalOpen, setIsProfileModalOpen] = useState(false); // Add modal state
+    // --- END FIX ---
+    const navigate = useNavigate();
 
-  const handleLogout = async () => {
-    try {
-      await logout(); // Use mock signOut
-      navigate('/login');
-    } catch (error) {
-      console.error("Failed to log out", error);
-    }
-  };
+    const handleLogout = async () => {
+        try {
+            await logout(); // Use mock signOut
+            navigate('/login');
+        } catch (error) {
+            console.error("Failed to log out", error);
+        }
+    };
 
-  // --- FIX: Added save handler ---
-  const handleProfileSave = async (newName: string) => {
-      if (!updateUserProfile) {
-           console.error("updateUserProfile function is not available from AuthContext!");
-           // Handle error appropriately, maybe show a message
-           throw new Error("Profile update function not loaded."); // Throw to show error in modal
-      }
-      try {
-          await updateUserProfile({ displayName: newName });
-          // Optional: Show a success message if needed
-      } catch (error) {
-           // Error is logged in context, modal will show message from thrown error
-           throw error; // Re-throw for modal
-      }
-  };
-  // --- END FIX ---
+    // --- FIX: Added save handler ---
+    const handleProfileSave = async (newName: string) => {
+        if (!updateUserProfile) {
+            console.error("updateUserProfile function is not available from AuthContext!");
+            // Handle error appropriately, maybe show a message
+            throw new Error("Profile update function not loaded."); // Throw to show error in modal
+        }
+        try {
+            await updateUserProfile({ displayName: newName });
+            // Optional: Show a success message if needed
+        } catch (error) {
+            // Error is logged in context, modal will show message from thrown error
+            throw error; // Re-throw for modal
+        }
+    };
+    // --- END FIX ---
 
 
-  return (
-    <> {/* Added Fragment to wrap sidebar and modal */}
-        <aside className="w-64 flex-shrink-0 bg-slate-800/50 p-6 flex flex-col ring-1 ring-slate-700"> {/* Added ring */}
-            <div className="flex items-center mb-10">
-                <div className="p-2 bg-violet-600 rounded-lg">
-                <BrainCircuit className="w-7 h-7 text-white" />
-                </div>
-                <h1 className="text-2xl font-bold ml-3 bg-gradient-to-r from-violet-400 to-cyan-400 text-transparent bg-clip-text">
-                NexusAI
-                </h1>
-            </div>
-            <nav className="flex-1 space-y-2">
-                {navigation.map((item) => (
-                <NavLink
-                    key={item.name}
-                    to={item.href}
-                    end={item.href === '/'}
-                    className={({ isActive }) =>
-                    `flex items-center px-4 py-2.5 text-sm font-medium rounded-lg transition-colors duration-200 ${
-                        isActive
-                        ? 'bg-violet-600 text-white shadow-lg'
-                        : 'text-slate-300 hover:bg-slate-700 hover:text-white'
-                    }`
-                    }
-                >
-                    <item.icon className="mr-3 h-5 w-5" aria-hidden="true" />
-                    {item.name}
-                </NavLink>
-                ))}
-            </nav>
-            <div className="mt-auto">
-                <div className="p-4 rounded-lg bg-slate-800 ring-1 ring-slate-700"> {/* Added ring */}
-                {currentUser && (
-                    <div className="flex items-center space-x-3 mb-4">
-                        <img src={`https://ui-avatars.com/api/?name=${currentUser.displayName || 'User'}&background=random`} alt="User avatar" className="w-10 h-10 rounded-full" />
-                        <div className="flex-1 overflow-hidden"> {/* Ensure text truncates */}
-                            <p className="font-semibold text-sm text-white truncate">{currentUser.displayName || 'User'}</p>
-                            <p className="text-xs text-slate-400 truncate">{currentUser.email}</p>
-                            {/* Removed university display as it wasn't part of mock user */}
-                            {/* {currentUser.university && <p className="text-xs text-slate-500 truncate">{currentUser.university}</p>} */}
-                        </div>
-                        {/* --- FIX: Added Edit Button --- */}
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            className="p-1 text-slate-400 hover:text-white"
-                            onClick={() => setIsProfileModalOpen(true)}
-                            title="Edit Profile"
-                        >
-                            <Edit3 size={16} />
-                        </Button>
-                        {/* --- END FIX --- */}
+    return (
+        <> {/* Added Fragment to wrap sidebar and modal */}
+            <aside className="w-[280px] flex-shrink-0 bg-[#0F1117] border-r border-white/5 p-6 flex flex-col"> {/* Updated width and border */}
+                <div className="flex items-center mb-10">
+                    <div className="p-2 bg-violet-600 rounded-lg">
+                        <BrainCircuit className="w-7 h-7 text-white" />
                     </div>
-                )}
-                <button
-                    onClick={handleLogout}
-                    className="w-full flex items-center justify-center px-4 py-2 text-sm font-medium rounded-lg transition-colors duration-200 text-slate-300 hover:bg-red-500/20 hover:text-red-400" // Centered text
-                    >
-                    <LogOut className="mr-2 h-5 w-5" /> {/* Adjusted margin */}
-                    Logout
-                    </button>
+                    <h1 className="text-2xl font-bold ml-3 bg-gradient-to-r from-violet-400 to-cyan-400 text-transparent bg-clip-text">
+                        NexusAI
+                    </h1>
                 </div>
-                <p className="text-center text-xs text-slate-500 mt-4">&copy; 2024 NexusAI. All rights reserved.</p>
-            </div>
-        </aside>
+                <nav className="flex-1 space-y-2">
+                    {navigation.map((item) => (
+                        <NavLink
+                            key={item.name}
+                            to={item.href}
+                            end={item.href === '/'}
+                            className={({ isActive }) =>
+                                `flex items-center px-4 py-3 text-sm font-medium transition-all duration-200 border-l-[3px] ${isActive
+                                    ? 'bg-violet-500/15 border-violet-500 text-white'
+                                    : 'border-transparent text-slate-400 hover:bg-white/5 hover:text-white'
+                                }`
+                            }
+                        >
+                            <item.icon className="mr-3 h-5 w-5" aria-hidden="true" />
+                            {item.name}
+                        </NavLink>
+                    ))}
+                </nav>
+                <div className="mt-auto pt-6 border-t border-white/5">
+                    <div className="px-3 py-3 rounded-xl bg-surface/50 border border-white/5"> {/* Updated user card */}
+                        {user && (
+                            <div className="flex items-center space-x-3 mb-4">
+                                <img src={`https://ui-avatars.com/api/?name=${user.displayName || 'User'}&background=random`} alt="User avatar" className="w-10 h-10 rounded-full" />
+                                <div className="flex-1 overflow-hidden"> {/* Ensure text truncates */}
+                                    <p className="font-semibold text-sm text-white truncate">{user.displayName || 'User'}</p>
+                                    <p className="text-xs text-slate-400 truncate">{user.email}</p>
+                                    {/* Removed university display as it wasn't part of mock user */}
+                                    {/* {user.university && <p className="text-xs text-slate-500 truncate">{user.university}</p>} */}
+                                </div>
+                                {/* --- FIX: Added Edit Button --- */}
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="p-1 text-slate-400 hover:text-white"
+                                    onClick={() => setIsProfileModalOpen(true)}
+                                    title="Edit Profile"
+                                >
+                                    <Edit3 size={16} />
+                                </Button>
+                                {/* --- END FIX --- */}
+                            </div>
+                        )}
+                        <button
+                            onClick={handleLogout}
+                            className="w-full flex items-center justify-center px-4 py-2 text-sm font-medium rounded-lg transition-colors duration-200 text-slate-300 hover:bg-red-500/20 hover:text-red-400" // Centered text
+                        >
+                            <LogOut className="mr-2 h-5 w-5" /> {/* Adjusted margin */}
+                            Logout
+                        </button>
+                    </div>
+                    <p className="text-center text-xs text-slate-500 mt-4">&copy; 2024 NexusAI. All rights reserved.</p>
+                </div>
+            </aside>
 
-        {/* --- FIX: Render the Profile Edit Modal --- */}
-        {currentUser && (
-            <ProfileEditModal
-                isOpen={isProfileModalOpen}
-                onClose={() => setIsProfileModalOpen(false)}
-                currentName={currentUser.displayName || ''}
-                onSave={handleProfileSave}
-            />
-        )}
-        {/* --- END FIX --- */}
-    </>
-  );
+            {/* --- FIX: Render the Profile Edit Modal --- */}
+            {user && (
+                <ProfileEditModal
+                    isOpen={isProfileModalOpen}
+                    onClose={() => setIsProfileModalOpen(false)}
+                    currentName={user.displayName || ''}
+                    onSave={handleProfileSave}
+                />
+            )}
+            {/* --- END FIX --- */}
+        </>
+    );
 };
 
 export default Sidebar;

@@ -18,7 +18,10 @@ export interface User {
     displayName: string;
     email: string;
     university?: string;
-    // Add other fields as necessary
+    college?: string;
+    branch?: string;
+    year?: number;
+    token?: string;
 }
 
 export interface Flashcard {
@@ -31,6 +34,7 @@ export interface Flashcard {
 
 export interface Quiz {
     id: string;
+    topic?: string;
     question: string;
     options: string[];
     correctOptionIndex: number;

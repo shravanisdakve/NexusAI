@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { PageHeader, Button, Input } from '../components/ui';
+import { PageHeader, Button, Input } from '@/components/ui';
 import { useAuth } from '../contexts/AuthContext';
-import { type Course, type Mood as MoodType, type StudyPlan } from '../types';
+import { type Course, type Mood as MoodType, type MoodLabel, type StudyPlan } from '../types';
 import { getStudyPlan } from '../services/studyPlanService';
 import { getTimeOfDayGreeting, getMostUsedTool } from '../services/personalizationService';
 import { getProductivityReport } from '../services/analyticsService';
@@ -63,7 +63,7 @@ const ProductivityInsights: React.FC = () => {
     const hasData = report.totalStudyTime > 0 || report.totalQuizzes > 0;
 
     return (
-        <div className="bg-slate-800/50 rounded-xl p-6 ring-1 ring-slate-700">
+        <div className="bg-slate-800 rounded-xl p-8 border border-white/10 shadow-card hover:shadow-card-hover transition-all duration-300">
             <h3 className="text-xl font-bold text-slate-100 flex items-center mb-4">
                 <BarChart className="w-6 h-6 mr-3 text-violet-400" /> Weekly Snapshot
             </h3>
@@ -130,16 +130,16 @@ const ActivePlanWidget: React.FC = () => {
     if (isLoading) return null;
 
     if (!plan) return (
-        <div className="bg-slate-800/60 backdrop-blur-md rounded-xl p-6 ring-1 ring-slate-700 shadow-[0_0_20px_rgba(139,92,246,0.1)] mb-8 flex flex-col items-center text-center">
-            <div className="p-4 bg-slate-700/50 rounded-full mb-4">
+        <div className="bg-slate-800 rounded-xl p-8 border border-white/10 shadow-card hover:shadow-card-hover transition-all duration-300 mb-10 flex flex-col items-center text-center">
+            <div className="p-4 bg-slate-700/30 rounded-full mb-4">
                 <Calendar className="w-8 h-8 text-slate-400" />
             </div>
             <h3 className="text-xl font-bold text-slate-100 mb-2">No Active Study Plan</h3>
             <p className="text-slate-400 max-w-md mb-6">You don't have a study plan for today. Create one to stay organized and ace your exams!</p>
             <Link to="/study-plan">
-                <Button className="px-6">
+                <Button className="px-6 uppercase tracking-wide text-sm font-medium">
                     <PlusCircle size={18} className="mr-2" />
-                    Create Study Plan
+                    CREATE STUDY PLAN
                 </Button>
             </Link>
         </div>
@@ -150,7 +150,7 @@ const ActivePlanWidget: React.FC = () => {
     const currentDayPlan = plan.days[Math.min(daysSinceStart, plan.days.length - 1)];
 
     return (
-        <div className="bg-slate-800/60 backdrop-blur-md rounded-xl p-6 ring-1 ring-slate-700 shadow-[0_0_20px_rgba(139,92,246,0.1)] mb-8">
+        <div className="bg-slate-800 rounded-xl p-8 border border-white/10 shadow-card hover:shadow-card-hover transition-all duration-300 mb-10">
             <h3 className="text-xl font-bold text-slate-100 flex items-center mb-4">
                 <Calendar className="w-6 h-6 mr-3 text-violet-400" /> Today's Study Step
             </h3>
@@ -228,9 +228,8 @@ const MyCourses: React.FC = () => {
             console.error("Error deleting course:", error);
         }
     }
-
     return (
-        <div className="bg-slate-800/50 rounded-xl p-6 ring-1 ring-slate-700">
+        <div className="bg-slate-800 rounded-xl p-8 border border-white/10 shadow-card hover:shadow-card-hover transition-all duration-300">
             <h3 className="text-xl font-bold text-slate-100 flex items-center mb-4">
                 <BookOpen className="w-6 h-6 mr-3 text-violet-400" /> My Courses
             </h3>
@@ -296,33 +295,33 @@ interface ToolCardProps {
     description: string;
     icon: React.ElementType;
     color: string;
-    bgColor: string;
+    bgColor: string; // Kept for compatibility but we will override
 }
-const ToolCard: React.FC<ToolCardProps> = ({ name, href, description, icon: Icon, color, bgColor }) => {
+const ToolCard: React.FC<ToolCardProps> = ({ name, href, description, icon: Icon, color }) => {
+    // Extract color class (e.g., text-sky-400) to determine base color if possible, 
+    // or just use a generic approach for the professional look.
+    // Professional look: Monochromatic icon backgrounds with subtle opacity.
+
     return (
-        <Link to={href} className="group block p-6 bg-slate-800 rounded-xl hover:bg-slate-700/80 transition-all duration-300 ring-1 ring-slate-700 hover:ring-violet-500">
-            <div className="flex items-center space-x-4">
-                <div className={`p-3 rounded-lg ${bgColor}`}>
-                    <Icon className={`w-6 h-6 ${color}`} />
+        <Link to={href} className="group block p-6 bg-slate-800 rounded-xl border border-white/10 shadow-card hover:translate-y-[-2px] hover:shadow-card-hover transition-all duration-300">
+            <div className="flex items-center space-x-4 mb-4">
+                <div className="w-12 h-12 flex items-center justify-center rounded-lg bg-violet-500/10 group-hover:bg-violet-500/20 transition-colors">
+                    <Icon className="w-6 h-6 text-slate-200 group-hover:text-violet-400 transition-colors" />
                 </div>
-                <h3 className="text-lg font-bold text-slate-100">{name}</h3>
+                <h3 className="text-lg font-semibold text-slate-100 group-hover:text-violet-400 transition-colors">{name}</h3>
             </div>
-            <p className="mt-3 text-sm text-slate-400">{description}</p>
-            <div className="mt-4 flex items-center text-sm font-semibold text-violet-400 group-hover:text-violet-300">
-                <span>Start Session</span>
+            <p className="text-sm text-slate-400/80 leading-relaxed mb-6 h-10 overflow-hidden">{description}</p>
+            <div className="flex items-center text-sm font-medium text-violet-400 group-hover:text-violet-300">
+                <span className="uppercase tracking-wider text-xs">Start Session</span>
                 <ArrowRight className="ml-2 w-4 h-4 transition-transform duration-300 group-hover:translate-x-1" />
             </div>
         </Link>
     );
 };
 
+// Replaced ToolsGrid usage inline in the main render to customize layout properly
 const ToolsGrid: React.FC = () => (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
-        {tools.map(tool => {
-            const { key, ...rest } = tool;
-            return <ToolCard key={key} {...rest} />;
-        })}
-    </div>
+    <div className="hidden"></div>
 );
 
 const SESSION_MOOD_CHECKIN_KEY = 'nexusMoodCheckedInSession';
@@ -348,12 +347,12 @@ const Dashboard: React.FC = () => {
         }
     }, []);
 
-    const handleMoodSelected = async (mood: MoodType) => {
+    const handleMoodSelected = async (mood: MoodLabel) => {
         sessionStorage.setItem(SESSION_MOOD_CHECKIN_KEY, 'true');
         setShowMoodCheckin(false);
         setIsLoadingSuggestion(true);
         try {
-            const suggestion = await getSuggestionForMood(mood.toString());
+            const suggestion = await getSuggestionForMood(mood);
             setAiSuggestion(suggestion);
         } catch (error) {
             console.error("Error getting mood suggestion:", error);
@@ -371,58 +370,87 @@ const Dashboard: React.FC = () => {
     const pageTitle = `${greeting}, ${user?.displayName?.split(' ')[0] || 'User'}!`;
 
     return (
-        <div className="space-y-8">
-            <PageHeader title={pageTitle} subtitle={pageSubtitle} />
+        <div className="space-y-10 pb-12">
+            <div className="mb-12 pt-6"> {/* Increased breathing room */}
+                <h1 className="text-4xl font-semibold text-white tracking-tight mb-2">Good afternoon, <span className="text-white">{user?.displayName?.split(' ')[0] || 'User'}</span>!</h1>
+                <p className="text-slate-400/60 text-lg">{pageSubtitle}</p>
+            </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                <div className="lg:col-span-2 space-y-8">
-                    <div className="bg-slate-800/50 rounded-xl p-6 ring-1 ring-slate-700 text-center">
-                        <h2 className="text-2xl font-bold text-slate-100 mb-2 flex items-center justify-center">
-                            <Zap className="w-6 h-6 mr-3 text-yellow-400" />
-                            Enter a Study Room
-                        </h2>
-                        <p className="text-slate-400 mb-6 max-w-xl mx-auto">Create or join a room to collaborate with friends, chat with an AI study buddy, and hold each other accountable.</p>
-                        <Button onClick={() => navigate('/study-lobby')} className="px-8 py-4 text-lg">
-                            <Users className="w-5 h-5 mr-2" />
-                            Go to Study Lobby
-                        </Button>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+                <div className="lg:col-span-2 space-y-10">
+                    <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl p-10 border border-white/5 shadow-2xl relative overflow-hidden group">
+                        <div className="absolute top-0 right-0 p-32 bg-violet-500/10 blur-[100px] rounded-full pointer-events-none"></div>
+                        <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+                            <div>
+                                <h2 className="text-3xl font-bold text-white mb-3 tracking-tight">
+                                    Ready to focus?
+                                </h2>
+                                <p className="text-slate-400 mb-6 max-w-md text-lg leading-relaxed">Create a dedicated study room to collaborate, chat with AI, and track your progress.</p>
+                                <Button onClick={() => navigate('/study-lobby')} className="px-8 py-4 text-sm font-medium uppercase tracking-wider shadow-lg shadow-violet-500/25">
+                                    <Users className="w-5 h-5 mr-3" />
+                                    ENTER STUDY LOBBY
+                                </Button>
+                            </div>
+                            <div className="hidden md:block p-4 bg-slate-800/50 rounded-2xl border border-white/5 backdrop-blur-sm">
+                                <Zap className="w-16 h-16 text-violet-400" strokeWidth={1.5} />
+                            </div>
+                        </div>
                     </div>
 
-                    <h2 className="text-2xl font-bold text-slate-100 mb-4">Resource Library</h2>
-                    <Link to="/resources" className="group block p-6 bg-slate-800 rounded-xl hover:bg-slate-700/80 transition-all duration-300 ring-1 ring-slate-700 hover:ring-violet-500">
-                        <div className="flex items-center space-x-4">
-                            <div className="p-3 rounded-lg bg-green-900/50">
-                                <BookOpen className="w-6 h-6 text-green-400" />
-                            </div>
-                            <div>
-                                <h3 className="text-lg font-bold text-slate-100">Engineering Resources</h3>
-                                <p className="mt-1 text-sm text-slate-400">Find notes, papers, and books for your branch.</p>
-                            </div>
-                            <ArrowRight className="ml-auto w-5 h-5 text-slate-400 transition-transform duration-300 group-hover:translate-x-1 group-hover:text-violet-400" />
+                    <div>
+                        <div className="flex items-center justify-between mb-6">
+                            <h2 className="text-xl font-semibold text-slate-100">Resource Library</h2>
+                            <Link to="/resources" className="text-sm font-medium text-violet-400 hover:text-violet-300 transition-colors">View All Resources</Link>
                         </div>
-                    </Link>
-                </div>
-
-                <div>
-                    {mostUsedTool && (
-                        <div className="mb-8">
-                            <h2 className="text-2xl font-bold text-slate-100 mb-4 flex items-center"><Star className="w-6 h-6 mr-3 text-yellow-400" /> Quick Access</h2>
-                            <Link to={mostUsedTool.href} className="group block p-6 bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl hover:bg-slate-700/80 transition-all duration-300 ring-2 ring-violet-500 shadow-lg shadow-violet-500/10">
-                                <div className="flex items-center space-x-4">
-                                    <div className={`p-3 rounded-lg ${mostUsedTool.bgColor}`}>
-                                        <mostUsedTool.icon className={`w-6 h-6 ${mostUsedTool.color}`} />
+                        <Link to="/resources" className="group block p-8 bg-slate-800 rounded-xl border border-white/10 shadow-card hover:shadow-card-hover transition-all duration-300 relative overflow-hidden">
+                            <div className="absolute inset-0 bg-gradient-to-r from-violet-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                            <div className="flex items-center justify-between relative z-10">
+                                <div className="flex items-center space-x-6">
+                                    <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/20 group-hover:scale-110 transition-transform duration-300">
+                                        <BookOpen className="w-8 h-8 text-white" />
                                     </div>
                                     <div>
-                                        <h3 className="text-lg font-bold text-slate-100">{mostUsedTool.name}</h3>
-                                        <p className="mt-1 text-sm text-slate-400">{mostUsedTool.description}</p>
+                                        <h3 className="text-xl font-bold text-white mb-1">Engineering Resources</h3>
+                                        <p className="text-slate-400 font-light">Access notes, past papers, and reference books.</p>
                                     </div>
-                                    <ArrowRight className="ml-auto w-5 h-5 text-slate-400 transition-transform duration-300 group-hover:translate-x-1 group-hover:text-violet-400" />
+                                </div>
+                                <div className="hidden sm:flex w-12 h-12 rounded-full border border-white/10 items-center justify-center group-hover:bg-violet-500 group-hover:border-transparent transition-all duration-300">
+                                    <ArrowRight className="w-5 h-5 text-slate-400 group-hover:text-white transition-colors" />
+                                </div>
+                            </div>
+                        </Link>
+                    </div>
+                </div>
+
+                <div className="space-y-10">
+                    {mostUsedTool && (
+                        <div>
+                            <h2 className="text-xl font-semibold text-slate-100 mb-6 flex items-center">
+                                <Star className="w-5 h-5 mr-3 text-violet-500" fill="currentColor" /> Quick Access
+                            </h2>
+                            <Link to={mostUsedTool.href} className="group block p-6 bg-slate-800 rounded-xl border border-violet-500/30 shadow-lg shadow-violet-500/10 hover:shadow-violet-500/20 transition-all duration-300">
+                                <div className="flex items-center justify-between mb-4">
+                                    <div className={`p-3 rounded-lg bg-violet-500/10`}>
+                                        <mostUsedTool.icon className={`w-6 h-6 text-violet-400`} />
+                                    </div>
+                                    <ArrowRight className="w-5 h-5 text-slate-500 group-hover:text-violet-400 group-hover:translate-x-1 transition-all" />
+                                </div>
+                                <div>
+                                    <h3 className="text-lg font-bold text-white mb-1">{mostUsedTool.name}</h3>
+                                    <p className="text-sm text-slate-400">{mostUsedTool.description}</p>
                                 </div>
                             </Link>
                         </div>
                     )}
-                    <h2 className="text-2xl font-bold text-slate-100 mb-4">Your AI Toolkit</h2>
-                    <ToolsGrid />
+                    <div>
+                        <h2 className="text-xl font-semibold text-slate-100 mb-6">Your AI Toolkit</h2>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-5"> {/* Reduced gap for toolkit grid */}
+                            {tools.map(tool => {
+                                const { key, ...rest } = tool;
+                                return <ToolCard key={key} {...rest} />;
+                            })}
+                        </div>
+                    </div>
                 </div>
             </div>
 
