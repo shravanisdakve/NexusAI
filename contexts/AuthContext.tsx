@@ -126,9 +126,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   // Kept from original file
   const updateUserProfile = async (updates: Partial<User>) => {
     if (!user) return;
-    // Here you would typically make an API call to update the user profile
-    console.log('Updating profile (mock):', updates);
-    setUser({ ...user, ...updates });
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.put('/api/auth/profile', updates, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (response.data.success) {
+        setUser(response.data.user);
+      } else {
+        throw new Error(response.data.message || 'Failed to update profile');
+      }
+    } catch (error: any) {
+      console.error('Update profile error:', error);
+      throw new Error(error.response?.data?.message || 'Failed to update profile due to a server error.');
+    }
   };
 
 
