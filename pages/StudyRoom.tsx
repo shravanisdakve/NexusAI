@@ -709,7 +709,23 @@ const StudyRoom: React.FC = () => {
                 reader.readAsDataURL(file);
             });
 
-            const extracted = await extractTextFromFile(base64Data, file.type);
+            let mimeType = file.type;
+            if (!mimeType) {
+                const extension = file.name.split('.').pop()?.toLowerCase();
+                const mimeMap: { [key: string]: string } = {
+                    'pdf': 'application/pdf',
+                    'txt': 'text/plain',
+                    'md': 'text/plain',
+                    'png': 'image/png',
+                    'jpg': 'image/jpeg',
+                    'jpeg': 'image/jpeg',
+                    'pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+                    'ppt': 'application/vnd.ms-powerpoint'
+                };
+                mimeType = mimeMap[extension || ''] || 'application/octet-stream';
+            }
+
+            const extracted = await extractTextFromFile(base64Data, mimeType);
 
             await saveRoomAINotes(roomId, extracted);
 
@@ -717,10 +733,11 @@ const StudyRoom: React.FC = () => {
 
             await postSystemMessage(`${currentUser?.displayName} updated the study notes with the file: ${file.name}`);
 
-        } catch (err) {
+        } catch (err: any) {
             console.error("File upload and processing failed:", err);
             await saveRoomAINotes(roomId, '');
-            setAiMessages([{ role: 'model', parts: [{ text: "Sorry, I couldn't read that file. It might be an unsupported format or corrupted. Please try another one." }] }]);
+            const errorMessage = err.message || "Sorry, I couldn't read that file.";
+            setAiMessages([{ role: 'model', parts: [{ text: `${errorMessage} Please ensure the file is a supported format (PDF, PPTX, Image, or Text) and not corrupted.` }] }]);
         } finally {
             setIsExtracting(false);
         }
@@ -871,7 +888,13 @@ const StudyRoom: React.FC = () => {
 
                 </div>
 
-                <input type="file" ref={notesFileInputRef} onChange={handleNotesFileUpload} accept=".txt,.md,.pdf,.pptx" style={{ display: 'none' }} />
+                <input
+                    type="file"
+                    ref={notesFileInputRef}
+                    onChange={handleNotesFileUpload}
+                    accept=".txt,.md,.pdf,.pptx,.ppt,.png,.jpg,.jpeg"
+                    style={{ display: 'none' }}
+                />
 
                 <RoomControls
                     mediaReady={!!localStream}

@@ -4,9 +4,10 @@ import { Button, Spinner } from './ui';
 import PomodoroTimer from './PomodoroTimer';
 import FlashcardDeck from './FlashcardDeck';
 import KnowledgeMap from './KnowledgeMap';
+import FeynmanAssistant from './FeynmanAssistant';
 import { generateFlashcards as generateFlashcardsApi } from '../services/geminiService';
 
-type ToolTab = 'timer' | 'flashcards' | 'map';
+type ToolTab = 'timer' | 'flashcards' | 'map' | 'feynman';
 
 interface StudyToolsPanelProps {
     notes: string;
@@ -79,6 +80,14 @@ const StudyToolsPanel: React.FC<StudyToolsPanelProps> = ({ notes, topic, isActiv
                     className={`flex-1 text-xs ${activeTab === 'map' ? 'bg-violet-600/20 text-violet-300' : 'text-slate-400'}`}
                 >
                     <Network size={14} className="mr-1.5" /> Map
+                </Button>
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setActiveTab('feynman')}
+                    className={`flex-1 text-xs ${activeTab === 'feynman' ? 'bg-violet-600/20 text-violet-300' : 'text-slate-400'}`}
+                >
+                    <Brain size={14} className="mr-1.5" /> Feynman
                 </Button>
             </div>
 
@@ -157,6 +166,18 @@ const StudyToolsPanel: React.FC<StudyToolsPanelProps> = ({ notes, topic, isActiv
                         </div>
                         <div className="flex-1 flex bg-slate-900/50 rounded-xl overflow-hidden ring-1 ring-white/5">
                             <KnowledgeMap topics={mapData} />
+                        </div>
+                    </div>
+                )}
+
+                {/* FEYNMAN TAB */}
+                {activeTab === 'feynman' && (
+                    <div className="h-full flex flex-col">
+                        <FeynmanAssistant topic={topic || 'this concept'} notes={notes} />
+                        <div className="mt-4 p-3 bg-violet-600/10 rounded-xl border border-violet-500/20">
+                            <p className="text-[10px] text-slate-400 leading-relaxed italic">
+                                "If you want to master something, teach it. The Feynman Technique identifies gaps in your knowledge by challenging you to explain complex ideas in simple terms."
+                            </p>
                         </div>
                     </div>
                 )}

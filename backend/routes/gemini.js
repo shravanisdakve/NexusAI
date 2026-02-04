@@ -154,8 +154,14 @@ router.post('/generateCode', async (req, res) => {
 // --- TEXT EXTRACTION FROM FILE SERVICE ---
 router.post('/extractTextFromFile', async (req, res) => {
     try {
-        const { base64Data, mimeType } = req.body;
+        let { base64Data, mimeType } = req.body;
         const model = getModel('gemini-2.0-flash');
+
+        // Fallback for missing or generic mime types
+        if (!mimeType || mimeType === 'application/octet-stream') {
+            console.warn("[extractTextFromFile] Missing or generic mimeType, using application/pdf as fallback");
+            mimeType = 'application/pdf';
+        }
 
         const filePart = {
             inlineData: {
@@ -163,12 +169,27 @@ router.post('/extractTextFromFile', async (req, res) => {
                 mimeType: mimeType,
             },
         };
+
         const textPart = {
-            text: "You are an expert OCR and document parser. Extract all textual content from the provided document (PDF, image, or presentation). Preserve the logical structure (headings, lists, sections) but return it as clean, unformatted text. If there are mathematical formulas, represent them clearly in plain text. Ensure no data is skipped even if the document is long."
+            text: `You are an expert OCR and document parser. 
+            Extract all textual content from the provided document. This document could be a PDF, an image (possibly of handwritten notes), or a presentation (PPTX).
+            
+            DIRECTIONS:
+            1. Extract ALL text. For handwritten notes, be extremely thorough and use your best judgment to decipher messy handwriting.
+            2. Preserve the logical structure (headings, bullet points, sections, slide numbers).
+            3. For mathematical formulas, represent them clearly in plain text or LaTeX-like notation.
+            4. If it's a presentation, extract the content slide by slide.
+            5. Return ONLY the clean, unformatted continuous text. Do not include any meta-commentary like "Here is the text".`
         };
 
         const result = await model.generateContent([textPart, filePart]);
-        res.json({ text: result.response.text() });
+        const extractedText = result.response.text();
+
+        if (!extractedText || extractedText.trim().length === 0) {
+            throw new Error("No text could be extracted from this file. It might be empty or in an unsupported format.");
+        }
+
+        res.json({ text: extractedText });
     } catch (error) {
         console.error("Error in extractTextFromFile:", error);
         res.status(500).json({ error: error.message });
@@ -479,4 +500,94 @@ router.post('/streamVivaChat', async (req, res) => {
     }
 });
 
+// --- FEYNMAN TECHNIQUE SERVICE ---
+router.post('/streamFeynmanChat', async (req, res) => {
+    try {
+        const { message, topic, notes } = req.body;
+
+        const systemInstruction = `You are a curious, non-expert student (a 10-year-old named "Nino") who wants to learn about "${topic}".
+        The user is trying to teach you this concept using the Feynman Technique.
+        
+        Your Goal:
+        1. Act like you know NOTHING about the technical side of ${topic}.
+        2. Ask innocent but deep "Why?" and "How?" questions.
+        3. If the user uses jargon or complex academic language, stop them and say "I don't understand that big word, can you explain it like I'm 10?"
+        4. Do not offer definitions yourself. You are the LEARNER.
+        
+        Notes context if available:
+        ---
+        ${notes || 'No specific notes provided.'}
+        ---
+        
+        Current Behavior:
+        - Be friendly and curious.
+        - If the user's explanation is too short, ask for an analogy.
+        - If the user is being too formal, ask for a real-world example from Mumbai/India context.
+        
+        Wait for the user to start teaching you.`;
+
+        const model = getModel('gemini-2.0-flash', systemInstruction);
+        const chat = model.startChat();
+
+        const result = await chat.sendMessageStream(message);
+
+        res.setHeader('Content-Type', 'text/event-stream');
+        res.setHeader('Cache-Control', 'no-cache');
+        res.setHeader('Connection', 'keep-alive');
+
+        for await (const chunk of result.stream) {
+            const chunkText = chunk.text();
+            res.write(`data: ${JSON.stringify({ text: chunkText })}\n\n`);
+        }
+        res.end();
+    } catch (error) {
+        console.error("Error in streamFeynmanChat:", error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+router.post('/getFeynmanFeedback', async (req, res) => {
+    try {
+        const { topic, explanation, notes } = req.body;
+        const model = genAI.getGenerativeModel({
+            model: "gemini-2.0-flash",
+            generationConfig: { responseMimeType: "application/json" }
+        });
+
+        const prompt = `You are an expert pedagogy analyzer. Evaluate the user's explanation of "${topic}" using the Feynman Technique principles.
+        
+        Context (Reference Notes):
+        ${notes}
+        
+        User's Explanation:
+        "${explanation}"
+        
+        Analyze the following and return ONLY a JSON object:
+        1. Clarity Score (1-10)
+        2. Jargon Detected (List of complex words used without explanation)
+        3. Knowledge Gaps (What key parts of the concept were missed or explained incorrectly?)
+        4. Missing Analogies (How could they use a better comparison?)
+        5. Final Verdict (A short summary of how well they taught it)
+        6. Suggested Improvement (One specific thing to change)
+
+        JSON Schema:
+        {
+            "clarityScore": number,
+            "jargon": ["string"],
+            "gaps": ["string"],
+            "analogySuggestions": ["string"],
+            "verdict": "string",
+            "improvement": "string"
+        }`;
+
+        const result = await model.generateContent(prompt);
+        const cleanedResponse = result.response.text().replace(/```json|```/g, '').trim();
+        res.json(JSON.parse(cleanedResponse));
+    } catch (error) {
+        console.error("Error in getFeynmanFeedback:", error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 module.exports = router;
+

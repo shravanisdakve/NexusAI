@@ -15,8 +15,10 @@ import {
     Target, Lightbulb, Timer, Zap, BookOpen,
     Play, Pause, RefreshCw, PlusCircle, Trash2, User, Users, Star,
     BarChart, Clock, Brain, TrendingUp, TrendingDown, Repeat, Sparkles, Calculator, Shield, Calendar, CheckCircle2, Circle,
-    Pin, X, Plus, ChevronDown
+    Pin, X, Plus, ChevronDown, GraduationCap, Binary, Briefcase
 } from 'lucide-react';
+import { XPBar, StreakCounter, BadgeSmall } from '@/components/gamification/XPComponents';
+import { getUserStats, UserStats } from '@/services/gamificationService';
 
 const formatSeconds = (seconds: number) => {
     if (seconds < 60) return `${seconds}s`;
@@ -284,7 +286,10 @@ const tools = [
     { key: 'quizzes', name: 'Quizzes & Practice', href: '/quizzes', description: 'Test your knowledge with practice quizzes.', icon: Brain, color: 'text-rose-400', bgColor: 'bg-rose-900/50' },
     { key: 'gpa', name: 'GPA Calculator', href: '/gpa-calculator', description: 'Calculate your SGPA/CGPA easily.', icon: Calculator, color: 'text-violet-400', bgColor: 'bg-violet-900/50' },
     { key: 'project', name: 'Project Ideas', href: '/project-generator', description: 'Get AI-powered project ideas.', icon: Lightbulb, color: 'text-amber-400', bgColor: 'bg-amber-900/50' },
-    { key: 'kt', name: 'KT Avoidance', href: '/kt-calculator', description: 'Check required marks to pass.', icon: Shield, color: 'text-rose-400', bgColor: 'bg-rose-900/50' },
+    { key: 'curriculum', name: 'MU Curriculum', href: '/curriculum', description: 'Interactive syllabus twin.', icon: GraduationCap, color: 'text-blue-400', bgColor: 'bg-blue-900/50' },
+    { key: 'math-lab', name: 'MU Math Lab', href: '/math-lab', description: 'Symbolic math & 3D graphing.', icon: Binary, color: 'text-indigo-400', bgColor: 'bg-indigo-900/50' },
+    { key: 'placement', name: 'Placement Arena', href: '/placement', description: 'TCS/Capgemini simulators.', icon: Briefcase, color: 'text-amber-400', bgColor: 'bg-amber-900/50' },
+    { key: 'kt', name: 'ATKT Navigator', href: '/kt-calculator', description: 'Ordinance & grace calculator.', icon: Shield, color: 'text-rose-400', bgColor: 'bg-rose-900/50' },
     { key: 'paper', name: 'Mock Papers', href: '/mock-paper', description: 'Real MU exam pattern mocks.', icon: FileText, color: 'text-sky-400', bgColor: 'bg-sky-900/50' },
     { key: 'viva', name: 'Viva Bot', href: '/viva-simulator', description: 'Practice with an external bot.', icon: Users, color: 'text-emerald-400', bgColor: 'bg-emerald-900/50' },
     { key: 'study-plan', name: 'Study Planner', href: '/study-plan', description: 'Get a personalized roadmap.', icon: Calendar, color: 'text-violet-400', bgColor: 'bg-violet-900/50' },
@@ -335,8 +340,17 @@ const Dashboard: React.FC = () => {
     const [aiSuggestion, setAiSuggestion] = useState<string | null>(null);
     const [isLoadingSuggestion, setIsLoadingSuggestion] = useState(false);
     const [quickAccessTools, setQuickAccessTools] = useState<string[]>([]);
+    const [stats, setStats] = useState<UserStats | null>(null);
     const [showAddToolDropdown, setShowAddToolDropdown] = useState(false);
     const dropdownRef = React.useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const fetchStats = async () => {
+            const data = await getUserStats();
+            if (data.success) setStats(data.stats);
+        };
+        fetchStats();
+    }, []);
 
     useEffect(() => {
         const getMostUsed = async () => {
@@ -409,10 +423,29 @@ const Dashboard: React.FC = () => {
 
     return (
         <div className="space-y-10 pb-12">
-            <div className="mb-12 pt-6"> {/* Increased breathing room */}
-                <h1 className="text-4xl font-semibold text-white tracking-tight mb-2">Good afternoon, <span className="text-white">{user?.displayName?.split(' ')[0] || 'User'}</span>!</h1>
-                <p className="text-slate-400/60 text-lg">{pageSubtitle}</p>
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-12 pt-6">
+                <div>
+                    <h1 className="text-4xl font-semibold text-white tracking-tight mb-2">
+                        {greeting}, <span className="text-indigo-400">{user?.displayName?.split(' ')[0] || 'User'}</span>!
+                    </h1>
+                    <p className="text-slate-400/60 text-lg">{pageSubtitle}</p>
+                </div>
+                {stats && (
+                    <div className="flex items-center gap-6 bg-slate-800/50 p-4 rounded-2xl border border-white/5 backdrop-blur-sm">
+                        <StreakCounter streak={stats.streak} />
+                        <div className="flex gap-2">
+                            <BadgeSmall name="Early Bird" />
+                            <BadgeSmall name="Math Wizard" icon={<Binary className="w-5 h-5" />} />
+                        </div>
+                    </div>
+                )}
             </div>
+
+            {stats && (
+                <div className="max-w-md mb-12">
+                    <XPBar xp={stats.xp} level={stats.level} nextLevelXP={2500} />
+                </div>
+            )}
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
                 <div className="lg:col-span-2 space-y-10">

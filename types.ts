@@ -150,6 +150,7 @@ export interface GeminiRequest {
     year?: string;
     persona?: string;
     count?: number;
+    topic?: string;
 }
 
 export interface GeminiResponse {

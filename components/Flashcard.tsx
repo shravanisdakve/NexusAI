@@ -3,15 +3,22 @@ import React, { useState } from 'react';
 interface FlashcardProps {
   front: string;
   back: string;
+  onFlip?: (isFlipped: boolean) => void;
 }
 
-const Flashcard: React.FC<FlashcardProps> = ({ front, back }) => {
+const Flashcard: React.FC<FlashcardProps> = ({ front, back, onFlip }) => {
   const [isFlipped, setIsFlipped] = useState(false);
+
+  const handleFlip = () => {
+    const newState = !isFlipped;
+    setIsFlipped(newState);
+    if (onFlip) onFlip(newState);
+  };
 
   return (
     <div
       className="w-full aspect-[3/2] perspective-1000 cursor-pointer group"
-      onClick={() => setIsFlipped(!isFlipped)}
+      onClick={handleFlip}
     >
       <div
         className={`relative w-full h-full duration-500 transform-style-3d transition-transform ${isFlipped ? 'rotate-y-180' : ''}`}
