@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { getCourses, addCourse } from '../services/courseService';
-import { getNotes, addTextNote, uploadNoteFile, deleteNote, getFlashcards, addFlashcards, updateFlashcard, updateNoteContent } from '../services/notesService';
+import { getNotes, addTextNote, uploadNoteFile, deleteNote, getFlashcards, addFlashcards, updateFlashcard, updateNoteContent, getQuizzes, savePersonalQuiz, updateQuizScore } from '../services/notesService';
 import { getStudyPlan, saveStudyPlan, updateTaskCompletion } from '../services/studyPlanService';
-import { type Note, type Course, type Flashcard as FlashcardType, type StudyPlan, type StudyTask } from '../types';
+import { type Note, type Course, type Flashcard as FlashcardType, type StudyPlan, type StudyTask, type PersonalQuiz } from '../types';
 import { PageHeader, Button, Input, Textarea, Select, Modal, Spinner } from '../components/ui';
 import { PlusCircle, Trash2, Upload, FileText, BookOpen, Layers, X, Brain, Edit, Save, ArrowLeft, Download, Eye, EyeOff, Calendar, Target, CheckCircle2, Circle, Users } from 'lucide-react';
-import { generateFlashcards, extractTextFromFile, generateStudyPlan } from '../services/geminiService';
+import { generateFlashcards, extractTextFromFile, generateStudyPlan, generateQuizSet } from '../services/geminiService';
 import { useNavigate, useLocation } from 'react-router-dom';
 import Flashcard from '../components/Flashcard';
 
@@ -217,11 +217,13 @@ const Notes: React.FC = () => {
   const [editedContent, setEditedContent] = useState('');
 
   const [flashcards, setFlashcards] = useState<FlashcardType[]>([]);
+  const [quizzes, setQuizzes] = useState<PersonalQuiz[]>([]); // New state
   const [studyPlan, setStudyPlan] = useState<StudyPlan | null>(null);
 
-  const [activeTab, setActiveTab] = useState<'notes' | 'flashcards' | 'plan'>('notes');
+  const [activeTab, setActiveTab] = useState<'notes' | 'flashcards' | 'plan' | 'quiz'>('notes'); // Added 'quiz'
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false); // Loading state for note-based generation
+  const [isQuizGenerating, setIsQuizGenerating] = useState(false); // New loading state for quiz
   const [isFileGenerating, setIsFileGenerating] = useState(false); // Loading state for file-based generation
   const [isSingleGenerating, setIsSingleGenerating] = useState<string | null>(null); // Track which note ID is generating
 
@@ -261,10 +263,12 @@ const Notes: React.FC = () => {
       setIsEditingNote(false);
       getNotes(selectedCourse).then(setNotes);
       getFlashcards(selectedCourse).then(setFlashcards);
+      getQuizzes(selectedCourse).then(setQuizzes);
       getStudyPlan(selectedCourse).then(setStudyPlan);
     } else {
       setNotes([]);
       setFlashcards([]);
+      setQuizzes([]);
       setStudyPlan(null);
       setActiveNote(null);
     }
@@ -442,6 +446,53 @@ const Notes: React.FC = () => {
   };
   // --- END FIX ---
 
+  const handleGenerateQuiz = async () => {
+    if (!selectedCourse || notes.length === 0 || isQuizGenerating) return;
+
+    setIsQuizGenerating(true);
+    const validNotesContent = notes
+      .filter(n => n.content && n.content !== "[Text extraction pending or failed]")
+      .map(n => n.content);
+
+    if (validNotesContent.length === 0) {
+      alert("No text content found in your notes to generate a quiz from.");
+      setIsQuizGenerating(false);
+      return;
+    }
+    const content = validNotesContent.join('\n\n');
+
+    try {
+      console.log("Generating quiz from notes...");
+      const quizJson = await generateQuizSet(content, 5); // Default 5 questions
+      const questionSet = JSON.parse(quizJson);
+
+      const newQuiz: PersonalQuiz = {
+        id: `quiz_${Date.now()}`,
+        questions: questionSet,
+        score: 0,
+        completed: false,
+        dateTaken: Date.now()
+      };
+
+      // Save to backend
+      await savePersonalQuiz(selectedCourse, newQuiz);
+      setQuizzes(prev => [newQuiz, ...prev]);
+      setActiveTab('quiz'); // Switch to quiz tab
+      alert(`Successfully generated a quiz with ${questionSet.length} questions!`);
+
+    } catch (error) {
+      console.error("Failed to generate quiz:", error);
+      alert("Failed to generate quiz. Please try again.");
+    } finally {
+      setIsQuizGenerating(false);
+    }
+  };
+
+  const onUpdateQuizScore = (quizId: string, score: number) => {
+    setQuizzes(prev => prev.map(q => q.id === quizId ? { ...q, score, completed: true } : q));
+    updateQuizScore(selectedCourse, quizId, score);
+  };
+
 
   // --- FIX: This is the main component's return, now INSIDE the component ---
   return (
@@ -483,6 +534,12 @@ const Notes: React.FC = () => {
               onClick={() => setActiveTab('flashcards')}
             />
             <TabButton
+              icon={Brain}
+              label="Quiz"
+              isActive={activeTab === 'quiz'}
+              onClick={() => setActiveTab('quiz')}
+            />
+            <TabButton
               icon={Calendar}
               label="Study Plan"
               isActive={activeTab === 'plan'}
@@ -522,6 +579,15 @@ const Notes: React.FC = () => {
                 await updateFlashcard(selectedCourse, card.id, { bucket: newBucket, lastReview: Date.now() });
                 reloadFlashcards();
               }}
+            />
+          )}
+
+          {activeTab === 'quiz' && (
+            <QuizView
+              quizzes={quizzes}
+              onGenerateQuiz={handleGenerateQuiz}
+              isGenerating={isQuizGenerating}
+              onUpdateScore={onUpdateQuizScore}
             />
           )}
 
@@ -1071,5 +1137,132 @@ const FlashcardPlayer: React.FC<{ flashcards: FlashcardType[], onComplete: () =>
     </div>
   )
 }
+
+const QuizView: React.FC<{
+  quizzes: PersonalQuiz[];
+  onGenerateQuiz: () => void;
+  isGenerating: boolean;
+  onUpdateScore: (id: string, score: number) => void;
+}> = ({ quizzes, onGenerateQuiz, isGenerating, onUpdateScore }) => {
+  const [activeQuiz, setActiveQuiz] = useState<PersonalQuiz | null>(null);
+
+  return (
+    <div className="p-6 overflow-y-auto">
+      <div className="flex gap-4 mb-6">
+        <Button onClick={onGenerateQuiz} disabled={isGenerating} isLoading={isGenerating}>
+          <Brain size={16} className="mr-2" /> Generate Quiz from Notes
+        </Button>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4">
+        {quizzes.length === 0 ? (
+          <p className="text-slate-400 text-center py-10">No quizzes yet. Generate one to test your knowledge!</p>
+        ) : (
+          quizzes.map((quiz, idx) => (
+            <div key={quiz.id || idx} className="bg-slate-800 p-4 rounded-lg flex justify-between items-center ring-1 ring-slate-700">
+              <div>
+                <h4 className="font-bold text-slate-200">Quiz #{quizzes.length - idx}</h4>
+                <p className="text-sm text-slate-400">{new Date(quiz.dateTaken || Date.now()).toLocaleDateString()}</p>
+                {quiz.completed && <p className={`text-sm font-semibold mt-1 ${quiz.score! >= 80 ? 'text-emerald-400' : 'text-amber-400'}`}>Score: {quiz.score}%</p>}
+              </div>
+              <Button onClick={() => setActiveQuiz(quiz)} variant="outline">
+                {quiz.completed ? 'Review' : 'Start Quiz'}
+              </Button>
+            </div>
+          ))
+        )}
+      </div>
+
+      {activeQuiz && (
+        <PersonalQuizPlayer
+          quiz={activeQuiz}
+          onClose={() => setActiveQuiz(null)}
+          onComplete={(score) => {
+            onUpdateScore(activeQuiz.id!, score);
+            setActiveQuiz(null);
+          }}
+        />
+      )}
+    </div>
+  );
+};
+
+const PersonalQuizPlayer: React.FC<{ quiz: PersonalQuiz, onClose: () => void, onComplete: (score: number) => void }> = ({ quiz, onClose, onComplete }) => {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [answers, setAnswers] = useState<number[]>(new Array(quiz.questions.length).fill(-1));
+  const [showResults, setShowResults] = useState(quiz.completed || false);
+
+  const handleAnswer = (optionIdx: number) => {
+    if (showResults) return;
+    const newAnswers = [...answers];
+    newAnswers[currentIndex] = optionIdx;
+    setAnswers(newAnswers);
+  };
+
+  const handleSubmit = () => {
+    let correct = 0;
+    answers.forEach((ans, idx) => {
+      if (ans === quiz.questions[idx].correctOptionIndex) correct++;
+    });
+    const score = Math.round((correct / quiz.questions.length) * 100);
+    onComplete(score);
+    setShowResults(true); // Technically component unmounts on complete, but just in case
+  };
+
+  const currentQ = quiz.questions[currentIndex];
+  const isLast = currentIndex === quiz.questions.length - 1;
+
+  return (
+    <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 animate-in fade-in-50">
+      <div className="bg-slate-800 rounded-2xl w-full max-w-3xl p-8 shadow-2xl ring-1 ring-slate-700 relative">
+        <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-white"><X size={24} /></button>
+
+        <div className="mb-6 flex justify-between items-center">
+          <h3 className="text-xl font-bold text-white">Question {currentIndex + 1} of {quiz.questions.length}</h3>
+          <div className="bg-slate-900 rounded-full px-3 py-1 text-sm text-slate-400">{currentQ.topic}</div>
+        </div>
+
+        <p className="text-lg text-slate-200 mb-8">{currentQ.question}</p>
+
+        <div className="grid gap-3 mb-8">
+          {currentQ.options.map((opt, idx) => {
+            const isSelected = answers[currentIndex] === idx;
+            const isCorrect = currentQ.correctOptionIndex === idx;
+
+            let className = "p-4 rounded-xl text-left border-2 transition-all ";
+            if (showResults) {
+              if (isCorrect) className += "bg-emerald-900/30 border-emerald-500 text-emerald-100";
+              else if (isSelected && !isCorrect) className += "bg-red-900/30 border-red-500 text-red-100";
+              else className += "bg-slate-700 border-transparent opacity-50";
+            } else {
+              if (isSelected) className += "bg-violet-600/20 border-violet-500 text-violet-100";
+              else className += "bg-slate-700 border-transparent hover:bg-slate-600 text-slate-200";
+            }
+
+            return (
+              <button
+                key={idx}
+                onClick={() => handleAnswer(idx)}
+                disabled={showResults}
+                className={className}
+              >
+                {opt}
+              </button>
+            )
+          })}
+        </div>
+
+        <div className="flex justify-between">
+          <Button onClick={() => setCurrentIndex(prev => Math.max(0, prev - 1))} disabled={currentIndex === 0} variant="secondary">Previous</Button>
+          {isLast ? (
+            !showResults && <Button onClick={handleSubmit} className="bg-emerald-600 hover:bg-emerald-500" disabled={answers.includes(-1)}>Submit Quiz</Button>
+          ) : (
+            <Button onClick={() => setCurrentIndex(prev => prev + 1)}>Next</Button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
 
 export default Notes;

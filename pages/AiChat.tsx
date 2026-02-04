@@ -6,6 +6,7 @@ import { type ChatMessage } from '../types';
 import { streamChat, generateQuizQuestion } from '../services/geminiService';
 import { trackToolUsage } from '../services/personalizationService';
 import { startSession, endSession, recordQuizResult, getProductivityReport } from '../services/analyticsService';
+import { createChatSession, addMessageToSession } from '../services/aiChatService'; // Added import
 import { Bot, User, Send, Mic, Volume2, VolumeX, Lightbulb, Sparkles, Calendar } from 'lucide-react';
 
 interface Quiz {
@@ -66,23 +67,51 @@ const AiTutor: React.FC = () => {
         }
     });
 
+    const [sessionId, setSessionId] = useState<string | null>(null); // New State
+
     const recognitionRef = useRef<any | null>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const location = useLocation();
     const navigate = useNavigate();
     const proactiveMessageSent = useRef(false);
 
+    // Initialize Chat Session on Mount
+    useEffect(() => {
+        const initSession = async () => {
+            try {
+                // If we don't have a session ID yet, creation one.
+                // In a future update, we could check for an existing recent session here.
+                if (!sessionId && proactiveMessageSent.current) {
+                    // We wait for the proactive message logic to fire first so we save the right greeting
+                    const initialMsg = messages[0];
+                    if (initialMsg) {
+                        const session = await createChatSession("AI Tutor Session", [initialMsg]);
+                        setSessionId(session._id);
+                        console.log("Created AI Chat Session:", session._id);
+                    }
+                }
+            } catch (err) {
+                console.error("Failed to initialize chat session:", err);
+            }
+        };
+
+        // Very basic debouncing/check to ensure messages state is settled
+        if (messages.length > 0 && !sessionId) {
+            initSession();
+        }
+    }, [messages, sessionId]);
+
     useEffect(() => {
         trackToolUsage('tutor');
-        let sessionId: string | null = null;
+        let analyticsSessionId: string | null = null;
         const start = async () => {
-            sessionId = await startSession('tutor', selectedCourse);
+            analyticsSessionId = await startSession('tutor', selectedCourse);
         }
         start();
 
         return () => {
-            if (sessionId) {
-                endSession(sessionId);
+            if (analyticsSessionId) {
+                endSession(analyticsSessionId);
             }
         }
     }, [selectedCourse]);
@@ -178,6 +207,11 @@ const AiTutor: React.FC = () => {
         setError(null);
         setQuiz(null);
 
+        // --- Save User Message ---
+        if (sessionId) {
+            addMessageToSession(sessionId, [newUserMessage]).catch(e => console.error("Failed to save user message", e));
+        }
+
         try {
             let contextPrompt = currentMessage;
             if (studyMode === 'Feynman Technique') {
@@ -232,6 +266,12 @@ const AiTutor: React.FC = () => {
 
             setIsLoading(false); // Hide loading indicator once streaming is complete
 
+            // --- Save Model Response ---
+            if (sessionId && modelResponse) {
+                const finalModelMsg: ChatMessage = { role: 'model', parts: [{ text: modelResponse }] };
+                addMessageToSession(sessionId, [finalModelMsg]).catch(e => console.error("Failed to save model message", e));
+            }
+
             if (modelResponse && (isAutoSpeaking || isVoiceInput)) {
                 handleSpeak(modelResponse);
             }
@@ -252,7 +292,7 @@ const AiTutor: React.FC = () => {
         } finally {
             setIsLoading(false);
         }
-    }, [input, isLoading, isAutoSpeaking, studyMode]);
+    }, [input, isLoading, isAutoSpeaking, studyMode, sessionId]);
 
     const handleQuizMe = async () => {
         if (isLoading) return;
@@ -267,6 +307,9 @@ const AiTutor: React.FC = () => {
             const quizJsonString = await generateQuizQuestion(context);
             const parsedQuiz = JSON.parse(quizJsonString);
             setQuiz(parsedQuiz);
+
+            // Note: We're not saving the quiz interaction to chat history explicitly here for simplicity, 
+            // but normally you might want to save the question/answer text.
         } catch (err) {
             console.error("Failed to generate quiz", err);
             setError("Sorry, I couldn't generate a quiz question right now. Please try again.");
@@ -289,6 +332,12 @@ const AiTutor: React.FC = () => {
         }
 
         setMessages(prev => [...prev, { role: 'model', parts: [{ text: feedbackMessage }] }]);
+
+        // Save quiz feedback
+        if (sessionId) {
+            addMessageToSession(sessionId, [{ role: 'model', parts: [{ text: feedbackMessage }] }]);
+        }
+
         setQuiz(prev => prev ? { ...prev, userAnswerIndex: selectedIndex } : null);
         setTimeout(() => setQuiz(null), 3000); // Hide quiz after 3 seconds
     };

@@ -230,3 +230,46 @@ export const deleteFlashcard = async (courseId: string, flashcardId: string): Pr
         throw error;
     }
 };
+
+// ==================== QUIZZES ====================
+
+export const getQuizzes = async (courseId: string): Promise<any[]> => {
+    console.log(`[notesService] Fetching quizzes for course ${courseId}`);
+    try {
+        const response = await axios.get(`${API_URL}/api/notes/${courseId}/quizzes`, {
+            headers: getAuthHeaders()
+        });
+        return response.data.success ? response.data.quizzes : [];
+    } catch (error) {
+        console.error("[notesService] Error fetching quizzes:", error);
+        return [];
+    }
+};
+
+export const savePersonalQuiz = async (courseId: string, quiz: any): Promise<void> => {
+    console.log(`[notesService] Saving quiz to course ${courseId}`);
+    try {
+        await axios.post(
+            `${API_URL}/api/notes/${courseId}/quizzes`,
+            { quiz },
+            { headers: getAuthHeaders() }
+        );
+    } catch (error) {
+        console.error("[notesService] Error saving quiz:", error);
+        throw error;
+    }
+};
+
+export const updateQuizScore = async (courseId: string, quizId: string, score: number): Promise<void> => {
+    console.log(`[notesService] Updating quiz score ${quizId} to ${score}`);
+    try {
+        await axios.put(
+            `${API_URL}/api/notes/${courseId}/quizzes/${quizId}`,
+            { score, completed: true },
+            { headers: getAuthHeaders() }
+        );
+    } catch (error) {
+        console.error("[notesService] Error updating quiz score:", error);
+        throw error;
+    }
+};

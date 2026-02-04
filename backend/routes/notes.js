@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Note = require('../models/Note');
 const Flashcard = require('../models/Flashcard');
+const Quiz = require('../models/Quiz');
 const auth = require('../middleware/auth');
 const multer = require('multer');
 const path = require('path');
@@ -57,6 +58,8 @@ router.get('/:courseId', auth, async (req, res) => {
                 title: note.title,
                 content: note.content,
                 type: note.type,
+                tags: note.tags,
+                isPinned: note.isPinned,
                 fileUrl: note.fileUrl,
                 fileName: note.fileName,
                 fileExtension: note.fileExtension,
@@ -78,7 +81,7 @@ router.get('/:courseId', auth, async (req, res) => {
 // @access  Private
 router.post('/:courseId/text', auth, async (req, res) => {
     try {
-        const { title, content } = req.body;
+        const { title, content, tags, isPinned } = req.body;
 
         if (!title || title.trim() === '') {
             return res.status(400).json({
@@ -91,6 +94,8 @@ router.post('/:courseId/text', auth, async (req, res) => {
             title: title.trim(),
             content: content || '',
             type: 'text',
+            tags: tags || [],
+            isPinned: isPinned || false,
             courseId: req.params.courseId,
             userId: req.user.id
         });
@@ -104,6 +109,8 @@ router.post('/:courseId/text', auth, async (req, res) => {
                 title: note.title,
                 content: note.content,
                 type: note.type,
+                tags: note.tags,
+                isPinned: note.isPinned,
                 createdAt: note.createdAt
             }
         });
@@ -128,13 +135,20 @@ router.post('/:courseId/file', auth, upload.single('file'), async (req, res) => 
             });
         }
 
-        const { title } = req.body;
+        const { title, tags, isPinned } = req.body;
+        // Parse tags if they come as string from FormData
+        let parsedTags = [];
+        if (tags) {
+            parsedTags = Array.isArray(tags) ? tags : JSON.parse(tags).catch(() => []);
+        }
         const fileUrl = `/uploads/notes/${req.file.filename}`;
 
         const note = new Note({
             title: title || req.file.originalname,
             content: '[Text extraction pending or failed]', // Will be updated by AI extraction
             type: 'file',
+            tags: parsedTags,
+            isPinned: Boolean(isPinned),
             fileUrl,
             fileName: req.file.originalname,
             fileExtension: path.extname(req.file.originalname).slice(1),
@@ -152,6 +166,8 @@ router.post('/:courseId/file', auth, upload.single('file'), async (req, res) => 
                 title: note.title,
                 content: note.content,
                 type: note.type,
+                tags: note.tags,
+                isPinned: note.isPinned,
                 fileUrl: note.fileUrl,
                 fileName: note.fileName,
                 fileExtension: note.fileExtension,
@@ -173,7 +189,7 @@ router.post('/:courseId/file', auth, upload.single('file'), async (req, res) => 
 // @access  Private
 router.put('/:courseId/:noteId', auth, async (req, res) => {
     try {
-        const { content } = req.body;
+        const { title, content, tags, isPinned } = req.body;
 
         const note = await Note.findOne({
             _id: req.params.noteId,
@@ -195,7 +211,10 @@ router.put('/:courseId/:noteId', auth, async (req, res) => {
             });
         }
 
-        note.content = content;
+        if (content !== undefined) note.content = content;
+        if (title !== undefined) note.title = title.trim();
+        if (tags !== undefined) note.tags = tags;
+        if (isPinned !== undefined) note.isPinned = isPinned;
         await note.save();
 
         res.json({
@@ -204,7 +223,9 @@ router.put('/:courseId/:noteId', auth, async (req, res) => {
                 id: note._id.toString(),
                 title: note.title,
                 content: note.content,
-                type: note.type
+                type: note.type,
+                tags: note.tags,
+                isPinned: note.isPinned
             }
         });
     } catch (error) {
@@ -373,6 +394,106 @@ router.put('/:courseId/flashcards/:flashcardId', auth, async (req, res) => {
             success: false,
             message: 'Failed to update flashcard'
         });
+    }
+});
+
+// ==================== QUIZZES ====================
+
+// @route   GET /api/notes/:courseId/quizzes
+// @desc    Get all quizzes for a course
+// @access  Private
+router.get('/:courseId/quizzes', auth, async (req, res) => {
+    try {
+        const quizzes = await Quiz.find({
+            courseId: req.params.courseId,
+            user: req.user.id
+        }).sort({ dateTaken: -1 });
+
+        res.json({
+            success: true,
+            quizzes: quizzes.map(q => ({
+                id: q._id.toString(),
+                questions: q.questions,
+                score: q.score,
+                completed: q.completed,
+                dateTaken: q.dateTaken
+            }))
+        });
+    } catch (error) {
+        console.error('[Notes API] Error fetching quizzes:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
+// @route   POST /api/notes/:courseId/quizzes
+// @desc    Save a generated quiz
+// @access  Private
+router.post('/:courseId/quizzes', auth, async (req, res) => {
+    try {
+        const { quiz } = req.body; // Expecting quiz object with questions
+
+        const newQuiz = new Quiz({
+            user: req.user.id,
+            courseId: req.params.courseId,
+            questions: quiz.questions,
+            score: 0,
+            completed: false,
+            dateTaken: Date.now()
+        });
+
+        await newQuiz.save();
+
+        res.status(201).json({
+            success: true,
+            quiz: {
+                id: newQuiz._id.toString(),
+                questions: newQuiz.questions,
+                score: newQuiz.score,
+                completed: newQuiz.completed,
+                dateTaken: newQuiz.dateTaken
+            }
+        });
+    } catch (error) {
+        console.error('[Notes API] Error saving quiz:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
+// @route   PUT /api/notes/:courseId/quizzes/:quizId
+// @desc    Update quiz score/status
+// @access  Private
+router.put('/:courseId/quizzes/:quizId', auth, async (req, res) => {
+    try {
+        const { score, completed } = req.body;
+
+        const quiz = await Quiz.findOne({
+            _id: req.params.quizId,
+            courseId: req.params.courseId,
+            user: req.user.id
+        });
+
+        if (!quiz) {
+            return res.status(404).json({ success: false, message: 'Quiz not found' });
+        }
+
+        if (score !== undefined) quiz.score = score;
+        if (completed !== undefined) quiz.completed = completed;
+
+        await quiz.save();
+
+        res.json({
+            success: true,
+            quiz: {
+                id: quiz._id.toString(),
+                questions: quiz.questions,
+                score: quiz.score,
+                completed: quiz.completed,
+                dateTaken: quiz.dateTaken
+            }
+        });
+    } catch (error) {
+        console.error('[Notes API] Error updating quiz:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
     }
 });
 

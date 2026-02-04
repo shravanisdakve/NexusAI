@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { type ChatMessage, type StudyRoom as StudyRoomType, type Quiz as SharedQuiz } from '../types';
+import { type ChatMessage, type StudyRoom as StudyRoomType, type Quiz as SharedQuiz, type StudyTask } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import {
     onRoomUpdate,
@@ -28,8 +28,9 @@ import {
 } from '../services/communityService';
 import { streamStudyBuddyChat, generateQuizQuestion, extractTextFromFile } from '../services/geminiService';
 import { startSession, endSession, recordQuizResult } from '../services/analyticsService';
+import { getStudyPlan, updateTaskCompletion } from '../services/studyPlanService';
 // --- REMOVED Clock import here ---
-import { Bot, User, Send, MessageSquare, Users, Brain, UploadCloud, Lightbulb, FileText, Paperclip, FolderOpen, AlertTriangle, Info, Palette } from 'lucide-react';
+import { Bot, User, Send, MessageSquare, Users, Brain, UploadCloud, Lightbulb, FileText, Paperclip, FolderOpen, AlertTriangle, Info, Palette, Briefcase } from 'lucide-react';
 import { Input, Button, Textarea, Spinner } from '../components/ui';
 import RoomControls from '../components/RoomControls'; //
 import VideoTile from '../components/VideoTile';
@@ -38,10 +39,11 @@ import MusicPlayer from '../components/MusicPlayer';
 import ShareModal from '../components/ShareModal';
 import StudyRoomNotesPanel from '../components/StudyRoomNotesPanel';
 import Whiteboard from '../components/Whiteboard';
-import PomodoroTimer from '../components/PomodoroTimer';
+import StudyToolsPanel from '../components/StudyToolsPanel';
+// --- REMOVED PomodoroTimer (moved to ToolsPanel) ---
 
 // --- Helper Types & Constants ---
-type ActiveTab = 'chat' | 'participants' | 'ai' | 'notes' | 'whiteboard';
+type ActiveTab = 'chat' | 'participants' | 'ai' | 'notes' | 'whiteboard' | 'tools';
 
 
 interface Quiz {
@@ -104,6 +106,9 @@ const StudyRoom: React.FC = () => {
     const [showLeaderboard, setShowLeaderboard] = useState(false);
     const [typingUsers, setTypingUsers] = useState<string[]>([]);
     const typingTimeoutRef = useRef<{ [key: string]: NodeJS.Timeout }>({});
+
+    // Study Plan Tasks State
+    const [studyTasks, setStudyTasks] = useState<{ id: string; title: string; completed: boolean; dayIndex: number; courseId: string }[]>([]);
 
     const [elapsedTime, setElapsedTime] = useState(0); // Time in seconds
     const intervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -402,7 +407,41 @@ const StudyRoom: React.FC = () => {
             postSystemMessage(welcomeMessage);
             welcomeMessageSent.current = true;
         }
+
+        // Fetch Study Plan Tasks if room exists
+        const fetchTasks = async () => {
+            if (room && room.courseId) {
+                const plan = await getStudyPlan(room.courseId);
+                if (plan) {
+                    const allTasks = plan.days.flatMap((day, dIdx) =>
+                        day.tasks.map(t => ({
+                            id: t._id || t.id || `task-${dIdx}-${Math.random()}`,
+                            title: t.title,
+                            completed: t.completed,
+                            dayIndex: dIdx,
+                            courseId: plan.courseId
+                        }))
+                    );
+                    setStudyTasks(allTasks);
+                }
+            }
+        };
+
+        if (room) {
+            fetchTasks();
+        }
+
     }, [room, postSystemMessage]);
+
+    const handleTaskComplete = async (task: { id: string, dayIndex?: number, courseId?: string, completed: boolean }) => {
+        if (task.courseId && task.dayIndex !== undefined) {
+            // Optimistic update
+            setStudyTasks(prev => prev.map(t => t.id === task.id ? { ...t, completed: !t.completed } : t));
+
+            // API call
+            await updateTaskCompletion(task.courseId, task.dayIndex, task.id, !task.completed);
+        }
+    };
 
     // --- Control Handlers ---
     const handleToggleMute = () => {
@@ -762,6 +801,7 @@ const StudyRoom: React.FC = () => {
                             <TabButton id="ai" activeTab={activeTab} setActiveTab={setActiveTab} icon={Brain} label="AI" />
                             <TabButton id="notes" activeTab={activeTab} setActiveTab={setActiveTab} icon={FileText} label="Notes" />
                             <TabButton id="whiteboard" activeTab={activeTab} setActiveTab={setActiveTab} icon={Palette} label="Board" />
+                            <TabButton id="tools" activeTab={activeTab} setActiveTab={setActiveTab} icon={Briefcase} label="Tools" />
                             <TabButton id="participants" activeTab={activeTab} setActiveTab={setActiveTab} icon={Users} label="" count={participants.length} />
                         </div>
 
@@ -809,6 +849,15 @@ const StudyRoom: React.FC = () => {
                             <div className="flex-1 p-4 h-full">
                                 <Whiteboard roomId={roomId || ''} />
                             </div>
+                        )}
+                        {activeTab === 'tools' && (
+                            <StudyToolsPanel
+                                notes={notes}
+                                topic={room?.topic || 'General Study'}
+                                isActive={true}
+                                tasks={studyTasks}
+                                onTaskComplete={handleTaskComplete}
+                            />
                         )}
                     </aside>
 

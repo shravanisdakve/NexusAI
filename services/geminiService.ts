@@ -180,6 +180,28 @@ export const generateQuizQuestion = async (context: string): Promise<string> => 
     return data.question;
 };
 
+export const generateQuizSet = async (context: string, count: number = 5): Promise<string> => {
+    const requestBody: GeminiRequest = { context, count };
+    const response = await fetch(`${API_URL}/api/gemini/generateQuizSet`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody), // 'count' is technically extra but handled by backend
+    });
+
+    if (!response.ok) {
+        const errorData: GeminiResponse = await response.json();
+        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+    }
+
+    const data: GeminiResponse = await response.json();
+    if (!data.quizSet) {
+        throw new Error('Quiz set not found in response');
+    }
+    return data.quizSet;
+};
+
 // --- AI STUDY SUGGESTIONS SERVICE ---
 export const getStudySuggestions = async (reportJson: string): Promise<string> => {
     const requestBody: GeminiRequest = { reportJson };

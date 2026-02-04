@@ -3,7 +3,7 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
 // Initialize Gemini with API key
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY, { apiVersion: 'v1beta' });
 
-const getModel = (modelName = 'gemini-1.5-flash', systemInstruction = null) => {
+const getModel = (modelName = 'gemini-2.0-flash', systemInstruction = null) => {
     const config = { model: modelName };
     if (systemInstruction) {
         config.systemInstruction = systemInstruction;
@@ -16,7 +16,7 @@ const getModel = (modelName = 'gemini-1.5-flash', systemInstruction = null) => {
  */
 const analyzeChatContext = async (messages) => {
     try {
-        const model = getModel('gemini-1.5-flash', `You are the 'NexusAI Guardian', an expert Study Room Moderator and Proactive Teaching Assistant.
+        const model = getModel(undefined, `You are the 'NexusAI Guardian', an expert Study Room Moderator and Proactive Teaching Assistant.
         
         Your persona: Strict but fair, encouraging, and highly academic.
         

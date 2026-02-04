@@ -198,9 +198,42 @@ router.post('/generateQuizQuestion', async (req, res) => {
         }`;
 
         const result = await model.generateContent(prompt);
-        res.json({ question: result.response.text() });
+        const cleanedResponse = result.response.text().replace(/```json|```/g, '').trim();
+        res.json({ question: cleanedResponse });
     } catch (error) {
         console.error("Error in generateQuizQuestion:", error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+router.post('/generateQuizSet', async (req, res) => {
+    try {
+        const { context, count = 5 } = req.body;
+        const model = genAI.getGenerativeModel({
+            model: "gemini-2.0-flash",
+            generationConfig: { responseMimeType: "application/json" }
+        });
+
+        const prompt = `Based on the provided notes/context, generate a set of ${count} multiple-choice quiz questions.
+        Focus on testing key concepts, definitions, and applications.
+        RETURN ONLY RAW JSON. Do not wrap in markdown or code blocks.
+
+        Context: "${context.substring(0, 8000)}"
+
+        Schema:
+        [
+            {
+                "topic": "string",
+                "question": "string",
+                "options": ["string", "string", "string", "string"],
+                "correctOptionIndex": number
+            }
+        ]`;
+
+        const result = await model.generateContent(prompt);
+        res.json({ quizSet: result.response.text() });
+    } catch (error) {
+        console.error("Error in generateQuizSet:", error);
         res.status(500).json({ error: error.message });
     }
 });
@@ -247,7 +280,8 @@ router.post('/generateFlashcards', async (req, res) => {
         ]`;
 
         const result = await model.generateContent(prompt);
-        res.json({ flashcards: result.response.text() });
+        const cleanedResponse = result.response.text().replace(/```json|```/g, '').trim();
+        res.json({ flashcards: cleanedResponse });
     } catch (error) {
         console.error("Error in generateFlashcards:", error);
         res.status(500).json({ error: error.message });
@@ -290,7 +324,8 @@ router.post('/breakDownGoal', async (req, res) => {
         Example: ["Understand JSX syntax", "Learn about components and props"]`;
 
         const result = await model.generateContent(prompt);
-        res.json({ breakdown: result.response.text() });
+        const cleanedResponse = result.response.text().replace(/```json|```/g, '').trim();
+        res.json({ breakdown: cleanedResponse });
     } catch (error) {
         console.error("Error in breakDownGoal:", error);
         res.status(500).json({ error: error.message });
@@ -322,7 +357,8 @@ router.post('/generateProjectIdeas', async (req, res) => {
         ]`;
 
         const result = await model.generateContent(prompt);
-        res.json({ ideas: result.response.text() });
+        const cleanedResponse = result.response.text().replace(/```json|```/g, '').trim();
+        res.json({ ideas: cleanedResponse });
     } catch (error) {
         console.error("Error in generateProjectIdeas:", error);
         res.status(500).json({ error: error.message });
@@ -388,7 +424,8 @@ router.post('/generateMockPaper', async (req, res) => {
         }`;
 
         const result = await model.generateContent(prompt);
-        res.json({ paper: JSON.parse(result.response.text()) });
+        const cleanedResponse = result.response.text().replace(/```json|```/g, '').trim();
+        res.json({ paper: JSON.parse(cleanedResponse) });
     } catch (error) {
         console.error("Error in generateMockPaper:", error);
         res.status(500).json({ error: error.message });

@@ -10,6 +10,20 @@ const courseSchema = new mongoose.Schema({
         type: String,
         default: '#8b5cf6' // Default violet color
     },
+    description: {
+        type: String,
+        trim: true,
+        default: ''
+    },
+    icon: {
+        type: String, // Emoji or icon name
+        default: '📚'
+    },
+    status: {
+        type: String,
+        enum: ['active', 'completed', 'archived'],
+        default: 'active'
+    },
     userId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',

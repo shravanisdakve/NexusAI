@@ -15,12 +15,12 @@ const StudyDaySchema = new mongoose.Schema({
 
 const StudyPlanSchema = new mongoose.Schema({
     user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-    courseId: { type: String, required: true },
+    courseId: { type: mongoose.Schema.Types.ObjectId, ref: 'Course', required: true },
     goal: { type: String, required: true },
     durationDays: { type: Number, required: true },
-    startDate: { type: Number, required: true },
+    startDate: { type: Date, required: true },
     days: [StudyDaySchema],
-    createdAt: { type: Number, default: Date.now }
+    createdAt: { type: Date, default: Date.now }
 });
 
 module.exports = mongoose.model('StudyPlan', StudyPlanSchema);

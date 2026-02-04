@@ -24,7 +24,7 @@ const validatePassword = (password) => {
 // --- SIGNUP ENDPOINT ---
 router.post("/signup", async (req, res) => {
   try {
-    const { email, password, displayName, branch, year, college } = req.body;
+    const { email, password, displayName, branch, year, college, avatar } = req.body;
 
     if (!email || !password || !displayName || !branch || !year || !college) {
       return res.status(400).json({ success: false, message: "All fields are required" });
@@ -48,6 +48,8 @@ router.post("/signup", async (req, res) => {
       branch,
       year,
       college,
+      avatar,
+      lastActive: Date.now()
     });
 
     await newUser.save();
@@ -68,6 +70,7 @@ router.post("/signup", async (req, res) => {
         branch: newUser.branch,
         year: newUser.year,
         college: newUser.college,
+        avatar: newUser.avatar,
       }
     });
 
@@ -91,6 +94,10 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ success: false, message: 'Invalid credentials' });
     }
 
+    // Update lastActive
+    user.lastActive = Date.now();
+    await user.save();
+
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
       return res.status(401).json({ success: false, message: 'Invalid credentials' });
@@ -112,6 +119,7 @@ router.post('/login', async (req, res) => {
         branch: user.branch,
         year: user.year,
         college: user.college,
+        avatar: user.avatar,
       }
     });
 
@@ -133,6 +141,43 @@ router.get('/verify', authMiddleware, async (req, res) => {
   } catch (error) {
     console.error('Verify token error:', error);
     res.status(500).json({ success: false, message: 'Server error during token verification' });
+  }
+});
+
+// --- UPDATE PROFILE ENDPOINT ---
+router.put('/profile', authMiddleware, async (req, res) => {
+  try {
+    const { displayName, branch, year, college, avatar } = req.body;
+
+    const user = await User.findById(req.user.userId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    if (displayName) user.displayName = displayName;
+    if (branch) user.branch = branch;
+    if (year) user.year = year;
+    if (college) user.college = college;
+    if (avatar) user.avatar = avatar;
+
+    await user.save();
+
+    res.json({
+      success: true,
+      user: {
+        id: user._id,
+        email: user.email,
+        displayName: user.displayName,
+        branch: user.branch,
+        year: user.year,
+        college: user.college,
+        avatar: user.avatar,
+      }
+    });
+
+  } catch (error) {
+    console.error('Update profile error:', error);
+    res.status(500).json({ success: false, message: 'Server error during profile update' });
   }
 });
 

@@ -15,6 +15,14 @@ const noteSchema = new mongoose.Schema({
         enum: ['text', 'file'],
         default: 'text'
     },
+    tags: [{
+        type: String,
+        trim: true
+    }],
+    isPinned: {
+        type: Boolean,
+        default: false
+    },
     // File-related fields
     fileUrl: {
         type: String,

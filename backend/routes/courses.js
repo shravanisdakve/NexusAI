@@ -26,6 +26,9 @@ router.get('/', auth, async (req, res) => {
                 id: course._id.toString(),
                 name: course.name,
                 color: course.color,
+                description: course.description,
+                icon: course.icon,
+                status: course.status,
                 createdAt: course.createdAt
             }))
         });
@@ -61,6 +64,9 @@ router.get('/:id', auth, async (req, res) => {
                 id: course._id.toString(),
                 name: course.name,
                 color: course.color,
+                description: course.description,
+                icon: course.icon,
+                status: course.status,
                 createdAt: course.createdAt
             }
         });
@@ -78,7 +84,7 @@ router.get('/:id', auth, async (req, res) => {
 // @access  Private
 router.post('/', auth, async (req, res) => {
     try {
-        const { name } = req.body;
+        const { name, description, icon, status } = req.body;
 
         if (!name || name.trim() === '') {
             return res.status(400).json({
@@ -94,6 +100,9 @@ router.post('/', auth, async (req, res) => {
         const course = new Course({
             name: name.trim(),
             color: generateColor(existingColors),
+            description: description || '',
+            icon: icon || '📚',
+            status: status || 'active',
             userId: req.user.id
         });
 
@@ -107,6 +116,9 @@ router.post('/', auth, async (req, res) => {
                 id: course._id.toString(),
                 name: course.name,
                 color: course.color,
+                description: course.description,
+                icon: course.icon,
+                status: course.status,
                 createdAt: course.createdAt
             }
         });
@@ -124,7 +136,7 @@ router.post('/', auth, async (req, res) => {
 // @access  Private
 router.put('/:id', auth, async (req, res) => {
     try {
-        const { name, color } = req.body;
+        const { name, color, description, icon, status } = req.body;
 
         const course = await Course.findOne({
             _id: req.params.id,
@@ -140,6 +152,9 @@ router.put('/:id', auth, async (req, res) => {
 
         if (name) course.name = name.trim();
         if (color) course.color = color;
+        if (description !== undefined) course.description = description;
+        if (icon) course.icon = icon;
+        if (status) course.status = status;
 
         await course.save();
 
@@ -149,6 +164,9 @@ router.put('/:id', auth, async (req, res) => {
                 id: course._id.toString(),
                 name: course.name,
                 color: course.color,
+                description: course.description,
+                icon: course.icon,
+                status: course.status,
                 createdAt: course.createdAt
             }
         });

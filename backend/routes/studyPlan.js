@@ -45,7 +45,7 @@ router.post('/', auth, async (req, res) => {
                 courseId,
                 goal,
                 durationDays,
-                startDate,
+                startDate: new Date(startDate),
                 days
             });
             await plan.save();

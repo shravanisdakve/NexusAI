@@ -112,6 +112,20 @@ export interface Note {
     createdAt: number | string; // Can be timestamp or ISO string from backend
 }
 
+export interface PersonalQuiz {
+    id?: string;
+    questions: {
+        topic: string;
+        question: string;
+        options: string[];
+        correctOptionIndex: number;
+        explanation?: string;
+    }[];
+    score?: number;
+    completed?: boolean;
+    dateTaken?: number;
+}
+
 export interface GeminiRequest {
     message?: string;
     notes?: string;
@@ -131,6 +145,7 @@ export interface GeminiRequest {
     subject?: string;
     year?: string;
     persona?: string;
+    count?: number;
 }
 
 export interface GeminiResponse {
@@ -146,6 +161,7 @@ export interface GeminiResponse {
     breakdown?: string;
     ideas?: string;
     paper?: any;
+    quizSet?: string;
 }
 
 export interface PomodoroState {

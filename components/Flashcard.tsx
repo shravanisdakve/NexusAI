@@ -10,15 +10,23 @@ const Flashcard: React.FC<FlashcardProps> = ({ front, back }) => {
 
   return (
     <div
-      className="w-full h-48 p-4 rounded-lg bg-slate-700 flex items-center justify-center text-center cursor-pointer transform transition-transform duration-500"
+      className="w-full aspect-[3/2] perspective-1000 cursor-pointer group"
       onClick={() => setIsFlipped(!isFlipped)}
-      style={{ transformStyle: 'preserve-3d', transform: isFlipped ? 'rotateY(180deg)' : 'none' }}
     >
-      <div className="absolute w-full h-full flex items-center justify-center" style={{ backfaceVisibility: 'hidden' }}>
-        <p>{front}</p>
-      </div>
-      <div className="absolute w-full h-full flex items-center justify-center" style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}>
-        <p>{back}</p>
+      <div
+        className={`relative w-full h-full duration-500 transform-style-3d transition-transform ${isFlipped ? 'rotate-y-180' : ''}`}
+      >
+        {/* Front */}
+        <div className="absolute w-full h-full backface-hidden rounded-xl bg-gradient-to-br from-slate-700 to-slate-800 border border-slate-600 shadow-xl flex items-center justify-center p-6 text-center">
+          <p className="text-lg font-medium text-slate-100 select-none">{front}</p>
+          <div className="absolute bottom-3 right-3 text-xs text-slate-500">Tap to flip</div>
+        </div>
+
+        {/* Back */}
+        <div className="absolute w-full h-full backface-hidden rotate-y-180 rounded-xl bg-gradient-to-br from-violet-900 to-indigo-900 border border-violet-500/50 shadow-xl shadow-violet-900/20 flex items-center justify-center p-6 text-center">
+          <p className="text-lg font-medium text-white select-none">{back}</p>
+          <div className="absolute bottom-3 right-3 text-xs text-violet-300/50">Tap to flip back</div>
+        </div>
       </div>
     </div>
   );
