@@ -22,6 +22,11 @@ export interface User {
     branch?: string;
     year?: number;
     token?: string;
+    xp?: number;
+    coins?: number;
+    level?: number;
+    streak?: number;
+    badges?: string[];
 }
 
 export interface Flashcard {
