@@ -4,7 +4,7 @@ import { PageHeader, Button, Input } from '@/components/ui';
 import { useAuth } from '../contexts/AuthContext';
 import { type Course, type Mood as MoodType, type MoodLabel, type StudyPlan } from '../types';
 import { getStudyPlan } from '../services/studyPlanService';
-import { getTimeOfDayGreeting, getMostUsedTool } from '../services/personalizationService';
+import { getTimeOfDayGreeting, getMostUsedTool, getQuickAccessTools, addToQuickAccess, removeFromQuickAccess } from '../services/personalizationService';
 import { getProductivityReport } from '../services/analyticsService';
 import { getCourses, addCourse, deleteCourse } from '../services/courseService';
 import GoalsWidget from '../components/GoalsWidget';
@@ -14,7 +14,8 @@ import {
     MessageSquare, Share2, FileText, Code, ArrowRight,
     Target, Lightbulb, Timer, Zap, BookOpen,
     Play, Pause, RefreshCw, PlusCircle, Trash2, User, Users, Star,
-    BarChart, Clock, Brain, TrendingUp, TrendingDown, Repeat, Sparkles, Calculator, Shield, Calendar, CheckCircle2, Circle
+    BarChart, Clock, Brain, TrendingUp, TrendingDown, Repeat, Sparkles, Calculator, Shield, Calendar, CheckCircle2, Circle,
+    Pin, X, Plus, ChevronDown
 } from 'lucide-react';
 
 const formatSeconds = (seconds: number) => {
@@ -333,6 +334,9 @@ const Dashboard: React.FC = () => {
     const [showMoodCheckin, setShowMoodCheckin] = useState(true);
     const [aiSuggestion, setAiSuggestion] = useState<string | null>(null);
     const [isLoadingSuggestion, setIsLoadingSuggestion] = useState(false);
+    const [quickAccessTools, setQuickAccessTools] = useState<string[]>([]);
+    const [showAddToolDropdown, setShowAddToolDropdown] = useState(false);
+    const dropdownRef = React.useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         const getMostUsed = async () => {
@@ -341,11 +345,45 @@ const Dashboard: React.FC = () => {
         };
         getMostUsed();
 
+        // Load saved Quick Access tools
+        const savedTools = getQuickAccessTools();
+        setQuickAccessTools(savedTools);
+
         const sessionMood = sessionStorage.getItem(SESSION_MOOD_CHECKIN_KEY);
         if (sessionMood) {
             setShowMoodCheckin(false);
         }
     }, []);
+
+    // Close dropdown when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+                setShowAddToolDropdown(false);
+            }
+        };
+
+        if (showAddToolDropdown) {
+            document.addEventListener('mousedown', handleClickOutside);
+        }
+
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [showAddToolDropdown]);
+
+    const handleAddToQuickAccess = (toolKey: string) => {
+        const updated = addToQuickAccess(toolKey);
+        setQuickAccessTools(updated);
+        setShowAddToolDropdown(false);
+    };
+
+    const handleRemoveFromQuickAccess = (toolKey: string) => {
+        const updated = removeFromQuickAccess(toolKey);
+        setQuickAccessTools(updated);
+    };
+
+    const availableToolsToAdd = tools.filter(tool => !quickAccessTools.includes(tool.key));
 
     const handleMoodSelected = async (mood: MoodLabel) => {
         sessionStorage.setItem(SESSION_MOOD_CHECKIN_KEY, 'true');
@@ -441,25 +479,83 @@ const Dashboard: React.FC = () => {
                 </div>
 
                 <div className="space-y-10">
-                    {mostUsedTool && (
-                        <div>
-                            <h2 className="text-xl font-semibold text-slate-100 mb-6 flex items-center">
+                    <div>
+                        <div className="flex items-center justify-between mb-6">
+                            <h2 className="text-xl font-semibold text-slate-100 flex items-center">
                                 <Star className="w-5 h-5 mr-3 text-violet-500" fill="currentColor" /> Quick Access
                             </h2>
-                            <Link to={mostUsedTool.href} className="group block p-6 bg-slate-800 rounded-xl border border-violet-500/30 shadow-lg shadow-violet-500/10 hover:shadow-violet-500/20 transition-all duration-300">
-                                <div className="flex items-center justify-between mb-4">
-                                    <div className={`p-3 rounded-lg bg-violet-500/10`}>
-                                        <mostUsedTool.icon className={`w-6 h-6 text-violet-400`} />
+                            <div className="relative" ref={dropdownRef}>
+                                <Button
+                                    onClick={() => setShowAddToolDropdown(!showAddToolDropdown)}
+                                    className="px-3 py-2 text-xs bg-slate-700/50 hover:bg-slate-700 shadow-none"
+                                    disabled={availableToolsToAdd.length === 0}
+                                >
+                                    <Plus size={14} className="mr-1" />
+                                    Add Tool
+                                    <ChevronDown size={14} className="ml-1" />
+                                </Button>
+                                {showAddToolDropdown && availableToolsToAdd.length > 0 && (
+                                    <div className="absolute right-0 mt-2 w-56 bg-slate-800 rounded-xl border border-white/10 shadow-2xl z-50 py-2 max-h-64 overflow-y-auto">
+                                        {availableToolsToAdd.map(tool => (
+                                            <button
+                                                key={tool.key}
+                                                onClick={() => handleAddToQuickAccess(tool.key)}
+                                                className="w-full px-4 py-2.5 text-left flex items-center gap-3 hover:bg-slate-700/50 transition-colors"
+                                            >
+                                                <tool.icon className={`w-4 h-4 ${tool.color}`} />
+                                                <span className="text-sm text-slate-200">{tool.name}</span>
+                                            </button>
+                                        ))}
                                     </div>
-                                    <ArrowRight className="w-5 h-5 text-slate-500 group-hover:text-violet-400 group-hover:translate-x-1 transition-all" />
-                                </div>
-                                <div>
-                                    <h3 className="text-lg font-bold text-white mb-1">{mostUsedTool.name}</h3>
-                                    <p className="text-sm text-slate-400">{mostUsedTool.description}</p>
-                                </div>
-                            </Link>
+                                )}
+                            </div>
                         </div>
-                    )}
+
+                        {quickAccessTools.length === 0 ? (
+                            <div className="bg-slate-800/50 rounded-xl p-8 border border-dashed border-slate-600 text-center">
+                                <Pin className="w-10 h-10 text-slate-500 mx-auto mb-4" />
+                                <p className="text-slate-400 mb-2">No pinned tools yet</p>
+                                <p className="text-sm text-slate-500">Click "Add Tool" to pin your favorite tools here for quick access</p>
+                            </div>
+                        ) : (
+                            <div className="space-y-3">
+                                {quickAccessTools.map(toolKey => {
+                                    const tool = tools.find(t => t.key === toolKey);
+                                    if (!tool) return null;
+                                    return (
+                                        <div key={tool.key} className="group relative">
+                                            <Link
+                                                to={tool.href}
+                                                className="block p-5 bg-slate-800 rounded-xl border border-violet-500/30 shadow-lg shadow-violet-500/10 hover:shadow-violet-500/20 transition-all duration-300"
+                                            >
+                                                <div className="flex items-center gap-4">
+                                                    <div className="p-3 rounded-lg bg-violet-500/10">
+                                                        <tool.icon className={`w-5 h-5 ${tool.color}`} />
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <h3 className="text-base font-bold text-white truncate">{tool.name}</h3>
+                                                        <p className="text-xs text-slate-400 truncate">{tool.description}</p>
+                                                    </div>
+                                                    <ArrowRight className="w-4 h-4 text-slate-500 group-hover:text-violet-400 group-hover:translate-x-1 transition-all flex-shrink-0" />
+                                                </div>
+                                            </Link>
+                                            <button
+                                                onClick={(e) => {
+                                                    e.preventDefault();
+                                                    e.stopPropagation();
+                                                    handleRemoveFromQuickAccess(tool.key);
+                                                }}
+                                                className="absolute -top-2 -right-2 w-6 h-6 bg-slate-700 hover:bg-red-500 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-200 border border-slate-600 hover:border-red-500"
+                                                title="Remove from Quick Access"
+                                            >
+                                                <X size={12} className="text-slate-300" />
+                                            </button>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
                     <div>
                         <h2 className="text-xl font-semibold text-slate-100 mb-6">Your AI Toolkit</h2>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-5"> {/* Reduced gap for toolkit grid */}

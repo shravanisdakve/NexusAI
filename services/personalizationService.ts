@@ -74,3 +74,48 @@ export const getBreakActivitySuggestion = (): string => {
     const randomIndex = Math.floor(Math.random() * breakActivities.length);
     return breakActivities[randomIndex];
 };
+
+// Quick Access Management
+const QUICK_ACCESS_KEY = 'nexus_quick_access_tools';
+
+export const getQuickAccessTools = (): string[] => {
+    try {
+        const stored = localStorage.getItem(QUICK_ACCESS_KEY);
+        if (!stored) return [];
+        return JSON.parse(stored);
+    } catch (error) {
+        console.error("Error getting quick access tools:", error);
+        return [];
+    }
+};
+
+export const addToQuickAccess = (toolKey: string): string[] => {
+    try {
+        const current = getQuickAccessTools();
+        if (!current.includes(toolKey)) {
+            const updated = [...current, toolKey];
+            localStorage.setItem(QUICK_ACCESS_KEY, JSON.stringify(updated));
+            return updated;
+        }
+        return current;
+    } catch (error) {
+        console.error("Error adding to quick access:", error);
+        return [];
+    }
+};
+
+export const removeFromQuickAccess = (toolKey: string): string[] => {
+    try {
+        const current = getQuickAccessTools();
+        const updated = current.filter(key => key !== toolKey);
+        localStorage.setItem(QUICK_ACCESS_KEY, JSON.stringify(updated));
+        return updated;
+    } catch (error) {
+        console.error("Error removing from quick access:", error);
+        return [];
+    }
+};
+
+export const isInQuickAccess = (toolKey: string): boolean => {
+    return getQuickAccessTools().includes(toolKey);
+};
