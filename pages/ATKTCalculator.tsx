@@ -5,35 +5,12 @@ import {
     CheckCircle2,
     AlertCircle,
     Info,
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
     Download,
->>>>>>> Stashed changes
-=======
-    Download,
->>>>>>> Stashed changes
-=======
-    Download,
->>>>>>> Stashed changes
     Trophy,
     GraduationCap,
     TrendingUp
 } from 'lucide-react';
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
 import { calculateGrace, checkProgression, SubjectMarks } from '@/services/atkService';
-=======
-import { calculateGrace, checkProgression, SubjectMarks } from '../services/atkService';
->>>>>>> Stashed changes
-=======
-import { calculateGrace, checkProgression, SubjectMarks } from '../services/atkService';
->>>>>>> Stashed changes
-=======
-import { calculateGrace, checkProgression, SubjectMarks } from '../services/atkService';
->>>>>>> Stashed changes
 import { motion, AnimatePresence } from 'framer-motion';
 
 const ATKTCalculator: React.FC = () => {
@@ -98,18 +75,7 @@ const ATKTCalculator: React.FC = () => {
             />
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
                 {/* Input Section */}
->>>>>>> Stashed changes
-=======
-                {/* Input Section */}
->>>>>>> Stashed changes
-=======
-                {/* Input Section */}
->>>>>>> Stashed changes
                 <div className="lg:col-span-2 space-y-6">
                     <Card className="p-6 bg-slate-800/50 border-slate-700 backdrop-blur-sm">
                         <div className="flex items-center justify-between mb-6">
@@ -219,18 +185,7 @@ const ATKTCalculator: React.FC = () => {
                     </Button>
                 </div>
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
                 {/* Report Section */}
->>>>>>> Stashed changes
-=======
-                {/* Report Section */}
->>>>>>> Stashed changes
-=======
-                {/* Report Section */}
->>>>>>> Stashed changes
                 <div className="space-y-6">
                     <AnimatePresence>
                         {report && (
@@ -281,19 +236,6 @@ const ATKTCalculator: React.FC = () => {
                                                 style={{ width: `${Math.min(100, (cumulativeCredits / progression.threshold) * 100)}%` }}
                                             />
                                         </div>
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-                                    </Card>
-                                )}
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
-=======
-=======
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
                                         <div className="flex justify-between mt-2 text-[10px] font-mono text-slate-500">
                                             <span>CREDITS: {cumulativeCredits}</span>
                                             <span>TARGET: {progression.threshold}</span>
@@ -320,13 +262,6 @@ const ATKTCalculator: React.FC = () => {
                             <p className="text-slate-500 text-sm mt-2">Enter your academic scores to receive a detailed ordinance analysis.</p>
                         </div>
                     )}
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
                 </div>
             </div>
         </div>
