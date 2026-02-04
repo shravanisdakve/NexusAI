@@ -46,6 +46,23 @@ const UserSchema = new mongoose.Schema({
     type: Date,
     default: Date.now,
   },
+  // Gamification Fields
+  xp: {
+    type: Number,
+    default: 0
+  },
+  coins: {
+    type: Number,
+    default: 0
+  },
+  streak: {
+    type: Number,
+    default: 0
+  },
+  badges: [{
+    type: String
+  }],
+  // End Gamification Fields
   createdAt: {
     type: Date,
     default: Date.now,
