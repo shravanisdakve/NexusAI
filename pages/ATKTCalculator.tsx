@@ -6,6 +6,10 @@ import {
     AlertCircle,
     Info,
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+    Download,
+>>>>>>> Stashed changes
 =======
     Download,
 >>>>>>> Stashed changes
@@ -14,7 +18,11 @@ import {
     TrendingUp
 } from 'lucide-react';
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 import { calculateGrace, checkProgression, SubjectMarks } from '@/services/atkService';
+=======
+import { calculateGrace, checkProgression, SubjectMarks } from '../services/atkService';
+>>>>>>> Stashed changes
 =======
 import { calculateGrace, checkProgression, SubjectMarks } from '../services/atkService';
 >>>>>>> Stashed changes
@@ -83,6 +91,10 @@ const ATKTCalculator: React.FC = () => {
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+                {/* Input Section */}
+>>>>>>> Stashed changes
 =======
                 {/* Input Section */}
 >>>>>>> Stashed changes
@@ -196,6 +208,10 @@ const ATKTCalculator: React.FC = () => {
                 </div>
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+                {/* Report Section */}
+>>>>>>> Stashed changes
 =======
                 {/* Report Section */}
 >>>>>>> Stashed changes
@@ -250,12 +266,15 @@ const ATKTCalculator: React.FC = () => {
                                             />
                                         </div>
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
                                     </Card>
                                 )}
                             </motion.div>
                         )}
                     </AnimatePresence>
 =======
+=======
+>>>>>>> Stashed changes
                                         <div className="flex justify-between mt-2 text-[10px] font-mono text-slate-500">
                                             <span>CREDITS: {cumulativeCredits}</span>
                                             <span>TARGET: {progression.threshold}</span>
@@ -282,6 +301,9 @@ const ATKTCalculator: React.FC = () => {
                             <p className="text-slate-500 text-sm mt-2">Enter your academic scores to receive a detailed ordinance analysis.</p>
                         </div>
                     )}
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
                 </div>
             </div>

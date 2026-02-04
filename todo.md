@@ -2,6 +2,7 @@ Strategic Enhancement and Architectural Optimization of the NexusAI Platform for
 
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 Sorry, I couldn't read that file. It might be an unsupported format or corrupted. Please try another one.
 
 
@@ -15,6 +16,8 @@ StudyPlan.tsx:37 Error generating plan: Error: HTTP error! status: 401
     at generateStudyPlan (geminiService.ts:382:15)
     at async handleGenerate (StudyPlan.tsx:34:28)
 =======
+=======
+>>>>>>> Stashed changes
 
 
 
@@ -414,4 +417,7 @@ d:\project\NexusAI\
 *Document Version: 1.0*
 *Created: February 4, 2026*
 *Status: Implementation Ready*
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
