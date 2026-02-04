@@ -876,7 +876,7 @@ const StudyRoom: React.FC = () => {
                     onAddTestUser={handleAddTestUser}
                     showMusicPlayer={showMusicPlayer} // Pass showMusicPlayer state
                 >
-                    {showMusicPlayer && <MusicPlayer onClose={() => setShowMusicPlayer(false)} />} {/* Render MusicPlayer as child */}
+                    <MusicPlayer visible={showMusicPlayer} onClose={() => setShowMusicPlayer(false)} />
                 </RoomControls>
                 {/* --- END FIX --- */}
             </div>

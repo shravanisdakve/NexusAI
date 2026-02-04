@@ -420,6 +420,24 @@ const Dashboard: React.FC = () => {
                             </div>
                         </Link>
                     </div>
+
+                    <div className="space-y-8">
+                        <GoalsWidget />
+                        {showMoodCheckin && <MoodCheckin onMoodSelect={handleMoodSelected} />}
+                        {(isLoadingSuggestion || aiSuggestion) && (
+                            <div className="bg-slate-800/50 p-4 rounded-xl ring-1 ring-slate-700 flex items-center gap-4">
+                                <Sparkles className="text-sky-400 w-8 h-8 flex-shrink-0" />
+                                <div>
+                                    <h4 className="font-semibold text-lg text-sky-300">Smart Suggestion</h4>
+                                    {isLoadingSuggestion && <p className="text-slate-300">Thinking...</p>}
+                                    {aiSuggestion && <p className="text-slate-100">{aiSuggestion}</p>}
+                                </div>
+                            </div>
+                        )}
+                        <ProductivityInsights />
+                        <ActivePlanWidget />
+                        <MyCourses />
+                    </div>
                 </div>
 
                 <div className="space-y-10">
@@ -454,23 +472,6 @@ const Dashboard: React.FC = () => {
                 </div>
             </div>
 
-            <div className="space-y-8">
-                <GoalsWidget />
-                {showMoodCheckin && <MoodCheckin onMoodSelect={handleMoodSelected} />}
-                {(isLoadingSuggestion || aiSuggestion) && (
-                    <div className="bg-slate-800/50 p-4 rounded-xl ring-1 ring-slate-700 flex items-center gap-4">
-                        <Sparkles className="text-sky-400 w-8 h-8 flex-shrink-0" />
-                        <div>
-                            <h4 className="font-semibold text-lg text-sky-300">Smart Suggestion</h4>
-                            {isLoadingSuggestion && <p className="text-slate-300">Thinking...</p>}
-                            {aiSuggestion && <p className="text-slate-100">{aiSuggestion}</p>}
-                        </div>
-                    </div>
-                )}
-                <ProductivityInsights />
-                <ActivePlanWidget />
-                <MyCourses />
-            </div>
         </div>
     );
 };

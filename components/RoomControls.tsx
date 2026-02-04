@@ -137,7 +137,7 @@ const RoomControls: React.FC<RoomControlsProps> = ({
           >
             <Music size={20} />
           </Button>
-          {showMusicPlayer && children} {/* Render children (MusicPlayer) here */}
+          {children} {/* Children (like MusicPlayer) will now stay mounted to support background features */}
         </div>
 
         {/* Share Room Button */}

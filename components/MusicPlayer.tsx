@@ -18,7 +18,7 @@ const tracks = [
 ];
 // --- END FIX ---
 
-const MusicPlayer: React.FC<{ onClose: () => void }> = ({ onClose }) => {
+const MusicPlayer: React.FC<{ onClose: () => void, visible: boolean }> = ({ onClose, visible }) => {
   const [currentTrackIndex, setCurrentTrackIndex] = useState<number | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
@@ -92,7 +92,7 @@ const MusicPlayer: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   }, [isMuted]);
 
   return (
-    <div className="absolute bottom-24 right-4 bg-slate-800 rounded-lg shadow-2xl p-4 w-64 ring-1 ring-slate-700 z-30 animate-in fade-in-50 slide-in-from-bottom-5">
+    <div className={`absolute bottom-24 right-4 bg-slate-800 rounded-lg shadow-2xl p-4 w-64 ring-1 ring-slate-700 z-30 animate-in fade-in-50 slide-in-from-bottom-5 ${visible ? '' : 'hidden'}`}>
       <div className="flex justify-between items-center mb-3">
         <h4 className="font-semibold text-white flex items-center gap-2"><Music size={16} /> Study Music</h4>
         <button onClick={onClose} className="text-slate-400 hover:text-white"><X size={18} /></button>
