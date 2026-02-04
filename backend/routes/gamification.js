@@ -106,5 +106,34 @@ router.post('/award-xp', auth, async (req, res) => {
 });
 
 
+// Award Badge
+router.post('/award-badge', auth, async (req, res) => {
+    const { badgeName } = req.body;
+    try {
+        const user = await User.findById(req.user.id);
+        if (!user) {
+            return res.status(404).json({ success: false, message: 'User not found' });
+        }
+
+        if (user.badges.includes(badgeName)) {
+            return res.json({ success: true, message: 'Badge already earned', newlyEarned: false });
+        }
+
+        user.badges.push(badgeName);
+        await user.save();
+
+        res.json({
+            success: true,
+            badges: user.badges,
+            newlyEarned: true,
+            message: `Congratulations! You earned the ${badgeName} badge!`
+        });
+
+    } catch (error) {
+        console.error('Error awarding badge:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
 module.exports = router;
 

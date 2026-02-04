@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { saveGameActivity } from "@/services/gameTracker";
-
+import { awardBadge } from "@/services/gamificationService";
 
 // ---------------- TYPES ----------------
 type Level = "easy" | "medium" | "hard";
@@ -86,6 +86,9 @@ export default function SpeedMathGame() {
   const nextQuestion = () => {
     if (questionNo === 10) {
       setGameOver(true);
+      if (score === 10) {
+        awardBadge("Math Wizard");
+      }
       return;
     }
     setQuestionNo(q => q + 1);
@@ -99,7 +102,7 @@ export default function SpeedMathGame() {
     }
     nextQuestion();
   };
-const [startTime, setStartTime] = useState<number>(0);
+  const [startTime, setStartTime] = useState<number>(0);
 
   // ---------------- LEVEL SELECTION ----------------
   if (!level) {
