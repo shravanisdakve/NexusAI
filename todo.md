@@ -2,3 +2,14 @@ Strategic Enhancement and Architectural Optimization of the NexusAI Platform for
 
 
 Sorry, I couldn't read that file. It might be an unsupported format or corrupted. Please try another one.
+
+
+:3000/api/study-plan/generate:1  Failed to load resource: the server responded with a status of 401 (Unauthorized)
+StudyPlan.tsx:37 Error generating plan: Error: HTTP error! status: 401
+    at generateStudyPlan (geminiService.ts:382:15)
+    at async handleGenerate (StudyPlan.tsx:34:28)
+handleGenerate @ StudyPlan.tsx:37
+:3000/api/study-plan/generate:1  Failed to load resource: the server responded with a status of 401 (Unauthorized)
+StudyPlan.tsx:37 Error generating plan: Error: HTTP error! status: 401
+    at generateStudyPlan (geminiService.ts:382:15)
+    at async handleGenerate (StudyPlan.tsx:34:28)
