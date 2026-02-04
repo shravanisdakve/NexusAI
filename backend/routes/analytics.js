@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const UserProgress = require('../models/UserProgress');
+const User = require('../models/User');
 console.log('--- ANALYTICS ROUTE MODULE LOADED ---');
 
 const auth = require('../middleware/auth');
@@ -51,8 +52,14 @@ router.post('/session', auth, async (req, res) => {
         }
 
         await progress.save();
+
+        // Award XP for study session completion
+        const user = await User.findById(req.user.id);
+        if (user) await user.addXP(50); // Fixed XP for session completion
+
         res.json(progress);
     } catch (err) {
+
         res.status(500).json({ message: err.message });
     }
 });
@@ -92,6 +99,14 @@ router.post('/quiz', auth, async (req, res) => {
         });
 
         await progress.save();
+
+        // Award XP for quiz attempt/success
+        const user = await User.findById(req.user.id);
+        if (user) {
+            const xpAwarded = isCorrect ? 50 : 10;
+            await user.addXP(xpAwarded);
+        }
+
         res.json(progress);
     } catch (err) {
         res.status(500).json({ message: err.message });

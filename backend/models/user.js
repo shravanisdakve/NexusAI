@@ -88,5 +88,24 @@ const UserSchema = new mongoose.Schema({
     }
   }
 });
+// Add method to award XP and handle leveling
+UserSchema.methods.addXP = async function (amount) {
+  this.xp = (this.xp || 0) + amount;
+
+  // Dynamic Level Logic: Total XP for Level L = 500 * L * (L - 1)
+  // Inverse: L = (1 + sqrt(1 + 8*XP/1000)) / 2
+  const calculatedLevel = Math.floor((1 + Math.sqrt(1 + (8 * this.xp) / 1000)) / 2);
+  const newLevel = Math.max(1, calculatedLevel);
+
+  let leveledUp = false;
+  if (newLevel > this.level) {
+    this.level = newLevel;
+    this.coins = (this.coins || 0) + (newLevel * 10);
+    leveledUp = true;
+  }
+
+  await this.save();
+  return { leveledUp, level: this.level, xp: this.xp };
+};
 
 module.exports = mongoose.model("User", UserSchema);

@@ -2,11 +2,32 @@ const express = require('express');
 const router = express.Router();
 const Curriculum = require('../models/Curriculum');
 
+// Fallback data for common branches (Mumbai University NEP 2024-25 Pattern)
+const FALLBACK_CURRICULUM = {
+    branch: "Common for All Branches",
+    semesters: [
+        {
+            semesterNumber: 1,
+            subjects: [
+                { subjectCode: "BSC101", name: "Applied Mathematics-I", credits: 4, category: "Basic Science" },
+                { subjectCode: "BSC102", name: "Applied Physics-I", credits: 3, category: "Basic Science" },
+                { subjectCode: "ESC101", name: "Engineering Mechanics", credits: 3, category: "Engineering Science" }
+            ]
+        }
+    ]
+};
+
 // Get curriculum for a specific branch and semester
 router.get('/:branch/:semester', async (req, res) => {
     try {
         const { branch, semester } = req.params;
-        const curriculum = await Curriculum.findOne({ branch: new RegExp(branch, 'i') });
+        let curriculum = await Curriculum.findOne({ branch: new RegExp(branch, 'i') });
+
+        // Use fallback if not found in DB
+        if (!curriculum && branch.toLowerCase().includes('common')) {
+            curriculum = FALLBACK_CURRICULUM;
+        }
+
         if (!curriculum) return res.status(404).json({ message: 'Curriculum not found' });
 
         const semData = curriculum.semesters.find(s => s.semesterNumber === parseInt(semester));

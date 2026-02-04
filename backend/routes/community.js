@@ -230,10 +230,12 @@ router.patch('/posts/:postId/best-answer', auth, async (req, res) => {
         thread.isVerified = true;
         await thread.save();
 
-        // REWARD: Author of the best answer gets 50 points
-        await User.findByIdAndUpdate(post.author.id, {
-            $inc: { points: 50, contributions: 1 }
-        });
+        // REWARD: Author of the best answer gets 50 XP
+        const bestAuthor = await User.findById(post.author.id);
+        if (bestAuthor) {
+            bestAuthor.contributions = (bestAuthor.contributions || 0) + 1;
+            await bestAuthor.addXP(50);
+        }
 
         res.json({ success: true, post, thread });
     } catch (error) {
@@ -256,13 +258,14 @@ router.patch('/threads/:threadId/upvote', auth, async (req, res) => {
             thread.upvotedBy.push(userId);
             thread.upvotes += 1;
             // Reward author
-            await User.findByIdAndUpdate(thread.author.id, { $inc: { points: 5 } });
+            const author = await User.findById(thread.author.id);
+            if (author) await author.addXP(5);
         } else {
             // Remove upvote (toggle)
             thread.upvotedBy.splice(upvoteIndex, 1);
             thread.upvotes -= 1;
-            // Remove reward
-            await User.findByIdAndUpdate(thread.author.id, { $inc: { points: -5 } });
+            // Remove reward (optional, maybe keep it simpler and not subtract XP)
+            // await User.findByIdAndUpdate(thread.author.id, { $inc: { points: -5 } });
         }
 
         await thread.save();
@@ -285,11 +288,12 @@ router.patch('/posts/:postId/upvote', auth, async (req, res) => {
         if (upvoteIndex === -1) {
             post.upvotedBy.push(userId);
             post.upvotes += 1;
-            await User.findByIdAndUpdate(post.author.id, { $inc: { points: 2 } });
+            const author = await User.findById(post.author.id);
+            if (author) await author.addXP(2);
         } else {
             post.upvotedBy.splice(upvoteIndex, 1);
             post.upvotes -= 1;
-            await User.findByIdAndUpdate(post.author.id, { $inc: { points: -2 } });
+            // Record reversal or just do nothing
         }
 
         await post.save();

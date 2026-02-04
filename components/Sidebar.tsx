@@ -4,8 +4,9 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { Modal, Input, Button, Spinner } from './ui'; // Import necessary UI components
 // --- END FIX ---
 import { useAuth } from '../contexts/AuthContext';
+import { useLanguage } from '../contexts/LanguageContext';
 // --- FIX: Added Edit3 icon ---
-import { LayoutDashboard, MessageSquare, Share2, FileText, Code, BrainCircuit, LogOut, BarChart2, Users, ClipboardList, Edit3, GraduationCap, Binary, Briefcase, Shield, Bell, Layers } from 'lucide-react';
+import { LayoutDashboard, MessageSquare, Share2, FileText, Code, BrainCircuit, LogOut, BarChart2, Users, ClipboardList, Edit3, GraduationCap, Briefcase, Shield, Bell } from 'lucide-react';
 // --- END FIX ---
 
 
@@ -83,8 +84,7 @@ const ProfileEditModal: React.FC<ProfileEditModalProps> = ({ isOpen, onClose, cu
 const navigation = [
     { name: 'Study Hub', href: '/', icon: LayoutDashboard },
     { name: 'MU Curriculum', href: '/curriculum', icon: GraduationCap },
-    { name: 'Branch Specialty', href: '/engineering-lab', icon: Layers },
-    { name: 'Math symbolic Engine', href: '/math-lab', icon: Binary },
+
     { name: 'Placement Arena', href: '/placement', icon: Briefcase },
     { name: 'University Hub', href: '/university-status', icon: Bell },
     { name: 'Notes', href: '/notes', icon: FileText },
@@ -95,6 +95,7 @@ const navigation = [
 const Sidebar: React.FC = () => {
     // --- FIX: Added updateUserProfile and modal state ---
     const { user, logout, updateUserProfile } = useAuth(); // Get updateUserProfile
+    const { language, setLanguage } = useLanguage();
     const [isProfileModalOpen, setIsProfileModalOpen] = useState(false); // Add modal state
     // --- END FIX ---
     const navigate = useNavigate();
@@ -179,13 +180,28 @@ const Sidebar: React.FC = () => {
                             </div>
                         )}
 
-                        {/* Anuvadini AI Mock Toggle */}
+                        {/* Anuvadini AI Toggle */}
                         <div className="flex items-center justify-between p-2 mb-4 bg-slate-900/50 rounded-lg border border-white/5">
                             <span className="text-[10px] font-bold text-slate-500 uppercase ml-1">Anuvadini AI</span>
                             <div className="flex gap-1">
-                                <button className="px-1.5 py-0.5 rounded bg-violet-600 text-[10px] text-white font-bold">EN</button>
-                                <button className="px-1.5 py-0.5 rounded hover:bg-white/5 text-[10px] text-slate-500 font-bold">मरा</button>
-                                <button className="px-1.5 py-0.5 rounded hover:bg-white/5 text-[10px] text-slate-500 font-bold">हिं</button>
+                                <button
+                                    onClick={() => setLanguage('en')}
+                                    className={`px-1.5 py-0.5 rounded text-[10px] font-bold transition-colors ${language === 'en' ? 'bg-violet-600 text-white' : 'hover:bg-white/5 text-slate-500'}`}
+                                >
+                                    EN
+                                </button>
+                                <button
+                                    onClick={() => setLanguage('mr')}
+                                    className={`px-1.5 py-0.5 rounded text-[10px] font-bold transition-colors ${language === 'mr' ? 'bg-violet-600 text-white' : 'hover:bg-white/5 text-slate-500'}`}
+                                >
+                                    मरा
+                                </button>
+                                <button
+                                    onClick={() => setLanguage('hi')}
+                                    className={`px-1.5 py-0.5 rounded text-[10px] font-bold transition-colors ${language === 'hi' ? 'bg-violet-600 text-white' : 'hover:bg-white/5 text-slate-500'}`}
+                                >
+                                    हिं
+                                </button>
                             </div>
                         </div>
 

@@ -11,20 +11,32 @@ export interface ChatSession {
 }
 
 export const getChatHistory = async (): Promise<ChatSession[]> => {
-    const response = await axios.get('/api/ai-chat/history');
+    const token = localStorage.getItem('token');
+    const response = await axios.get('/api/ai-chat/history', {
+        headers: { Authorization: `Bearer ${token}` }
+    });
     return response.data.sessions;
 };
 
 export const getChatSession = async (sessionId: string): Promise<ChatSession> => {
-    const response = await axios.get(`/api/ai-chat/session/${sessionId}`);
+    const token = localStorage.getItem('token');
+    const response = await axios.get(`/api/ai-chat/session/${sessionId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+    });
     return response.data.session;
 };
 
 export const createChatSession = async (title?: string, initialMessages?: ChatMessage[]): Promise<ChatSession> => {
-    const response = await axios.post('/api/ai-chat/session', { title, initialMessages });
+    const token = localStorage.getItem('token');
+    const response = await axios.post('/api/ai-chat/session', { title, initialMessages }, {
+        headers: { Authorization: `Bearer ${token}` }
+    });
     return response.data.session;
 };
 
 export const addMessageToSession = async (sessionId: string, messages: ChatMessage[]): Promise<void> => {
-    await axios.post(`/api/ai-chat/session/${sessionId}/message`, { messages });
+    const token = localStorage.getItem('token');
+    await axios.post(`/api/ai-chat/session/${sessionId}/message`, { messages }, {
+        headers: { Authorization: `Bearer ${token}` }
+    });
 };

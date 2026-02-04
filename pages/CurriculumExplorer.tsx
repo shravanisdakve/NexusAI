@@ -69,7 +69,7 @@ const CurriculumExplorer: React.FC = () => {
                                     moduleNumber: 2,
                                     title: "Partial Differentiation",
                                     topics: ["Euler’s Theorem on Homogeneous functions", "Maxima and Minima of functions of two variables"],
-                                    technicalRequirements: "Symbolic Math Engine",
+
                                     pedagogyFocus: "Visualization of surfaces and stationary points"
                                 }
                             ]

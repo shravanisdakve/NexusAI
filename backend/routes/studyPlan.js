@@ -78,43 +78,59 @@ router.patch('/task', auth, async (req, res) => {
 router.post('/generate', auth, async (req, res) => {
     console.log(`[StudyPlan] GENERATE request received`);
     try {
-        const { goal, durationDays, notesContext } = req.body;
-
-        const prompt = `You are an expert personalized academic advisor. 
+        const { goal, durationDays, notesContext, language } = req.body;
+        let prompt = `You are an expert personalized academic advisor for engineering students. 
         A student wants to achieve the following goal: "${goal}" in ${durationDays} days.
         They have provided the following notes context for their course:
         ---
-        ${notesContext.substring(0, 10000)}
+        ${notesContext.substring(0, 8000)}
         ---
         Based on this, generate a structured, day-by-day study plan.
         Each day should have 2-3 specific tasks. 
-        Task types should be one of: 'note' (reviewing notes), 'quiz' (taking a practice quiz), 'study-room' (collaborative session), or 'review' (general review).
-        Make the plan realistic and progressive.
+        Task types MUST be one of: 'note' (reviewing notes), 'quiz' (taking a practice quiz), 'study-room' (collaborative session), or 'review' (general review).
+        Make the plan realistic and progressive.`;
+
+        if (language === 'mr') {
+            prompt += ' IMPORTANT: All human-readable textual fields in the JSON (title, description) MUST be in MARATHI (मराठी).';
+        } else if (language === 'hi') {
+            prompt += ' IMPORTANT: All human-readable textual fields in the JSON (title, description) MUST be in HINDI (हिंदी).';
+        }
+
+        prompt += `
         
-        The response MUST be a JSON array of daily plans. 
-        IMPORTANT: Return ONLY the raw JSON array. Do not include markdown formatting like \`\`\`json.
+        Return ONLY a JSON object with a "days" key containing the array of daily plans.
+        Do not include markdown formatting like \`\`\`json.
         
         JSON Structure:
-        [
-            {
-                "day": number,
-                "tasks": [
-                    {
-                        "title": "string",
-                        "description": "string",
-                        "type": "note" | "quiz" | "study-room" | "review"
-                    }
-                ]
-            }
-        ]`;
+        {
+            "days": [
+                {
+                    "day": number,
+                    "tasks": [
+                        {
+                            "title": "string",
+                            "description": "string",
+                            "type": "note" | "quiz" | "study-room" | "review"
+                        }
+                    ]
+                }
+            ]
+        }`;
 
         const result = await aiProvider.generate(prompt, {
             feature: 'studyPlan',
             json: true
         });
-        const responseText = result.replace(/```json|```/g, '').trim();
 
-        console.log(`[StudyPlan] AI generated plan successfully`);
+        // Some providers might return an object already if they are configured with json: true
+        let responseText = result;
+        if (typeof result !== 'string') {
+            responseText = JSON.stringify(result);
+        } else {
+            responseText = result.replace(/```json|```/g, '').trim();
+        }
+
+        console.log(`[StudyPlan] AI generated plan successfully. Length: ${responseText.length}`);
         res.json({ planJson: responseText });
     } catch (error) {
         console.error("[StudyPlan] GENERATE Error:", error);

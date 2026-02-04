@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
-require('dotenv').config({ path: './.env' });
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '../.env') });
 const Curriculum = require('../models/Curriculum');
 
 const seedData = [
@@ -101,7 +102,13 @@ const seedData = [
 
 const seedCurriculum = async () => {
     try {
-        await mongoose.connect(process.env.MONGODB_URI);
+        const uri = process.env.MONGO_URI || process.env.MONGODB_URI;
+        if (!uri) {
+            console.error("Error: MONGO_URI and MONGODB_URI are both undefined.");
+            console.log("Loaded Environment Variables:", Object.keys(process.env).filter(k => k.includes('MONGO')));
+            process.exit(1);
+        }
+        await mongoose.connect(uri);
         console.log("Connected to MongoDB");
 
         await Curriculum.deleteMany({}); // Clear existing

@@ -4,6 +4,7 @@ import { FileText, Sparkles, Download, CheckCircle, ArrowLeft, Printer } from 'l
 import { generateMockPaper } from '../services/geminiService';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface MockPaper {
     subject: string;
@@ -20,6 +21,7 @@ interface MockPaper {
 
 const MockPaperGenerator: React.FC = () => {
     const { user } = useAuth();
+    const { language } = useLanguage();
     const navigate = useNavigate();
     const [branch, setBranch] = useState(user?.branch || '');
     const [subject, setSubject] = useState('');
@@ -32,7 +34,7 @@ const MockPaperGenerator: React.FC = () => {
         if (!subject) return;
         setLoading(true);
         try {
-            const result = await generateMockPaper(branch, subject, year);
+            const result = await generateMockPaper(branch, subject, year, language);
             setPaper(result);
         } catch (error) {
             console.error("Error generating paper:", error);
