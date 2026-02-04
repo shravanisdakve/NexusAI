@@ -880,6 +880,7 @@ const StudyRoom: React.FC = () => {
                                 notes={notes}
                                 topic={room?.topic || 'General Study'}
                                 isActive={true}
+                                courseId={room?.courseId}
                                 tasks={studyTasks}
                                 onTaskComplete={handleTaskComplete}
                             />

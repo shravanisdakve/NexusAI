@@ -235,7 +235,7 @@ const PomodoroTimer: React.FC<PomodoroTimerProps> = ({ tasks = [], onTaskComplet
             <div className="flex gap-3 w-full z-10">
                 <Button
                     onClick={toggleTimer}
-                    variant={isActive ? 'outline' : 'primary'}
+                    variant={(isActive ? 'outline' : 'primary') as any}
                     className={`flex-[2] h-14 text-base font-bold shadow-xl transition-all active:scale-95 ${isActive
                         ? 'border-slate-600 text-slate-300 hover:bg-slate-800'
                         : mode === 'focus'
