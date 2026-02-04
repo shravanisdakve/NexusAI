@@ -74,6 +74,7 @@ app.use('/api/atkt', require('./routes/atkt'));
 app.use('/api/curriculum', require('./routes/curriculum'));
 app.use('/api/placement', require('./routes/placement'));
 app.use('/api/ai-chat', require('./routes/aiChat'));
+app.use('/api/gamification', require('./routes/gamification'));
 
 // 6. Health Check Route
 app.get('/api/health', (req, res) => {

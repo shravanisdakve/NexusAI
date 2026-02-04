@@ -12,21 +12,33 @@ export interface UserStats {
 
 export const getUserStats = async () => {
     try {
-        const response = await axios.get(`${API_URL}/stats`);
+        const token = localStorage.getItem('token');
+        const config = {
+            headers: {
+                Authorization: `Bearer ${token}`
+            }
+        };
+        const response = await axios.get(`${API_URL}/stats`, config);
         return response.data;
     } catch (error) {
         console.error('Error fetching user stats:', error);
         // Fallback for demo
         return {
             success: true,
-            stats: { xp: 1250, level: 5, streak: 7, badges: ['early-bird', 'math-wizard'], coins: 450 }
+            stats: { xp: 0, level: 1, streak: 0, badges: [], coins: 0 }
         };
     }
 };
 
 export const awardXP = async (amount: number, reason: string) => {
     try {
-        const response = await axios.post(`${API_URL}/award-xp`, { amount, reason });
+        const token = localStorage.getItem('token');
+        const config = {
+            headers: {
+                Authorization: `Bearer ${token}`
+            }
+        };
+        const response = await axios.post(`${API_URL}/award-xp`, { amount, reason }, config);
         return response.data;
     } catch (error) {
         console.error('Error awarding XP:', error);
