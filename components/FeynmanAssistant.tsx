@@ -150,7 +150,12 @@ const FeynmanAssistant: React.FC<FeynmanAssistantProps> = ({ topic, notes }) => 
                                 <div>
                                     <h4 className="text-slate-200 font-medium">Ready to teach?</h4>
                                     <p className="text-xs text-slate-500 max-w-[250px] mt-1">
-                                        Explain <span className="text-violet-300 font-semibold">{topic}</span> like I'm 10 years old. I'll ask questions if I get confused!
+                                        {language === 'mr' ?
+                                            <>{topic} (विषय) मला १० वर्षांच्या मुलासारखा समजावून सांगा. मला गोंधळ वाटल्यास मी प्रश्न विचारेन!</> :
+                                            language === 'hi' ?
+                                                <>{topic} (विषय) मुझे १० साल के बच्चे की तरह समझाएं। अगर मैं उलझ गया तो मैं सवाल पूछूंगा!</> :
+                                                <>Explain <span className="text-violet-300 font-semibold">{topic}</span> like I'm 10 years old. I'll ask questions if I get confused!</>
+                                        }
                                     </p>
                                 </div>
                             </div>
@@ -189,7 +194,11 @@ const FeynmanAssistant: React.FC<FeynmanAssistantProps> = ({ topic, notes }) => 
                                 value={input}
                                 onChange={(e) => setInput(e.target.value)}
                                 onKeyPress={(e) => e.key === 'Enter' && handleSend()}
-                                placeholder="Teach me something..."
+                                placeholder={
+                                    language === 'mr' ? "मला काहीतरी शिकवा..." :
+                                        language === 'hi' ? "मुझे कुछ सिखाएं..." :
+                                            "Teach me something..."
+                                }
                                 className="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-violet-500 transition-all"
                             />
                             <Button

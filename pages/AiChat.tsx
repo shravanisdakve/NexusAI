@@ -49,10 +49,74 @@ const ChatItem: React.FC<{ message: ChatMessage; onSpeak: (text: string) => void
 };
 
 
+// Localized Strings Helper
+const getLocalizedMessage = (type: 'default' | 'weakness' | 'activeRecall' | 'feynman' | 'spacedRepetition' | 'notes', lang: string, params?: any) => {
+    const isMr = lang === 'mr';
+    const isHi = lang === 'hi';
+
+    switch (type) {
+        case 'default':
+            if (isMr) return "नमस्कार! मी तुमचा AI ट्यूटर आहे. तुमच्या अलीकडील कामगिरीचे विश्लेषण करत आहे...";
+            if (isHi) return "नमस्ते! मैं आपका AI ट्यूटर हूँ। आपके हालिया प्रदर्शन का विश्लेषण कर रहा हूँ...";
+            return "Hello! I'm your AI Tutor. Analyzing your recent performance...";
+
+        case 'weakness':
+            if (isMr) return `नमस्कार! मी तुमचा AI ट्यूटर आहे. मला आढळले की '${params.topic}' मध्ये तुमची क्विझ अचूकता ${params.accuracy}% आहे. तुम्हाला याचे पुनरावलोकन करायचे आहे का? आपण फेनमन तंत्र वापरू शकतो किंवा मी तुमची चाचणी घेऊ शकतो.`;
+            if (isHi) return `नमस्ते! मैं आपका AI ट्यूटर हूँ। मैंने देखा कि '${params.topic}' में आपकी क्विज़ सटीकता ${params.accuracy}% है। क्या आप इसकी समीक्षा करना चाहेंगे? हम फेनमैन तकनीक का उपयोग कर सकते हैं या मैं आपकी परीक्षा ले सकता हूँ।`;
+            return `Hello! I'm your AI Tutor. I noticed your quiz accuracy in '${params.topic}' is around ${params.accuracy}%. Would you like to review it? We could try the Feynman Technique, or I can quiz you to practice active recall.`;
+
+        case 'activeRecall':
+            if (isMr) return `नमस्कार! मी "${params.topic}" वर ॲक्टिव्ह रिकॉलसाठी तयार आहे. मी तुम्हाला कठीण प्रश्न विचारेन. तयार आहात?`;
+            if (isHi) return `नमस्ते! मैं "${params.topic}" पर एक्टिव रिकॉल के लिए तैयार हूँ। मैं आपसे कठिन प्रश्न पूछूंगा। तैयार हैं?`;
+            return `Hello! I'm ready to help you with Active Recall on "${params.topic}". I'll ask you challenging questions to test your core understanding. Ready?`;
+
+        case 'feynman':
+            if (isMr) return `चला "${params.topic}" साठी फेनमन तंत्र वापरूया. मला हे सोप्या भाषेत समजावून सांगा—जसे मी १० वर्षांचा मुलगा आहे.`;
+            if (isHi) return `आइए "${params.topic}" के लिए फेनमैन तकनीक का उपयोग करें। मुझे इसे सरल भाषा में समझाएं—जैसे कि मैं १० साल का बच्चा हूँ।`;
+            return `Let's use the Feynman Technique for "${params.topic}". Start by explaining it to me in the simplest way you can—as if I'm 10 years old. I'll look for gaps in your explanation.`;
+
+        case 'spacedRepetition':
+            if (isMr) return `चला "${params.topic}" साठी स्पaced रिपिटेशन योजना बनवूया. मुख्य संकल्पना सुचवा, आणि मी वेळापत्रक बनवेन. पहिली संकल्पना काय आहे?`;
+            if (isHi) return `आइए "${params.topic}" के लिए स्पaced रिपिटेशन योजना बनाएं। मुख्य अवधारणाओं का सुझाव दें, और मैं एक शेड्यूल बनाऊंगा। पहली अवधारणा क्या है?`;
+            return `Let's set up a Spaced Repetition plan for "${params.topic}". List the core concepts you want to memorize, and I'll generate a quiz and review schedule. What's the first concept?`;
+
+        case 'notes':
+            if (isMr) return `मला दिसते की तुम्हाला या नोट्सचा अभ्यास करायचा आहे:\n\n---\n${params.noteContent}\n---\n\nतुम्हाला काय करायला आवडेल? आपण सारांश काढू शकतो किंवा मी तुमची परीक्षा घेऊ शकतो.`;
+            if (isHi) return `मुझे दिख रहा है कि आप इन नोट्स का अध्ययन करना चाहते हैं:\n\n---\n${params.noteContent}\n---\n\nआप क्या करना चाहेंगे? हम सारांश निकाल सकते हैं या मैं आपकी परीक्षा ले सकता हूँ।`;
+            return `I see you want to study this note:\n\n---\n${params.noteContent}\n---\n\nWhat would you like to do? We can summarize it, I can quiz you on it, or you can ask me questions.`;
+
+        default:
+            return "Hello! How can I help you?";
+    }
+};
+
 const AiTutor: React.FC = () => {
+    const { language } = useLanguage();
+
+    const getInitialGreeting = () => {
+        const isMr = language === 'mr';
+        const isHi = language === 'hi';
+        if (isMr) return "नमस्कार! मी तुमचा AI ट्यूटर आहे. आज आपण कोणता विषय शिकणार आहोत?";
+        if (isHi) return "नमस्ते! मैं आपका AI ट्यूटर हूँ। आज हम कौन सा विषय सीखेंगे?";
+        return "Hello! I'm your AI Tutor. What subject are we diving into today?";
+    };
+
     const [messages, setMessages] = useState<ChatMessage[]>([
-        { role: 'model', parts: [{ text: "Hello! I'm your AI Tutor. Analyzing your recent performance..." }] }
+        { role: 'model', parts: [{ text: "..." }] } // Placeholder, will update in useEffect
     ]);
+
+    // Update initial message when language changes or on mount
+    useEffect(() => {
+        // Only update if it's the very first message and still the default placeholder or previous default
+        if (messages.length === 1 && messages[0].role === 'model') {
+            setMessages([{
+                role: 'model',
+                parts: [{ text: getLocalizedMessage('default', language) }]
+            }]);
+        }
+    }, [language]);
+
+
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -69,7 +133,6 @@ const AiTutor: React.FC = () => {
     });
 
     const [sessionId, setSessionId] = useState<string | null>(null);
-    const { language } = useLanguage();
     const [selectedImage, setSelectedImage] = useState<{ base64: string, type: string, name: string } | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -125,11 +188,11 @@ const AiTutor: React.FC = () => {
             if (proactiveMessageSent.current) return;
 
             const report = await getProductivityReport();
-            let initialPrompt = "Hello! I'm your AI Tutor. What subject are we diving into today?";
+            let initialPrompt = getInitialGreeting();
 
             if (report && report.weaknesses && report.weaknesses.length > 0) {
                 const weakestTopic = report.weaknesses[0];
-                initialPrompt = `Hello! I'm your AI Tutor. I noticed your quiz accuracy in '${weakestTopic.topic}' is around ${weakestTopic.accuracy}%. Would you like to review it? We could try the Feynman Technique, or I can quiz you to practice active recall.`;
+                initialPrompt = getLocalizedMessage('weakness', language, { topic: weakestTopic.topic, accuracy: weakestTopic.accuracy });
             }
 
             setMessages([{ role: 'model', parts: [{ text: initialPrompt }] }]);
@@ -143,15 +206,15 @@ const AiTutor: React.FC = () => {
             switch (technique) {
                 case 'Active Recall':
                     setStudyMode('Active Recall');
-                    initialPrompt = `Hello! I'm ready to help you with Active Recall on "${topic}". I'll ask you challenging questions to test your core understanding. Ready?`;
+                    initialPrompt = getLocalizedMessage('activeRecall', language, { topic });
                     break;
                 case 'Feynman Technique':
                     setStudyMode('Feynman Technique');
-                    initialPrompt = `Let's use the Feynman Technique for "${topic}". Start by explaining it to me in the simplest way you can—as if I'm 10 years old. I'll look for gaps in your explanation.`;
+                    initialPrompt = getLocalizedMessage('feynman', language, { topic });
                     break;
                 case 'Spaced Repetition':
                     setStudyMode('Spaced Repetition');
-                    initialPrompt = `Let's set up a Spaced Repetition plan for "${topic}". List the core concepts you want to memorize, and I'll generate a quiz and review schedule. What's the first concept?`;
+                    initialPrompt = getLocalizedMessage('spacedRepetition', language, { topic });
                     break;
             }
 
@@ -162,14 +225,14 @@ const AiTutor: React.FC = () => {
             }
         } else if (location.state?.noteContent) {
             const { noteContent } = location.state;
-            const initialPrompt = `I see you want to study this note:\n\n---\n${noteContent}\n---\n\nWhat would you like to do? We can summarize it, I can quiz you on it, or you can ask me questions.`;
+            const initialPrompt = getLocalizedMessage('notes', language, { noteContent });
             setMessages([{ role: 'model', parts: [{ text: initialPrompt }] }]);
             navigate(location.pathname, { replace: true, state: {} });
             proactiveMessageSent.current = true;
         } else {
             checkForProactiveMessage();
         }
-    }, [location.state, navigate]);
+    }, [location.state, navigate, language]);
 
 
     const scrollToBottom = () => {

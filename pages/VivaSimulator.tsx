@@ -34,7 +34,13 @@ const VivaSimulator: React.FC = () => {
         if (!subject) return;
         setIsStarted(true);
         setIsLoading(true);
-        const initialPrompt = `Hello Examiner. I am ready for my viva for the subject ${subject}. Please start the session.`;
+
+        let initialPrompt = `Hello Examiner. I am ready for my viva for the subject ${subject}. Please start the session.`;
+        if (language === 'mr') {
+            initialPrompt = `नमस्कार परीक्षक. मी ${subject} विषयाच्या माझ्या विव्हाससाठी तयार आहे. कृपया सत्र सुरू करा.`;
+        } else if (language === 'hi') {
+            initialPrompt = `नमस्ते परीक्षक। मैं ${subject} विषय के लिए अपने वाइवा के लिए तैयार हूँ। कृपया सत्र शुरू करें।`;
+        }
 
         setMessages([{ role: 'user', text: initialPrompt }]);
 

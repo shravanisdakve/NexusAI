@@ -91,10 +91,41 @@ const StudyRoom: React.FC = () => {
     const [showMusicPlayer, setShowMusicPlayer] = useState(false);
     const [showWhiteboard, setShowWhiteboard] = useState(false);
     const [showShareModal, setShowShareModal] = useState(false);
+    // Localized Strings Helper for Study Room
+    const getLocalizedMessage = (type: 'default' | 'welcome', lang: string, params?: any) => {
+        const isMr = lang === 'mr';
+        const isHi = lang === 'hi';
+
+        switch (type) {
+            case 'default':
+                if (isMr) return "नमस्कार! काही नोट्स अपलोड करा आणि मी तुम्हाला अभ्यास करण्यास मदत करेन.";
+                if (isHi) return "नमस्ते! कुछ नोट्स अपलोड करें और मैं आपको अध्ययन करने में मदद करूँगा।";
+                return "Hello! Upload some notes and I'll help you study.";
+
+            case 'welcome':
+                if (isMr) return `स्वागत आहे! ही खोली "${params.topic}" विषयावर "${params.technique}" तंत्राचा वापर करून "लक्ष्यित शिक्षण" सत्रासाठी तयार केली आहे. चला सुरुवात करूया!`;
+                if (isHi) return `स्वागत है! यह कमरा "${params.topic}" विषय पर "${params.technique}" तकनीक का उपयोग करके "लक्षित शिक्षण" सत्र के लिए स्थापित किया गया है। चलिए शुरू करते हैं!`;
+                return `Welcome! This room is set up for a "Targeted Learning" session using the ${params.technique} technique on the topic: "${params.topic}". Let's get started!`;
+
+            default:
+                return "";
+        }
+    };
+
     const [allMessages, setAllMessages] = useState<ChatMessage[]>([]);
     const [chatInput, setChatInput] = useState('');
-    const [aiMessages, setAiMessages] = useState<ChatMessage[]>([{ role: 'model', parts: [{ text: "Hello! Upload some notes and I'll help you study." }] }]);
+    // Initial placeholder, updated in useEffect
+    const [aiMessages, setAiMessages] = useState<ChatMessage[]>([{ role: 'model', parts: [{ text: "..." }] }]);
     const [aiInput, setAiInput] = useState('');
+
+    // Update initial AI message based on language
+    useEffect(() => {
+        if (aiMessages.length === 1 && aiMessages[0].role === 'model') {
+            setAiMessages([{ role: 'model', parts: [{ text: getLocalizedMessage('default', language) }] }]);
+        }
+    }, [language]);
+
+
     const [notes, setNotes] = useState('');
     const [isAiLoading, setIsAiLoading] = useState(false);
     const [isExtracting, setIsExtracting] = useState(false);
@@ -399,7 +430,7 @@ const StudyRoom: React.FC = () => {
 
     useEffect(() => {
         if (room && room.technique && room.topic && !welcomeMessageSent.current) {
-            const welcomeMessage = `Welcome! This room is set up for a "Targeted Learning" session using the ${room.technique} technique on the topic: "${room.topic}". Let's get started!`
+            const welcomeMessage = getLocalizedMessage('welcome', language, { technique: room.technique, topic: room.topic });
             postSystemMessage(welcomeMessage);
             welcomeMessageSent.current = true;
         }
@@ -427,7 +458,7 @@ const StudyRoom: React.FC = () => {
             fetchTasks();
         }
 
-    }, [room, postSystemMessage]);
+    }, [room, postSystemMessage, language]);
 
     const handleTaskComplete = async (task: { id: string, dayIndex?: number, courseId?: string, completed: boolean }) => {
         if (task.courseId && task.dayIndex !== undefined) {
