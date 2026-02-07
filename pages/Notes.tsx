@@ -116,44 +116,46 @@ const StudyPlanView: React.FC<{
 
   if (!studyPlan) {
     return (
-      <div className="flex-1 p-8 flex flex-col items-center justify-center text-center">
-        <div className="bg-slate-800/80 p-8 rounded-2xl max-w-xl ring-1 ring-slate-700 shadow-xl">
-          <Calendar className="w-12 h-12 text-violet-400 mx-auto mb-4" />
-          <h3 className="text-2xl font-bold text-white mb-2">Create Your AI Study Plan</h3>
-          <p className="text-slate-400 mb-8">
-            Tell the AI your goal (e.g., "Ace the Calculus midterm"), set your timeframe,
-            and we'll generate a day-by-day plan linked to your notes.
-          </p>
+      <div className="flex-1 w-full overflow-y-auto bg-slate-900/40 p-4 min-h-0">
+        <div className="min-h-full flex flex-col items-center justify-center p-4">
+          <div className="bg-slate-800/80 p-8 rounded-2xl max-w-xl w-full ring-1 ring-slate-700 shadow-xl my-auto">
+            <Calendar className="w-12 h-12 text-violet-400 mx-auto mb-4" />
+            <h3 className="text-2xl font-bold text-white mb-2">Create Your AI Study Plan</h3>
+            <p className="text-slate-400 mb-8">
+              Tell the AI your goal (e.g., "Ace the Calculus midterm"), set your timeframe,
+              and we'll generate a day-by-day plan linked to your notes.
+            </p>
 
-          <div className="space-y-4 text-left">
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1">Academic Goal</label>
-              <Input
-                placeholder="e.g., Master organic chemistry mechanisms"
-                value={goal}
-                onChange={e => setGoal(e.target.value)}
-              />
+            <div className="space-y-4 text-left">
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-1">Academic Goal</label>
+                <Input
+                  placeholder="e.g., Master organic chemistry mechanisms"
+                  value={goal}
+                  onChange={e => setGoal(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-1">Timeframe (Days)</label>
+                <Select value={duration} onChange={e => setDuration(e.target.value)}>
+                  {[3, 5, 7, 10, 14, 21, 30].map(d => (
+                    <option key={d} value={d}>{d} Days</option>
+                  ))}
+                </Select>
+              </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1">Timeframe (Days)</label>
-              <Select value={duration} onChange={e => setDuration(e.target.value)}>
-                {[3, 5, 7, 10, 14, 21, 30].map(d => (
-                  <option key={d} value={d}>{d} Days</option>
-                ))}
-              </Select>
-            </div>
+
+            <Button onClick={handleGenerate} className="w-full mt-8" disabled={!goal}>
+              Generate Personalized Plan
+            </Button>
           </div>
-
-          <Button onClick={handleGenerate} className="w-full mt-8" disabled={!goal}>
-            Generate Personalized Plan
-          </Button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-slate-900/40">
+    <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-slate-900/40 min-h-0">
       <div className="flex justify-between items-end bg-slate-800/80 p-6 rounded-xl ring-1 ring-slate-700">
         <div>
           <h3 className="text-sm font-semibold text-violet-400 uppercase tracking-wider mb-1">Current Focus</h3>
@@ -665,10 +667,10 @@ const Notes: React.FC = () => {
 const TabButton: React.FC<{ icon: React.ElementType, label: string, isActive: boolean, onClick: () => void }> = ({ icon: Icon, label, isActive, onClick }) => (
   <button
     onClick={onClick}
-    className={`flex items - center justify - center gap - 2 px - 4 py - 3 font - semibold transition - colors ${isActive
+    className={`flex items-center justify-center gap-2 px-4 py-3 font-semibold transition-colors ${isActive
       ? 'text-violet-400 border-b-2 border-violet-400'
       : 'text-slate-400 hover:text-white'
-      } `}
+      }`}
   >
     <Icon size={18} /> {label}
   </button>
@@ -728,14 +730,14 @@ const NotesView: React.FC<{
       <div className="flex flex-1 overflow-hidden">
         {/* --- Notes List --- */}
         <div className="w-1/3 border-r border-slate-700 flex flex-col">
-          <div className="p-4 border-b border-slate-700">
+          <div className="p-6 border-b border-slate-700">
             <Button onClick={onAddNoteClick} className="w-full">
               <PlusCircle size={16} className="mr-2" /> Add Note / File
             </Button>
           </div>
           <div className="flex-1 overflow-y-auto">
             {notes.length === 0 && (
-              <p className="text-center text-slate-400 p-4 text-sm">No notes yet.</p>
+              <p className="text-center text-slate-400 p-8 text-sm">No notes yet.</p>
             )}
             {notes.map(note => {
               const isGeneratingThis = isSingleGenerating === note.id;
@@ -744,7 +746,7 @@ const NotesView: React.FC<{
                 <div // Changed from <button> to <div>
                   key={note.id}
                   onClick={() => onSelectNote(note)}
-                  className={`w - full text - left p - 4 border - b border - slate - 700 transition - colors group flex justify - between items - start cursor - pointer ${activeNote?.id === note.id ? 'bg-slate-700' : 'hover:bg-slate-700/50'} `}
+                  className={`w-full text-left p-4 border-b border-slate-700 transition-colors group flex justify-between items-start cursor-pointer ${activeNote?.id === note.id ? 'bg-slate-700' : 'hover:bg-slate-700/50'}`}
                   role="button" // Added accessibility role
                   tabIndex={0} // Make it focusable
                   onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && onSelectNote(note)} // Allow keyboard activation
@@ -956,10 +958,10 @@ const AddNoteModal: React.FC<{ isOpen: boolean, onClose: () => void, courseId: s
     <Modal isOpen={isOpen} onClose={onClose} title="Add New Resource">
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="flex justify-center bg-slate-700/50 rounded-lg p-1">
-          <Button type="button" onClick={() => setNoteType('text')} className={`w - 1 / 2 rounded - md ${noteType === 'text' ? 'bg-violet-600 shadow-md' : 'bg-transparent text-slate-400 hover:text-white hover:bg-slate-600/50'} `}>
+          <Button type="button" onClick={() => setNoteType('text')} className={`w-1/2 rounded-md ${noteType === 'text' ? 'bg-violet-600 shadow-md' : 'bg-transparent text-slate-400 hover:text-white hover:bg-slate-600/50'}`}>
             <FileText size={16} className="mr-2" /> Text Note
           </Button>
-          <Button type="button" onClick={() => setNoteType('file')} className={`w - 1 / 2 rounded - md ${noteType === 'file' ? 'bg-violet-600 shadow-md' : 'bg-transparent text-slate-400 hover:text-white hover:bg-slate-600/50'} `}>
+          <Button type="button" onClick={() => setNoteType('file')} className={`w-1/2 rounded-md ${noteType === 'file' ? 'bg-violet-600 shadow-md' : 'bg-transparent text-slate-400 hover:text-white hover:bg-slate-600/50'}`}>
             <Upload size={16} className="mr-2" /> Upload File
           </Button>
         </div>
@@ -1151,7 +1153,7 @@ const FlashcardPlayer: React.FC<{ flashcards: FlashcardType[], onComplete: () =>
         style={{ perspective: '1000px' }}
       >
         <div
-          className={`relative w - full h - full transition - transform duration - 500 transform - style - 3d ${isFlipped ? 'rotate-y-180' : ''} `}
+          className={`relative w-full h-full transition-transform duration-500 transform-style-3d ${isFlipped ? 'rotate-y-180' : ''}`}
         >
           {/* Front */}
           <div className="absolute w-full h-full bg-slate-700 rounded-lg flex items-center justify-center p-8 text-center backface-hidden">
@@ -1205,7 +1207,7 @@ const QuizView: React.FC<{
               <div>
                 <h4 className="font-bold text-slate-200">Quiz #{quizzes.length - idx}</h4>
                 <p className="text-sm text-slate-400">{new Date(quiz.dateTaken || Date.now()).toLocaleDateString()}</p>
-                {quiz.completed && <p className={`text - sm font - semibold mt - 1 ${quiz.score! >= 80 ? 'text-emerald-400' : 'text-amber-400'} `}>Score: {quiz.score}%</p>}
+                {quiz.completed && <p className={`text-sm font-semibold mt-1 ${quiz.score! >= 80 ? 'text-emerald-400' : 'text-amber-400'}`}>Score: {quiz.score}%</p>}
               </div>
               <Button onClick={() => setActiveQuiz(quiz)} variant="outline">
                 {quiz.completed ? 'Review' : 'Start Quiz'}
