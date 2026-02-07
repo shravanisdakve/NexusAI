@@ -100,7 +100,7 @@ const FeynmanAssistant: React.FC<FeynmanAssistantProps> = ({ topic, notes }) => 
             .join(' ');
 
         try {
-            const data = await getFeynmanFeedback(topic, fullExplanation, notes);
+            const data = await getFeynmanFeedback(topic, fullExplanation, notes, language);
             setFeedback(data);
         } catch (error) {
             console.error('Feedback Error:', error);

@@ -21,16 +21,22 @@ const FALLBACK_CURRICULUM = {
 router.get('/:branch/:semester', async (req, res) => {
     try {
         const { branch, semester } = req.params;
-        let curriculum = await Curriculum.findOne({ branch: new RegExp(branch, 'i') });
+        const decodedBranch = decodeURIComponent(branch);
+        let curriculum = await Curriculum.findOne({ branch: new RegExp(decodedBranch, 'i') });
 
         // Use fallback if not found in DB
-        if (!curriculum && branch.toLowerCase().includes('common')) {
+        if (!curriculum && decodedBranch.toLowerCase().includes('common')) {
             curriculum = FALLBACK_CURRICULUM;
         }
 
         if (!curriculum) return res.status(404).json({ message: 'Curriculum not found' });
 
         const semData = curriculum.semesters.find(s => s.semesterNumber === parseInt(semester));
+
+        if (!semData) {
+            return res.status(404).json({ success: false, message: 'Semester not found' });
+        }
+
         res.json({ success: true, curriculum: semData });
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });

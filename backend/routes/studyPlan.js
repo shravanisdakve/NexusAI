@@ -79,6 +79,7 @@ router.post('/generate', auth, async (req, res) => {
     console.log(`[StudyPlan] GENERATE request received`);
     try {
         const { goal, durationDays, notesContext, language } = req.body;
+        console.log(`[StudyPlan] Generate parameters - Language: ${language}, Goal: ${goal}, Duration: ${durationDays}`);
         let prompt = `You are an expert personalized academic advisor for engineering students. 
         A student wants to achieve the following goal: "${goal}" in ${durationDays} days.
         They have provided the following notes context for their course:

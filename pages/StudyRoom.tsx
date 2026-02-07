@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom';
 import { type ChatMessage, type StudyRoom as StudyRoomType, type Quiz as SharedQuiz, type StudyTask } from '../types';
 import { useAuth } from '../contexts/AuthContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import {
     onRoomUpdate,
     onMessagesUpdate,
@@ -74,7 +75,7 @@ const StudyRoom: React.FC = () => {
     const { id: roomId } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const { user: currentUser } = useAuth();
-
+    const { language } = useLanguage();
     const [room, setRoom] = useState<StudyRoomType | null>(null);
     const [participants, setParticipants] = useState<{ email: string; displayName: string }[]>([]);
     const [localStream, setLocalStream] = useState<MediaStream | null>(null);
@@ -590,7 +591,7 @@ const StudyRoom: React.FC = () => {
         console.log("Sending AI message with notes context (length):", notes.length);
 
         try {
-            const stream = await streamStudyBuddyChat(currentMessageText, notes);
+            const stream = await streamStudyBuddyChat(currentMessageText, notes, language);
             if (!stream) throw new Error("Failed to start stream");
 
             const reader = stream.getReader();
@@ -648,7 +649,7 @@ const StudyRoom: React.FC = () => {
         } finally {
             setIsAiLoading(false);
         }
-    }, [aiInput, isAiLoading, notes]);
+    }, [aiInput, isAiLoading, notes, language]);
 
     const handleGenerateQuiz = async () => {
         if (isAiLoading || !notes.trim() || !roomId) return;
@@ -656,7 +657,7 @@ const StudyRoom: React.FC = () => {
         postSystemMessage(`${currentUser?.displayName} is generating a quiz for the group!`);
 
         try {
-            const quizJsonString = await generateQuizQuestion(notes);
+            const quizJsonString = await generateQuizQuestion(notes, language);
             const parsedQuiz = JSON.parse(quizJsonString);
             await saveQuiz(roomId, parsedQuiz);
         } catch (err) {

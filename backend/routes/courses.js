@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const Course = require('../models/Course');
 const auth = require('../middleware/auth');
+const Note = require('../models/Note');
+const Flashcard = require('../models/Flashcard');
 
 // Helper function to generate colors
 const generateColor = (existingColors = []) => {
@@ -196,8 +198,9 @@ router.delete('/:id', auth, async (req, res) => {
             });
         }
 
-        // TODO: Also delete associated notes and flashcards
-        // For now, we'll keep them to avoid data loss
+        // Delete associated notes and flashcards
+        await Note.deleteMany({ courseId: req.params.id });
+        await Flashcard.deleteMany({ courseId: req.params.id });
 
         res.json({
             success: true,

@@ -18,6 +18,7 @@ const getModel = (modelName = 'gemini-2.0-flash', systemInstruction = null) => {
 router.post('/streamChat', async (req, res) => {
     try {
         const { message, language } = req.body;
+        console.log(`[StreamChat] Received request. Language: ${language}, Message length: ${message?.length}`);
         let systemInstruction = 'You are an expert AI Tutor. Your goal is to help users understand complex topics by providing clear explanations, step-by-step examples, and asking probing questions to test their knowledge. Be patient, encouraging, and adapt your teaching style to the user\'s needs.';
 
         if (language === 'mr') {
@@ -35,7 +36,14 @@ router.post('/streamChat', async (req, res) => {
             },
         });
 
-        const result = await chat.sendMessageStream(message);
+        let finalMessage = message;
+        if (language === 'mr') {
+            finalMessage += "\n\n(IMPORTANT: Please respond to this message ONLY in MARATHI language.)";
+        } else if (language === 'hi') {
+            finalMessage += "\n\n(IMPORTANT: Please respond to this message ONLY in HINDI language.)";
+        }
+
+        const result = await chat.sendMessageStream(finalMessage);
 
         res.setHeader('Content-Type', 'text/event-stream');
         res.setHeader('Cache-Control', 'no-cache');
@@ -56,6 +64,7 @@ router.post('/streamChat', async (req, res) => {
 router.post('/streamStudyBuddyChat', async (req, res) => {
     try {
         const { message, notes, language } = req.body;
+        console.log(`[StreamStudyBuddy] Language: ${language}, Notes length: ${notes?.length}`);
         let systemInstruction = `You are an expert AI Study Buddy. The user has provided the following notes to study from:
 ---
 ${notes || 'No notes provided yet.'}
@@ -220,6 +229,7 @@ router.post('/extractTextFromFile', async (req, res) => {
 router.post('/generateQuizQuestion', async (req, res) => {
     try {
         const { context, language } = req.body;
+        console.log(`[GenerateQuizQuestion] Language: ${language}`);
         const model = genAI.getGenerativeModel({
             model: "gemini-2.0-flash",
             generationConfig: { responseMimeType: "application/json" }
@@ -363,15 +373,21 @@ router.post('/generateFlashcards', async (req, res) => {
 
 router.post('/getSuggestionForMood', async (req, res) => {
     try {
-        const { mood } = req.body;
+        const { mood, language } = req.body;
         const model = getModel('gemini-2.0-flash');
-        console.log(`Getting AI suggestion for mood: ${mood}`);
+        console.log(`Getting AI suggestion for mood: ${mood}, language: ${language}`);
 
-        const prompt = `A user in my learning app just reported their mood as '${mood}'.
+        let prompt = `A user in my learning app just reported their mood as '${mood}'.
         Provide one, short (1-2 sentences) and encouraging, actionable suggestion.
         - If mood is 'Happy' or 'Calm', suggest a good study task.
         - If mood is 'Overwhelmed', suggest a way to get clarity.
         - If mood is 'Sad' or 'Angry', suggest a constructive way to manage the feeling.`;
+
+        if (language === 'mr') {
+            prompt += ' IMPORTANT: Respond ONLY in MARATHI (मराठी).';
+        } else if (language === 'hi') {
+            prompt += ' IMPORTANT: Respond ONLY in HINDI (हिंदी).';
+        }
 
         const result = await model.generateContent(prompt);
         res.json({ suggestion: result.response.text() });

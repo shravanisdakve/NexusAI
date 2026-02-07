@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { PageHeader, Button, Input } from '@/components/ui';
 import { useAuth } from '../contexts/AuthContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import { type Course, type Mood as MoodType, type MoodLabel, type StudyPlan } from '../types';
 import { getStudyPlan } from '../services/studyPlanService';
 import { getTimeOfDayGreeting, getMostUsedTool, getQuickAccessTools, addToQuickAccess, removeFromQuickAccess } from '../services/personalizationService';
@@ -19,6 +20,7 @@ import {
 } from 'lucide-react';
 import { XPBar, StreakCounter, BadgeSmall } from '@/components/gamification/XPComponents';
 import { getUserStats, updateStreak, awardBadge, UserStats } from '@/services/gamificationService';
+import LeaderboardWidget from '@/components/gamification/LeaderboardWidget';
 
 const formatSeconds = (seconds: number) => {
     if (seconds < 60) return `${seconds}s`;
@@ -293,6 +295,7 @@ const tools = [
     { key: 'paper', name: 'Mock Papers', href: '/mock-paper', description: 'Real MU exam pattern mocks.', icon: FileText, color: 'text-sky-400', bgColor: 'bg-sky-900/50' },
     { key: 'viva', name: 'Viva Bot', href: '/viva-simulator', description: 'Practice with an external bot.', icon: Users, color: 'text-emerald-400', bgColor: 'bg-emerald-900/50' },
     { key: 'study-plan', name: 'Study Planner', href: '/study-plan', description: 'Get a personalized roadmap.', icon: Calendar, color: 'text-violet-400', bgColor: 'bg-violet-900/50' },
+    { key: 'math', name: 'Speed Math', href: '/speed-math', description: 'Test your calculation speed.', icon: Calculator, color: 'text-pink-400', bgColor: 'bg-pink-900/50' },
 ];
 
 interface ToolCardProps {
@@ -343,6 +346,7 @@ const Dashboard: React.FC = () => {
     const [stats, setStats] = useState<UserStats | null>(null);
     const [showAddToolDropdown, setShowAddToolDropdown] = useState(false);
     const dropdownRef = React.useRef<HTMLDivElement>(null);
+    const { language } = useLanguage();
 
     useEffect(() => {
         const refreshStats = async () => {
@@ -352,12 +356,17 @@ const Dashboard: React.FC = () => {
                 if (data.success) {
                     setStats(data.stats);
 
-                    // Early Bird Logic: If user is active between 4 AM and 8 AM
+                    // Early Bird Logic: If user is active between 5 AM and 9 AM
                     const hour = new Date().getHours();
-                    if (hour >= 4 && hour < 8 && !data.stats.badges.includes('Early Bird')) {
+                    console.log(`[Dashboard] Checking Early Bird: Hour=${hour}`);
+                    if (hour >= 5 && hour < 9 && !data.stats.badges.includes('Early Bird')) {
+                        console.log("[Dashboard] Awarding Early Bird Badge");
                         await awardBadge('Early Bird');
                         const updatedData = await getUserStats();
-                        if (updatedData.success) setStats(updatedData.stats);
+                        if (updatedData.success) {
+                            setStats(updatedData.stats);
+                            console.log("[Dashboard] Stats updated with new badge");
+                        }
                     }
                 }
             } catch (error) {
@@ -419,7 +428,7 @@ const Dashboard: React.FC = () => {
         setShowMoodCheckin(false);
         setIsLoadingSuggestion(true);
         try {
-            const suggestion = await getSuggestionForMood(mood);
+            const suggestion = await getSuggestionForMood(mood, language);
             setAiSuggestion(suggestion);
         } catch (error) {
             console.error("Error getting mood suggestion:", error);
@@ -534,6 +543,7 @@ const Dashboard: React.FC = () => {
                 </div>
 
                 <div className="space-y-10">
+                    <LeaderboardWidget />
                     <div>
                         <div className="flex items-center justify-between mb-6">
                             <h2 className="text-xl font-semibold text-slate-100 flex items-center">

@@ -327,7 +327,7 @@ const AiTutor: React.FC = () => {
         } finally {
             setIsLoading(false);
         }
-    }, [input, isLoading, isAutoSpeaking, studyMode, sessionId]);
+    }, [input, isLoading, isAutoSpeaking, studyMode, sessionId, language]);
 
     const handleQuizMe = async () => {
         if (isLoading) return;
@@ -339,7 +339,7 @@ const AiTutor: React.FC = () => {
         setMessages(prev => [...prev, { role: 'model', parts: [{ text: "Of course! Here's a question for you..." }] }]);
 
         try {
-            const quizJsonString = await generateQuizQuestion(context);
+            const quizJsonString = await generateQuizQuestion(context, language);
             const parsedQuiz = JSON.parse(quizJsonString);
             setQuiz(parsedQuiz);
 

@@ -3,6 +3,7 @@ import { PageHeader, Button, Input, Select, Textarea } from '../components/ui';
 import { Calendar, Target, Clock, Sparkles, ArrowLeft, Download, CheckCircle, List } from 'lucide-react';
 import { generateStudyPlan } from '../services/geminiService';
 import { useNavigate } from 'react-router-dom';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface StudyPlanData {
     title: string;
@@ -18,6 +19,7 @@ interface StudyPlanData {
 
 const StudyPlan: React.FC = () => {
     const navigate = useNavigate();
+    const { language } = useLanguage();
     const [goal, setGoal] = useState('');
     const [timeframe, setTimeframe] = useState('');
     const [currentLevel, setCurrentLevel] = useState('Beginner');
@@ -30,9 +32,14 @@ const StudyPlan: React.FC = () => {
         if (!goal || !timeframe || !subjects) return;
         setLoading(true);
         try {
-            const subjectsList = subjects.split(',').map(s => s.trim());
-            const result = await generateStudyPlan(goal, timeframe, currentLevel, subjectsList);
-            setPlan(result);
+            let days = parseInt(timeframe) || 7;
+            if (timeframe.toLowerCase().includes('week')) days *= 7;
+            if (timeframe.toLowerCase().includes('month')) days *= 30;
+
+            const context = `Level: ${currentLevel}. Subjects: ${subjects}. Timeframe: ${timeframe}`;
+            const resultJson = await generateStudyPlan(goal, days, context, language);
+            const parsedPlan = JSON.parse(resultJson);
+            setPlan(parsedPlan);
         } catch (error) {
             console.error("Error generating plan:", error);
         } finally {

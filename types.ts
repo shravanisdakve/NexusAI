@@ -98,6 +98,15 @@ export interface LeaderboardEntry {
     quizCount: number;
 }
 
+export interface GlobalLeaderboardEntry {
+    id: string;
+    name: string;
+    xp: number;
+    level: number;
+    avatar: string;
+    badges: number;
+}
+
 export interface Assignment {
     id: string;
     userId: string;
