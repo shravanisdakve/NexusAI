@@ -87,8 +87,12 @@ export default function SpeedMathGame() {
     if (questionNo === 10) {
       setGameOver(true);
       const s = finalScore !== undefined ? finalScore : score;
+      console.log(`[SpeedMath] Game Over. Final Score: ${s}`);
       if (s === 10) {
-        awardBadge("Math Wizard");
+        console.log("[SpeedMath] Perfect Score! Awarding Math Wizard badge...");
+        awardBadge("Math Wizard").then(res => {
+          console.log("[SpeedMath] Badge Award Response:", res);
+        });
       }
       return;
     }

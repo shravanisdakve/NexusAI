@@ -25,8 +25,15 @@ const getGeminiModel = (modelName = 'gemini-2.0-flash', systemInstruction = null
 // --- AI TUTOR SERVICE (Using Groq) ---
 router.post('/streamChat', async (req, res) => {
     try {
-        const { message } = req.body;
-        const systemInstruction = 'You are an expert AI Tutor. Your goal is to help users understand complex topics by providing clear explanations, step-by-step examples, and asking probing questions to test their knowledge. Be patient, encouraging, and adapt your teaching style to the user\'s needs.';
+        const { message, language } = req.body;
+        console.log(`[StreamChat] Message received. Language: ${language}`);
+        let systemInstruction = 'You are an expert AI Tutor. Your goal is to help users understand complex topics by providing clear explanations, step-by-step examples, and asking probing questions to test their knowledge. Be patient, encouraging, and adapt your teaching style to the user\'s needs.';
+
+        if (language === 'mr') {
+            systemInstruction += ' IMPORTANT: Respond to the user ONLY in MARATHI (मराठी). Translated technical terms are okay, but the main conversation must be in Marathi.';
+        } else if (language === 'hi') {
+            systemInstruction += ' IMPORTANT: Respond to the user ONLY in HINDI (हिंदी).';
+        }
 
         res.setHeader('Content-Type', 'text/event-stream');
         res.setHeader('Cache-Control', 'no-cache');
@@ -51,8 +58,9 @@ router.post('/streamChat', async (req, res) => {
 // --- STUDY BUDDY (NOTES-BASED) SERVICE (Using Groq) ---
 router.post('/streamStudyBuddyChat', async (req, res) => {
     try {
-        const { message, notes } = req.body;
-        const systemInstruction = `You are an expert AI Study Buddy. The user has provided the following notes to study from:
+        const { message, notes, language } = req.body;
+        console.log(`[StreamStudyBuddyChat] Language: ${language}`);
+        let systemInstruction = `You are an expert AI Study Buddy. The user has provided the following notes to study from:
 ---
 ${notes || 'No notes provided yet.'}
 ---
@@ -60,6 +68,12 @@ Your knowledge is strictly limited to the text provided above. You CANNOT use an
 1. First, determine if the user's question can be answered using ONLY the provided notes.
 2. If the answer is in the notes, provide a comprehensive answer based exclusively on that text.
 3. If the answer is NOT in the notes, you MUST begin your response with the exact phrase: "Based on the provided notes, I can't find information on that topic." After this phrase, you may optionally and briefly mention what the notes DO cover. Do not try to answer the original question.`;
+
+        if (language === 'mr') {
+            systemInstruction += ' IMPORTANT: Respond to the user ONLY in MARATHI (मराठी).';
+        } else if (language === 'hi') {
+            systemInstruction += ' IMPORTANT: Respond to the user ONLY in HINDI (हिंदी).';
+        }
 
         res.setHeader('Content-Type', 'text/event-stream');
         res.setHeader('Cache-Control', 'no-cache');
@@ -209,12 +223,20 @@ router.post('/extractTextFromFile', async (req, res) => {
 // --- QUIZ GENERATION SERVICE (Using Groq) ---
 router.post('/generateQuizQuestion', async (req, res) => {
     try {
-        const { context } = req.body;
-        const prompt = `Based on the following context, generate a single multiple-choice quiz question to test understanding. The question should focus on a key concept from the text. 
+        const { context, language } = req.body;
+        console.log(`[GenerateQuizQuestion] Language: ${language}`);
+        let prompt = `Based on the following context, generate a single multiple-choice quiz question to test understanding. The question should focus on a key concept from the text. 
         RETURN ONLY RAW JSON. Do not wrap in markdown or code blocks.
         
-        Context: "${context.substring(0, 4000)}"
-        
+        Context: "${context.substring(0, 4000)}"`;
+
+        if (language === 'mr') {
+            prompt += '\nIMPORTANT: The question and options MUST be in MARATHI (मराठी). The JSON keys (topic, question, options) must remain in English.';
+        } else if (language === 'hi') {
+            prompt += '\nIMPORTANT: The question and options MUST be in HINDI (हिंदी). The JSON keys (topic, question, options) must remain in English.';
+        }
+
+        prompt += `
         The JSON must match this schema:
         {
             "topic": "string",
@@ -305,14 +327,20 @@ router.post('/generateFlashcards', async (req, res) => {
 
 router.post('/getSuggestionForMood', async (req, res) => {
     try {
-        const { mood } = req.body;
-        console.log(`Getting AI suggestion for mood: ${mood}`);
+        const { mood, language } = req.body;
+        console.log(`Getting AI suggestion for mood: ${mood}, Language: ${language}`);
 
-        const prompt = `A user in my learning app just reported their mood as '${mood}'.
+        let prompt = `A user in my learning app just reported their mood as '${mood}'.
         Provide one, short (1-2 sentences) and encouraging, actionable suggestion.
         - If mood is 'Happy' or 'Calm', suggest a good study task.
         - If mood is 'Overwhelmed', suggest a way to get clarity.
         - If mood is 'Sad' or 'Angry', suggest a constructive way to manage the feeling.`;
+
+        if (language === 'mr') {
+            prompt += ' IMPORTANT: Respond to the user ONLY in MARATHI (मराठी).';
+        } else if (language === 'hi') {
+            prompt += ' IMPORTANT: Respond to the user ONLY in HINDI (हिंदी).';
+        }
 
         const result = await aiProvider.generate(prompt, { feature: 'mood' });
         res.json({ suggestion: result });
@@ -431,9 +459,10 @@ router.post('/generateMockPaper', async (req, res) => {
 // --- VIVA SIMULATOR SERVICE (Using Groq) ---
 router.post('/streamVivaChat', async (req, res) => {
     try {
-        const { message, subject, branch, persona = 'Standard' } = req.body;
+        const { message, subject, branch, persona = 'Standard', language } = req.body;
+        console.log(`[StreamVivaChat] Language: ${language}`);
 
-        const systemInstruction = `You are an External Examiner for the Mumbai University (MU) Engineering Viva Voce. 
+        let systemInstruction = `You are an External Examiner for the Mumbai University (MU) Engineering Viva Voce. 
         Subject: ${subject}
         Branch: ${branch}
         Current Mode: ${persona}
@@ -453,6 +482,12 @@ router.post('/streamVivaChat', async (req, res) => {
         Fail State: If the student fails 3 consecutive questions, politely end the viva and suggest specific modules to revise.
 
         The goal is to test their conceptual depth according to the chosen mode.`;
+
+        if (language === 'mr') {
+            systemInstruction += ' IMPORTANT: Respond to the user ONLY in MARATHI (मराठी).';
+        } else if (language === 'hi') {
+            systemInstruction += ' IMPORTANT: Respond to the user ONLY in HINDI (हिंदी).';
+        }
 
         res.setHeader('Content-Type', 'text/event-stream');
         res.setHeader('Cache-Control', 'no-cache');

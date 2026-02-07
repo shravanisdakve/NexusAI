@@ -102,7 +102,7 @@ const Sidebar: React.FC = () => {
 
     const handleLogout = async () => {
         try {
-            await logout(); // Use mock signOut
+            await logout();
             navigate('/login');
         } catch (error) {
             console.error("Failed to log out", error);

@@ -1,4 +1,4 @@
-import { type LeaderboardEntry } from '../types';
+import { type LeaderboardEntry, type GlobalLeaderboardEntry } from '../types';
 import axios from 'axios';
 
 const API_URL = import.meta.env.VITE_API_BASE_URL || '';
@@ -137,7 +137,25 @@ const getEmptyReport = () => ({
     strengths: [], weaknesses: [], completedPomodoros: 0, sessions: []
 });
 
-export const getLeaderboardData = async (): Promise<LeaderboardEntry[]> => {
-    // Phase 3 TODO
-    return [];
+export const getLeaderboardData = async (): Promise<GlobalLeaderboardEntry[]> => {
+    try {
+        const response = await axios.get(`${API_URL}/api/gamification/leaderboard`, {
+            headers: getAuthHeaders()
+        });
+
+        if (response.data.success) {
+            return response.data.leaderboard.map((user: any) => ({
+                id: user.userId,
+                name: user.name,
+                xp: user.xp,
+                level: user.level,
+                avatar: user.avatar,
+                badges: user.badges
+            }));
+        }
+        return [];
+    } catch (error) {
+        console.error("Error fetching leaderboard data:", error);
+        return [];
+    }
 };

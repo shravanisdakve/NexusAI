@@ -30,7 +30,24 @@ const ProjectGenerator: React.FC = () => {
             setIdeas(parsedIdeas);
         } catch (error) {
             console.error("Error generating ideas:", error);
-            // Use dummy data or show error
+            // Fallback to sample ideas if AI fails
+            setIdeas([
+                {
+                    title: "Smart Campus Navigator",
+                    description: "An AR-based mobile app that helps students navigate university canteens, libraries, and labs with real-time crowd tracking.",
+                    techStack: ["React Native", "AR.js", "Firebase", "Node.js"]
+                },
+                {
+                    title: "AI Study Buddy",
+                    description: "A personalized study assistant that creates flashcards and quizzes from your handwritten notes using OCR and NLP.",
+                    techStack: ["Python", "Tesseract OCR", "OpenAI API", "React"]
+                },
+                {
+                    title: "Decentralized Voting System",
+                    description: "A secure blockchain-based voting system for student council elections ensuring transparency and anonymity.",
+                    techStack: ["Solidity", "Ethereum", "Web3.js", "React"]
+                }
+            ]);
         } finally {
             setLoading(false);
         }

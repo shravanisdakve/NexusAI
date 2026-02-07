@@ -259,11 +259,11 @@ export const generateFlashcards = async (context: string, language?: string): Pr
     return data.flashcards;
 };
 
-export const getSuggestionForMood = async (mood: string): Promise<string> => {
+export const getSuggestionForMood = async (mood: string, language?: string): Promise<string> => {
     console.log(`Getting AI suggestion for mood: ${mood} `);
 
     try {
-        const requestBody: GeminiRequest = { mood };
+        const requestBody: GeminiRequest = { mood, language };
         const response = await fetch(`${API_URL}/api/gemini/getSuggestionForMood`, {
             method: 'POST',
             headers: {

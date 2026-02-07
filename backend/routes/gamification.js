@@ -127,16 +127,12 @@ router.post('/award-badge', auth, async (req, res) => {
 
         const result = await user.awardBadge(badgeName);
 
-        if (result.success) {
-            res.json({
-                success: true,
-                badge: result.badge,
-                xpEarned: result.xpEarned,
-                message: `Congratulations! You've earned the ${badgeName} badge!`
-            });
-        } else {
-            res.json({ success: false, message: result.message });
-        }
+        res.json({
+            success: result.success,
+            badge: result.badge,
+            xpEarned: result.xpEarned,
+            message: result.message || (result.success ? `Congratulations! You've earned the ${badgeName} badge!` : 'Badge already earned')
+        });
 
     } catch (error) {
         console.error('Error awarding badge:', error);
@@ -144,32 +140,31 @@ router.post('/award-badge', auth, async (req, res) => {
     }
 });
 
-
-// Award Badge
-router.post('/award-badge', auth, async (req, res) => {
-    const { badgeName } = req.body;
+// Get Leaderboard Data
+router.get('/leaderboard', auth, async (req, res) => {
     try {
-        const user = await User.findById(req.user.id);
-        if (!user) {
-            return res.status(404).json({ success: false, message: 'User not found' });
-        }
+        // Fetch top 10 users sorted by XP (descending)
+        const topUsers = await User.find({})
+            .sort({ xp: -1 })
+            .limit(10)
+            .select('displayName xp level avatar badges'); // Select only necessary fields
 
-        if (user.badges.includes(badgeName)) {
-            return res.json({ success: true, message: 'Badge already earned', newlyEarned: false });
-        }
-
-        user.badges.push(badgeName);
-        await user.save();
+        const leaderboard = topUsers.map((user, index) => ({
+            rank: index + 1,
+            userId: user._id,
+            name: user.displayName,
+            xp: user.xp || 0,
+            level: user.level || 1,
+            avatar: user.avatar || '',
+            badges: user.badges ? user.badges.length : 0
+        }));
 
         res.json({
             success: true,
-            badges: user.badges,
-            newlyEarned: true,
-            message: `Congratulations! You earned the ${badgeName} badge!`
+            leaderboard
         });
-
     } catch (error) {
-        console.error('Error awarding badge:', error);
+        console.error('Error fetching leaderboard:', error);
         res.status(500).json({ success: false, message: 'Server error' });
     }
 });
