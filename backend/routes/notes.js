@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const mongoose = require('mongoose');
 const Note = require('../models/Note');
 const Flashcard = require('../models/Flashcard');
 const Quiz = require('../models/Quiz');
@@ -8,6 +9,7 @@ const auth = require('../middleware/auth');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs').promises;
+const isValidObjectId = (value) => mongoose.Types.ObjectId.isValid(value);
 
 // Configure multer for file uploads
 const storage = multer.diskStorage({
@@ -294,6 +296,10 @@ router.delete('/:courseId/:noteId', auth, async (req, res) => {
 // @access  Private
 router.get('/:courseId/flashcards', auth, async (req, res) => {
     try {
+        if (!isValidObjectId(req.params.courseId)) {
+            return res.json({ success: true, flashcards: [] });
+        }
+
         const flashcards = await Flashcard.find({
             courseId: req.params.courseId,
             userId: req.user.id
@@ -323,6 +329,13 @@ router.get('/:courseId/flashcards', auth, async (req, res) => {
 // @access  Private
 router.post('/:courseId/flashcards', auth, async (req, res) => {
     try {
+        if (!isValidObjectId(req.params.courseId)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid courseId for flashcards'
+            });
+        }
+
         const { flashcards } = req.body;
 
         if (!Array.isArray(flashcards) || flashcards.length === 0) {
@@ -371,6 +384,13 @@ router.post('/:courseId/flashcards', auth, async (req, res) => {
 // @access  Private
 router.put('/:courseId/flashcards/:flashcardId', auth, async (req, res) => {
     try {
+        if (!isValidObjectId(req.params.courseId) || !isValidObjectId(req.params.flashcardId)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid flashcard identifier'
+            });
+        }
+
         const { bucket, lastReview } = req.body;
 
         const flashcard = await Flashcard.findOne({

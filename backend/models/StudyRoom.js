@@ -58,6 +58,22 @@ const StudyRoomSchema = new mongoose.Schema({
     quiz: {
         type: mongoose.Schema.Types.Mixed,
         default: null
+    },
+    techniqueState: {
+        techniqueKey: { type: String, default: 'pomodoro' },
+        isRunning: { type: Boolean, default: true },
+        phaseKey: { type: String, default: 'focus' },
+        phaseLabel: { type: String, default: 'Focus Sprint' },
+        phasePrompt: { type: String, default: 'Work on one clearly defined problem with zero context switching.' },
+        phaseDurationSec: { type: Number, default: 25 * 60 },
+        phaseIndex: { type: Number, default: 0 },
+        cycleCount: { type: Number, default: 1 },
+        focusRoundsCompleted: { type: Number, default: 0 },
+        phaseStartedAt: { type: Date, default: Date.now },
+        phaseEndsAt: { type: Date, default: () => new Date(Date.now() + 25 * 60 * 1000) },
+        remainingSec: { type: Number, default: 25 * 60 },
+        version: { type: Number, default: 1 },
+        updatedAt: { type: Date, default: Date.now }
     }
 });
 

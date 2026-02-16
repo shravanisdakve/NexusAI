@@ -28,22 +28,24 @@ app.use(helmet({
 }));
 app.use(compression());
 
-// Rate Limiting (Apply to all requests)
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per windowMs
-  standardHeaders: true,
-  legacyHeaders: false,
-});
-app.use('/api', limiter);
-
 // CORS Configuration
-app.use(cors({
+const corsOptions = {
   origin: process.env.NODE_ENV === 'production'
     ? (process.env.FRONTEND_URL || 'https://yourdomain.com') // Update this after deployment
     : ['http://localhost:3000', 'http://localhost:5173', 'http://localhost:5174'],
   credentials: true
-}));
+};
+app.use(cors(corsOptions));
+
+// Rate Limiting (Apply to API requests)
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: process.env.NODE_ENV === 'production' ? 600 : 5000,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req) => req.method === 'OPTIONS'
+});
+app.use('/api', limiter);
 
 // 3. Body Parsers
 app.use(express.json({ limit: '10mb' }));

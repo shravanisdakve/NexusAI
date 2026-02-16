@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { type ChatMessage, type StudyRoom as StudyRoomType, type Quiz as SharedQuiz, type StudyTask } from '../types';
+import { type ChatMessage, type StudyRoom as StudyRoomType, type Quiz as SharedQuiz, type TechniqueState } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import {
@@ -21,22 +21,24 @@ import {
     sendChatMessage, // Added
     subscribeToMessages, // Added
     sendTyping,
-    onTyping
+    onTyping,
+    onTechniqueUpdate,
+    updateTechniqueState,
+    advanceTechniquePhase
 } from '../services/communityService';
 import { streamStudyBuddyChat, generateQuizQuestion, extractTextFromFile } from '../services/geminiService';
 import { startSession, endSession, recordQuizResult } from '../services/analyticsService';
-import { getStudyPlan, updateTaskCompletion } from '../services/studyPlanService';
 // --- REMOVED Clock import here ---
-import { Bot, User, Send, MessageSquare, Users, Brain, UploadCloud, Lightbulb, FileText, Paperclip, FolderOpen, AlertTriangle, Info, Palette, Briefcase, X } from 'lucide-react';
-import { Input, Button, Textarea, Spinner } from '../components/ui';
+import { Bot, User, Send, MessageSquare, Users, Brain, UploadCloud, Lightbulb, FileText, Paperclip, FolderOpen, AlertTriangle, Info, Palette, Briefcase, X, Play, Pause, SkipForward, RotateCcw } from 'lucide-react';
+import { Input, Button, Textarea, Spinner, Select } from '../components/ui';
 import RoomControls from '../components/RoomControls'; //
 import VideoTile from '../components/VideoTile';
 import Reactions, { type Reaction } from '../components/Reactions';
 import MusicPlayer from '../components/MusicPlayer';
 import ShareModal from '../components/ShareModal';
 import StudyRoomNotesPanel from '../components/StudyRoomNotesPanel';
-import Whiteboard from '../components/Whiteboard';
 import StudyToolsPanel from '../components/StudyToolsPanel';
+import Whiteboard from '../components/Whiteboard';
 // --- REMOVED PomodoroTimer (moved to ToolsPanel) ---
 
 // --- Helper Types & Constants ---
@@ -64,6 +66,13 @@ const formatElapsedTime = (totalSeconds: number): string => {
     }
 };
 
+const formatPhaseTime = (totalSeconds: number): string => {
+    const safe = Math.max(0, totalSeconds);
+    const minutes = Math.floor(safe / 60);
+    const seconds = safe % 60;
+    return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+};
+
 
 // --- Main Component ---
 const StudyRoom: React.FC = () => {
@@ -87,6 +96,10 @@ const StudyRoom: React.FC = () => {
     const [showMusicPlayer, setShowMusicPlayer] = useState(false);
     const [showWhiteboard, setShowWhiteboard] = useState(false);
     const [showShareModal, setShowShareModal] = useState(false);
+    const [techniqueName, setTechniqueName] = useState<string>('Pomodoro Technique');
+    const [techniqueState, setTechniqueState] = useState<TechniqueState | null>(null);
+    const [techniqueRemainingSec, setTechniqueRemainingSec] = useState<number>(0);
+    const [isTechniqueSyncing, setIsTechniqueSyncing] = useState(false);
     // Localized Strings Helper for Study Room
     const getLocalizedMessage = (type: 'default' | 'welcome', lang: string, params?: any) => {
         const isMr = lang === 'mr';
@@ -130,9 +143,6 @@ const StudyRoom: React.FC = () => {
     const [typingUsers, setTypingUsers] = useState<string[]>([]);
     const typingTimeoutRef = useRef<{ [key: string]: NodeJS.Timeout }>({});
 
-    // Study Plan Tasks State
-    const [studyTasks, setStudyTasks] = useState<{ id: string; title: string; completed: boolean; dayIndex: number; courseId: string }[]>([]);
-
     const [elapsedTime, setElapsedTime] = useState(0); // Time in seconds
     const intervalRef = useRef<NodeJS.Timeout | null>(null);
     const startTimeRef = useRef<number | null>(null);
@@ -144,6 +154,7 @@ const StudyRoom: React.FC = () => {
     const aiChatEndRef = useRef<HTMLDivElement>(null);
     const prevParticipantsRef = useRef<StudyRoomType['users']>([]);
     const welcomeMessageSent = useRef(false);
+    const isAdvancingTechniqueRef = useRef(false);
 
     // --- FIX 1: Add a ref for the session ID ---
     const sessionIdRef = useRef<string | null>(null);
@@ -172,6 +183,10 @@ const StudyRoom: React.FC = () => {
         });
         return filtered;
     }, [allMessages]);
+
+    const isTechniqueRunning = !!techniqueState?.isRunning;
+    const effectiveTechniqueLabel = room?.technique || techniqueName || 'Pomodoro Technique';
+    const techniqueCycleLabel = techniqueState ? `Cycle ${Math.max(1, techniqueState.cycleCount || 1)}` : 'Not started';
 
     // --- Chat Handlers ---
     const handleSendChatMessage = async (messageText: string) => {
@@ -324,6 +339,17 @@ const StudyRoom: React.FC = () => {
             console.log("Room updated:", updatedRoom);
             setRoom(updatedRoom);
             setParticipants(updatedRoom.users);
+            if (updatedRoom.technique) {
+                setTechniqueName(updatedRoom.technique);
+            }
+            if (updatedRoom.techniqueState) {
+                setTechniqueState(updatedRoom.techniqueState);
+            }
+        });
+
+        const unsubTechnique = onTechniqueUpdate(roomId, (payload) => {
+            setTechniqueName(payload.technique || 'Pomodoro Technique');
+            setTechniqueState(payload.techniqueState || null);
         });
 
         // Initialize messages from history
@@ -387,6 +413,7 @@ const StudyRoom: React.FC = () => {
             // --- End Stop Timer ---
 
             unsubRoom();
+            unsubTechnique();
             unsubMessages();
             unsubTyping();
             unsubNotes();
@@ -409,6 +436,51 @@ const StudyRoom: React.FC = () => {
     }, [roomId, currentUser, navigate]);
 
     useEffect(() => {
+        if (!techniqueState) {
+            setTechniqueRemainingSec(0);
+            return;
+        }
+
+        const computeRemaining = () => {
+            if (!techniqueState.isRunning) {
+                setTechniqueRemainingSec(Math.max(0, Math.floor(techniqueState.remainingSec || 0)));
+                return;
+            }
+
+            const endTime = new Date(techniqueState.phaseEndsAt).getTime();
+            const now = Date.now();
+            const remaining = Math.max(0, Math.ceil((endTime - now) / 1000));
+            setTechniqueRemainingSec(remaining);
+        };
+
+        computeRemaining();
+        const interval = setInterval(computeRemaining, 1000);
+        return () => clearInterval(interval);
+    }, [techniqueState]);
+
+    useEffect(() => {
+        const shouldAutoAdvance = !!roomId
+            && !!techniqueState
+            && techniqueState.isRunning
+            && techniqueRemainingSec <= 0;
+
+        if (!shouldAutoAdvance || isAdvancingTechniqueRef.current) return;
+
+        isAdvancingTechniqueRef.current = true;
+        advanceTechniquePhase(roomId!, techniqueState!.version)
+            .then((response) => {
+                setTechniqueName(response.technique);
+                setTechniqueState(response.techniqueState);
+            })
+            .catch((error) => {
+                console.error('Failed to auto-advance technique phase:', error);
+            })
+            .finally(() => {
+                isAdvancingTechniqueRef.current = false;
+            });
+    }, [techniqueRemainingSec, techniqueState, roomId]);
+
+    useEffect(() => {
         const timer = setTimeout(() => {
             chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
         }, 0);
@@ -424,39 +496,65 @@ const StudyRoom: React.FC = () => {
             postSystemMessage(welcomeMessage);
             welcomeMessageSent.current = true;
         }
-
-        // Fetch Study Plan Tasks if room exists
-        const fetchTasks = async () => {
-            if (room && room.courseId) {
-                const plan = await getStudyPlan(room.courseId);
-                if (plan) {
-                    const allTasks = plan.days.flatMap((day, dIdx) =>
-                        day.tasks.map(t => ({
-                            id: t._id || t.id || `task-${dIdx}-${Math.random()}`,
-                            title: t.title,
-                            completed: t.completed,
-                            dayIndex: dIdx,
-                            courseId: plan.courseId
-                        }))
-                    );
-                    setStudyTasks(allTasks);
-                }
-            }
-        };
-
-        if (room) {
-            fetchTasks();
-        }
-
     }, [room, postSystemMessage, language]);
 
-    const handleTaskComplete = async (task: { id: string, dayIndex?: number, courseId?: string, completed: boolean }) => {
-        if (task.courseId && task.dayIndex !== undefined) {
-            // Optimistic update
-            setStudyTasks(prev => prev.map(t => t.id === task.id ? { ...t, completed: !t.completed } : t));
+    const handleTechniqueToggle = async () => {
+        if (!roomId || !techniqueState) return;
+        setIsTechniqueSyncing(true);
+        try {
+            const action = techniqueState.isRunning ? 'pause' : 'start';
+            const response = await updateTechniqueState(roomId, action, techniqueState.version);
+            setTechniqueName(response.technique);
+            setTechniqueState(response.techniqueState);
+        } catch (error) {
+            console.error('Failed to toggle technique state:', error);
+        } finally {
+            setIsTechniqueSyncing(false);
+        }
+    };
 
-            // API call
-            await updateTaskCompletion(task.courseId, task.dayIndex, task.id, !task.completed);
+    const handleTechniqueReset = async () => {
+        if (!roomId) return;
+        setIsTechniqueSyncing(true);
+        try {
+            const response = await updateTechniqueState(roomId, 'reset', techniqueState?.version);
+            setTechniqueName(response.technique);
+            setTechniqueState(response.techniqueState);
+        } catch (error) {
+            console.error('Failed to reset technique state:', error);
+        } finally {
+            setIsTechniqueSyncing(false);
+        }
+    };
+
+    const handleTechniqueSkip = async () => {
+        if (!roomId || !techniqueState) return;
+        if (isAdvancingTechniqueRef.current) return;
+        isAdvancingTechniqueRef.current = true;
+        setIsTechniqueSyncing(true);
+        try {
+            const response = await advanceTechniquePhase(roomId, techniqueState.version);
+            setTechniqueName(response.technique);
+            setTechniqueState(response.techniqueState);
+        } catch (error) {
+            console.error('Failed to advance technique phase:', error);
+        } finally {
+            isAdvancingTechniqueRef.current = false;
+            setIsTechniqueSyncing(false);
+        }
+    };
+
+    const handleTechniqueChange = async (nextKey: 'pomodoro' | 'feynman' | 'spaced_repetition') => {
+        if (!roomId) return;
+        setIsTechniqueSyncing(true);
+        try {
+            const response = await updateTechniqueState(roomId, 'set_technique', techniqueState?.version, nextKey);
+            setTechniqueName(response.technique);
+            setTechniqueState(response.techniqueState);
+        } catch (error) {
+            console.error('Failed to change study technique:', error);
+        } finally {
+            setIsTechniqueSyncing(false);
         }
     };
 
@@ -791,7 +889,75 @@ const StudyRoom: React.FC = () => {
                 <div className="flex-1 flex overflow-hidden">
                     {/* Main Video Grid */}
                     <main className="flex-1 flex flex-col p-4 relative">
-                        {/* --- REMOVED Timer Display FROM HERE --- */}
+                        {/* Technique Orchestrator */}
+                        <div className="mb-4 rounded-xl border border-violet-500/20 bg-slate-900/70 backdrop-blur-md p-3">
+                            <div className="flex flex-wrap items-center justify-between gap-3">
+                                <div>
+                                    <p className="text-[10px] uppercase tracking-widest text-violet-300/80 font-semibold">Technique Orchestrator</p>
+                                    <h3 className="text-sm font-semibold text-slate-100">{effectiveTechniqueLabel}</h3>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <span className={`text-[10px] px-2 py-1 rounded-full border ${isTechniqueRunning ? 'text-emerald-300 border-emerald-500/40 bg-emerald-500/10' : 'text-amber-300 border-amber-500/40 bg-amber-500/10'}`}>
+                                        {isTechniqueRunning ? 'Running' : 'Paused'}
+                                    </span>
+                                    <span className="text-xs text-slate-300 font-mono bg-slate-800/70 px-2 py-1 rounded-md border border-slate-700">
+                                        {formatPhaseTime(techniqueRemainingSec)}
+                                    </span>
+                                    <span className="text-[11px] text-slate-400">{techniqueCycleLabel}</span>
+                                </div>
+                            </div>
+
+                            <div className="mt-2 flex items-start justify-between gap-4">
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-sm text-violet-200 font-medium">
+                                        {techniqueState?.phaseLabel || 'Initializing...'}
+                                    </p>
+                                    <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                                        {techniqueState?.phasePrompt || 'Preparing your shared session flow...'}
+                                    </p>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <Select
+                                        value={techniqueState?.techniqueKey || 'pomodoro'}
+                                        onChange={(e) => handleTechniqueChange(e.target.value as 'pomodoro' | 'feynman' | 'spaced_repetition')}
+                                        disabled={isTechniqueSyncing}
+                                        className="h-8 text-xs px-2 py-1 min-w-[165px] bg-slate-800/80 border-slate-700"
+                                    >
+                                        <option value="pomodoro">Pomodoro</option>
+                                        <option value="feynman">Feynman</option>
+                                        <option value="spaced_repetition">Spaced Repetition</option>
+                                    </Select>
+                                    <Button
+                                        size="sm"
+                                        variant="secondary"
+                                        onClick={handleTechniqueToggle}
+                                        disabled={!techniqueState || isTechniqueSyncing}
+                                        className="h-8 px-3 text-xs"
+                                    >
+                                        {isTechniqueRunning ? <Pause size={12} className="mr-1.5" /> : <Play size={12} className="mr-1.5" />}
+                                        {isTechniqueRunning ? 'Pause' : 'Resume'}
+                                    </Button>
+                                    <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        onClick={handleTechniqueSkip}
+                                        disabled={!techniqueState || isTechniqueSyncing}
+                                        className="h-8 px-3 text-xs"
+                                    >
+                                        <SkipForward size={12} className="mr-1.5" /> Skip
+                                    </Button>
+                                    <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        onClick={handleTechniqueReset}
+                                        disabled={isTechniqueSyncing}
+                                        className="h-8 px-3 text-xs"
+                                    >
+                                        <RotateCcw size={12} className="mr-1.5" /> Reset
+                                    </Button>
+                                </div>
+                            </div>
+                        </div>
 
                         {mediaError && (
                             // ... (media error display) ...
@@ -903,8 +1069,6 @@ const StudyRoom: React.FC = () => {
                                 topic={room?.topic || 'General Study'}
                                 isActive={true}
                                 courseId={room?.courseId}
-                                tasks={studyTasks}
-                                onTaskComplete={handleTaskComplete}
                             />
                         )}
                     </aside>

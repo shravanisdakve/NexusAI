@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Timer, Layers, Network, Zap, Brain, Wand2 } from 'lucide-react';
+import { Layers, Network, Brain, Wand2 } from 'lucide-react';
 import { Button, Spinner } from './ui';
-import PomodoroTimer from './PomodoroTimer';
 import FlashcardDeck from './FlashcardDeck';
 import KnowledgeMap from './KnowledgeMap';
 import FeynmanAssistant from './FeynmanAssistant';
@@ -9,43 +8,47 @@ import { generateFlashcards as generateFlashcardsApi } from '../services/geminiS
 import { getFlashcards, addFlashcards } from '../services/notesService';
 import { Flashcard as FlashcardType } from '../types';
 
-type ToolTab = 'timer' | 'flashcards' | 'map' | 'feynman';
+type ToolTab = 'flashcards' | 'map' | 'feynman';
 
 interface StudyToolsPanelProps {
     notes: string;
     topic: string;
     isActive: boolean;
     courseId?: string;
-    tasks?: any[];
-    onTaskComplete?: (task: any) => void;
 }
 
-const StudyToolsPanel: React.FC<StudyToolsPanelProps> = ({ notes, topic, isActive, courseId, tasks = [], onTaskComplete }) => {
-    const [activeTab, setActiveTab] = useState<ToolTab>('timer');
+const StudyToolsPanel: React.FC<StudyToolsPanelProps> = ({ notes, topic, isActive, courseId }) => {
+    const [activeTab, setActiveTab] = useState<ToolTab>('flashcards');
     const [flashcards, setFlashcards] = useState<FlashcardType[]>([]);
     const [isGeneratingCards, setIsGeneratingCards] = useState(false);
     const [isFetchingCards, setIsFetchingCards] = useState(false);
     const [mapData, setMapData] = useState<any[]>([]);
+    const canPersistFlashcards = !!courseId && courseId !== 'general';
 
     // Fetch existing flashcards
     useEffect(() => {
         const fetchCards = async () => {
-            if (courseId) {
-                setIsFetchingCards(true);
-                try {
-                    const existing = await getFlashcards(courseId);
-                    if (existing && existing.length > 0) {
-                        setFlashcards(existing);
-                    }
-                } catch (error) {
-                    console.error("Failed to fetch existing flashcards", error);
-                } finally {
-                    setIsFetchingCards(false);
+            if (!canPersistFlashcards || !courseId) {
+                setFlashcards([]);
+                return;
+            }
+
+            setIsFetchingCards(true);
+            try {
+                const existing = await getFlashcards(courseId);
+                if (existing && existing.length > 0) {
+                    setFlashcards(existing);
+                } else {
+                    setFlashcards([]);
                 }
+            } catch (error) {
+                console.error("Failed to fetch existing flashcards", error);
+            } finally {
+                setIsFetchingCards(false);
             }
         };
         fetchCards();
-    }, [courseId]);
+    }, [courseId, canPersistFlashcards]);
 
     // Initialize Map Data based on topic (Mock)
     useEffect(() => {
@@ -60,7 +63,7 @@ const StudyToolsPanel: React.FC<StudyToolsPanelProps> = ({ notes, topic, isActiv
     }, [topic]);
 
     const handleGenerateFlashcards = async () => {
-        if (!notes || !courseId) return;
+        if (!notes) return;
         setIsGeneratingCards(true);
         try {
             const result = await generateFlashcardsApi(notes);
@@ -74,8 +77,10 @@ const StudyToolsPanel: React.FC<StudyToolsPanelProps> = ({ notes, topic, isActiv
                 lastReview: Date.now()
             }));
 
-            // Save to DB
-            await addFlashcards(courseId, enrichedCards);
+            if (canPersistFlashcards && courseId) {
+                // Save to DB only for course-backed rooms.
+                await addFlashcards(courseId, enrichedCards);
+            }
 
             // Append to existing
             setFlashcards(prev => [...prev, ...enrichedCards]);
@@ -92,14 +97,6 @@ const StudyToolsPanel: React.FC<StudyToolsPanelProps> = ({ notes, topic, isActiv
         <div className="flex flex-col flex-1 overflow-hidden h-full bg-slate-900/40 relative">
             {/* Tool Selector */}
             <div className="flex gap-1 p-2 border-b border-white/5 bg-slate-900/60 backdrop-blur-md">
-                <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setActiveTab('timer')}
-                    className={`flex-1 text-xs ${activeTab === 'timer' ? 'bg-violet-600/20 text-violet-300' : 'text-slate-400'}`}
-                >
-                    <Timer size={14} className="mr-1.5" /> Focus
-                </Button>
                 <Button
                     variant="ghost"
                     size="sm"
@@ -129,22 +126,6 @@ const StudyToolsPanel: React.FC<StudyToolsPanelProps> = ({ notes, topic, isActiv
             {/* Content Area */}
             <div className="flex-1 overflow-y-auto p-4 scrollbar-thin scrollbar-thumb-slate-700">
 
-                {/* TIMER TAB */}
-                {activeTab === 'timer' && (
-                    <div className="h-full flex flex-col items-center justify-center space-y-6">
-                        <PomodoroTimer tasks={tasks} onTaskComplete={onTaskComplete} />
-                        <div className="text-center space-y-2 max-w-xs">
-                            <h4 className="text-sm font-medium text-slate-300 flex items-center justify-center gap-2">
-                                <Brain size={16} className="text-violet-400" />
-                                Study Technique
-                            </h4>
-                            <p className="text-xs text-slate-500 leading-relaxed">
-                                The Pomodoro technique uses focused 25-minute work intervals separated by short breaks to maximize concentration and prevent burnout.
-                            </p>
-                        </div>
-                    </div>
-                )}
-
                 {/* FLASHCARDS TAB */}
                 {activeTab === 'flashcards' && (
                     <div className="h-full flex flex-col">
@@ -169,6 +150,11 @@ const StudyToolsPanel: React.FC<StudyToolsPanelProps> = ({ notes, topic, isActiv
                                     )}
                                 </Button>
                                 {!notes && <p className="text-[10px] text-red-400/80">Upload notes in the 'Notes' tab first.</p>}
+                                {!canPersistFlashcards && (
+                                    <p className="text-[10px] text-amber-300/80">
+                                        General room: generated flashcards are temporary for this session.
+                                    </p>
+                                )}
                             </div>
                         ) : (
                             <div className="space-y-6">
@@ -184,7 +170,7 @@ const StudyToolsPanel: React.FC<StudyToolsPanelProps> = ({ notes, topic, isActiv
                                         <Wand2 size={10} className="mr-1" /> Regenerate
                                     </Button>
                                 </div>
-                                <FlashcardDeck cards={flashcards} courseId={courseId} />
+                                <FlashcardDeck cards={flashcards} courseId={canPersistFlashcards ? courseId : undefined} />
                             </div>
                         )}
                     </div>
