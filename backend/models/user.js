@@ -63,6 +63,28 @@ const UserSchema = new mongoose.Schema({
     type: String
   }],
   // End Gamification Fields
+
+  // Personalization Fields
+  learningGoals: [{
+    type: String
+  }],
+  learningStyle: {
+    type: String
+  },
+  studyTime: {
+    type: String
+  },
+  targetExam: {
+    type: String
+  },
+  minorDegree: {
+    type: String
+  },
+  backlogs: {
+    type: Number,
+    default: 0
+  },
+  // End Personalization Fields
   createdAt: {
     type: Date,
     default: Date.now,

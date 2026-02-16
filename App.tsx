@@ -7,6 +7,7 @@ import Dashboard from './pages/Dashboard'; // Renamed StudyHub to Dashboard
 import AITutor from './pages/AiChat'; // Renamed AiTutor to AITutor
 import Login from './pages/Login';
 import Signup from './pages/Signup';
+import PersonalizationQuiz from './pages/PersonalizationQuiz';
 import StudyRoom from './pages/StudyRoom';
 import StudyLobby from './pages/StudyLobby';
 import Insights from './pages/Insights';
@@ -68,6 +69,7 @@ const App: React.FC = () => {
         {/* Public Routes */}
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
+        <Route path="/personalization" element={<PersonalizationQuiz />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password/:token" element={<ResetPassword />} />
         <Route path="/terms" element={<Terms />} />

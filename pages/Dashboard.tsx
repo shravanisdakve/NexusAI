@@ -440,9 +440,47 @@ const Dashboard: React.FC = () => {
     const greeting = getTimeOfDayGreeting();
     const mostUsedTool = tools.find(t => t.key === mostUsedToolKey);
 
-    const pageSubtitle = user?.branch && user?.year
-        ? `${user.branch} - ${user.year}${user.year === 1 ? 'st' : user.year === 2 ? 'nd' : user.year === 3 ? 'rd' : 'th'} Year`
-        : 'Your engineering student hub';
+    const pageSubtitle = useMemo(() => {
+        const parts = [];
+        if (user?.branch) parts.push(user.branch);
+        if (user?.year) parts.push(`${user.year}${user.year === 1 ? 'st' : user.year === 2 ? 'nd' : user.year === 3 ? 'rd' : 'th'} Year`);
+        if (user?.targetExam) parts.push(`Targeting: ${user.targetExam}`);
+        return parts.length > 0 ? parts.join(' • ') : 'Your engineering student hub';
+    }, [user]);
+
+    // Pre-populate Quick Access based on Personalization
+    useEffect(() => {
+        if (quickAccessTools.length === 0 && user) {
+            const suggestedTools = [];
+
+            // Exam based
+            if (user.targetExam === 'GATE') {
+                suggestedTools.push('paper', 'tutor');
+            } else if (user.targetExam === 'Placements') {
+                suggestedTools.push('placement', 'math');
+            } else if (user.targetExam === 'Semester Exams') {
+                suggestedTools.push('curriculum', 'summaries');
+            }
+
+            // Learning Style based
+            if (user.learningStyle === 'Visual') {
+                suggestedTools.push('project'); // Visual learners might like project ideas
+            } else if (user.learningStyle === 'Interactive') {
+                suggestedTools.push('quizzes');
+            }
+
+            // Default fallback
+            if (suggestedTools.length === 0) {
+                suggestedTools.push('tutor', 'study-plan');
+            }
+
+            // Deduplicate and set
+            const uniqueTools = [...new Set(suggestedTools)];
+            setQuickAccessTools(uniqueTools);
+            uniqueTools.forEach(t => addToQuickAccess(t)); // Persist
+        }
+    }, [user, quickAccessTools.length]);
+
     const pageTitle = `${greeting}, ${user?.displayName?.split(' ')[0] || 'User'}!`;
 
     return (

@@ -27,6 +27,12 @@ export interface User {
     level?: number;
     streak?: number;
     badges?: string[];
+    learningGoals?: string[];
+    learningStyle?: string;
+    studyTime?: string;
+    targetExam?: string;
+    minorDegree?: string;
+    backlogs?: number;
 }
 
 export interface Flashcard {
