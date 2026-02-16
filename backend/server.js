@@ -11,7 +11,8 @@ const socketHandler = require('./socketHandler');
 connectDB();
 
 // Setup Sockets
-socketHandler(server);
+const io = socketHandler(server);
+app.set('io', io);
 
 const path = require('path');
 const helmet = require('helmet');

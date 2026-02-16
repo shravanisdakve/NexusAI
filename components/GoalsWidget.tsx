@@ -5,19 +5,19 @@ import { Input, Button } from './ui';
 import { PlusCircle, Trash2, CheckCircle } from 'lucide-react';
 
 const GoalsWidget: React.FC = () => {
-  const { currentUser } = useAuth();
+  const { user } = useAuth();
   const [goals, setGoals] = useState<Goal[]>([]);
   const [newGoalTitle, setNewGoalTitle] = useState('');
 
   useEffect(() => {
     const fetchGoals = async () => {
-      if (currentUser?.id) {
+      if (user?.id) {
         const fetchedGoals = await getGoals();
         setGoals(fetchedGoals);
       }
     };
     fetchGoals();
-  }, [currentUser?.id]);
+  }, [user?.id]);
 
   const handleAddGoal = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,7 +25,7 @@ const GoalsWidget: React.FC = () => {
         console.error('[GoalsWidget] Goal title is empty. Cannot add goal.');
         return;
     }
-    if (!currentUser?.id) {
+    if (!user?.id) {
         console.error('[GoalsWidget] User is not logged in. Cannot add goal.');
         return;
     }

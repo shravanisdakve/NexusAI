@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const User = require('../models/User'); // Note: filename is user.js (lowercase u in file system based on list_dir, but typically models are capitalized. Require should match file system or be case insensitive on Windows, but let's check previous requires. Step 82 shows 'User' model exported. Step 62 requires auth routes which likely require User. Let's assume ../models/user works or ../models/User if file system is case insensitive. The list_dir showed "user.js" (lowercase).
+const User = require('../models/user');
 const auth = require('../middleware/auth');
 
 // Get User Gamification Stats

@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const UserProgress = require('../models/UserProgress');
-const User = require('../models/User');
+const User = require('../models/user');
 console.log('--- ANALYTICS ROUTE MODULE LOADED ---');
 
 const auth = require('../middleware/auth');

@@ -58,7 +58,7 @@ const RoomControls: React.FC<RoomControlsProps> = ({
       <div className="w-1/3">
         {/* --- FIX: Added Add Test User Button (for development) --- */}
         {/* Conditionally render based on environment if needed, otherwise always show */}
-        {process.env.NODE_ENV === 'development' && (
+        {import.meta.env.DEV && (
           <Button
             onClick={onAddTestUser}
             variant="outline"

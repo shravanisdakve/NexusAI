@@ -1,4 +1,5 @@
 const socketIo = require('socket.io');
+const mongoose = require('mongoose');
 const Message = require('./models/Message');
 const StudyRoom = require('./models/StudyRoom');
 const { analyzeChatContext } = require('./services/geminiService');
@@ -40,7 +41,7 @@ const socketHandler = (server) => {
                 }
 
                 // Add user to participants if not already in
-                if (user && user.id) {
+                if (user && user.id && mongoose.Types.ObjectId.isValid(user.id)) {
                     const existingParticipant = room.participants.find(
                         p => p.user && p.user._id && p.user._id.toString() === user.id
                     );
@@ -82,6 +83,12 @@ const socketHandler = (server) => {
         socket.on('typing', (data) => {
             // data: { roomId, userName }
             socket.to(data.roomId).emit('user-typing', data);
+        });
+
+        socket.on('leave-room', (roomId) => {
+            if (roomId) {
+                socket.leave(roomId);
+            }
         });
 
         // Chat Message Event
@@ -170,6 +177,27 @@ const socketHandler = (server) => {
 
         socket.on('new-post', (data) => {
             io.to('community-global').emit('update-posts', data);
+        });
+
+        socket.on('request-moderation', async ({ roomId }) => {
+            try {
+                if (!roomId) return;
+                const recentMessages = await Message.find({ roomId })
+                    .sort({ timestamp: -1 })
+                    .limit(12);
+
+                const intervention = await analyzeChatContext(recentMessages.reverse());
+
+                io.to(roomId).emit('receive-message', {
+                    id: `mod-manual-${Date.now()}`,
+                    text: intervention,
+                    sender: 'AI Moderator',
+                    userId: 'system-moderator',
+                    timestamp: new Date()
+                });
+            } catch (error) {
+                console.error('Manual moderation request failed:', error);
+            }
         });
 
         // Whiteboard Draw Event

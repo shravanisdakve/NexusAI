@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 const dotenv = require('dotenv');
 const Resource = require('../models/Resource');
-const User = require('../models/User');
+const User = require('../models/user');
 
 const path = require('path');
 dotenv.config({ path: path.join(__dirname, '../.env') }); // Load from backend/.env relative to script
