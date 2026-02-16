@@ -94,6 +94,26 @@ export interface StudyRoom {
 
     technique?: string;
     topic?: string;
+    techniqueState?: TechniqueState | null;
+}
+
+export type TechniqueKey = 'pomodoro' | 'feynman' | 'spaced_repetition';
+
+export interface TechniqueState {
+    techniqueKey: TechniqueKey;
+    isRunning: boolean;
+    phaseKey: string;
+    phaseLabel: string;
+    phasePrompt: string;
+    phaseDurationSec: number;
+    phaseIndex: number;
+    cycleCount: number;
+    focusRoundsCompleted: number;
+    phaseStartedAt: string | number | Date;
+    phaseEndsAt: string | number | Date;
+    remainingSec: number;
+    version: number;
+    updatedAt: string | number | Date;
 }
 
 export interface LeaderboardEntry {

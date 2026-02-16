@@ -46,12 +46,22 @@ const mapRoom = (room) => ({
     users: mapUsers(room),
     createdBy: room.createdBy?.displayName || 'Unknown',
     technique: room.technique,
-    topic: room.topic
+    topic: room.topic,
+    techniqueState: room.techniqueState || null
 });
 
 const emitRoomUpdate = (io, room) => {
     if (!io) return;
     io.to(room._id.toString()).emit('room-update', mapRoom(room));
+};
+
+const emitTechniqueUpdate = (io, room) => {
+    if (!io) return;
+    io.to(room._id.toString()).emit('room-technique-updated', {
+        roomId: room._id.toString(),
+        technique: room.technique,
+        techniqueState: room.techniqueState || null
+    });
 };
 
 const getCurrentUser = async (req) => {
@@ -60,6 +70,152 @@ const getCurrentUser = async (req) => {
         displayName: user?.displayName || req.user.email?.split('@')[0] || 'Student',
         email: user?.email || req.user.email || ''
     };
+};
+
+const TECHNIQUE_DEFINITIONS = {
+    pomodoro: {
+        key: 'pomodoro',
+        name: 'Pomodoro Technique',
+        focusSec: 25 * 60,
+        shortBreakSec: 5 * 60,
+        longBreakSec: 15 * 60,
+        longBreakEvery: 4,
+        prompts: {
+            focus: 'Focus deeply on a single target task until this sprint ends.',
+            short_break: 'Take a short reset: hydrate, stretch, and avoid doom-scrolling.',
+            long_break: 'Long break: step away, reset mentally, then return refreshed.'
+        }
+    },
+    feynman: {
+        key: 'feynman',
+        name: 'Feynman Technique',
+        phases: [
+            { key: 'study', label: 'Learn', durationSec: 12 * 60, prompt: 'Review the concept and collect key points in plain language.' },
+            { key: 'explain', label: 'Explain Simply', durationSec: 10 * 60, prompt: 'Explain the idea as if teaching a beginner with no jargon.' },
+            { key: 'identify_gaps', label: 'Find Gaps', durationSec: 8 * 60, prompt: 'List confusing parts and verify them using notes/resources.' },
+            { key: 'simplify', label: 'Refine Explanation', durationSec: 10 * 60, prompt: 'Rewrite your explanation using simpler terms and examples.' },
+            { key: 'reflect_break', label: 'Reflect Break', durationSec: 5 * 60, prompt: 'Short reset. Decide the one thing to improve next round.' }
+        ]
+    },
+    spaced_repetition: {
+        key: 'spaced_repetition',
+        name: 'Spaced Repetition',
+        phases: [
+            { key: 'recall_round_1', label: 'Recall Round 1', durationSec: 8 * 60, prompt: 'Recall answers from memory before checking notes.' },
+            { key: 'spacing_break_1', label: 'Spacing Break', durationSec: 2 * 60, prompt: 'Brief pause to create retrieval spacing.' },
+            { key: 'recall_round_2', label: 'Recall Round 2', durationSec: 8 * 60, prompt: 'Re-answer the same prompts. Mark weak cards/concepts.' },
+            { key: 'spacing_break_2', label: 'Longer Spacing Break', durationSec: 5 * 60, prompt: 'Longer spacing interval before the final recall pass.' },
+            { key: 'recall_round_3', label: 'Recall Round 3', durationSec: 8 * 60, prompt: 'Final recall pass. Keep only stubborn errors for review.' },
+            { key: 'consolidation', label: 'Consolidate', durationSec: 6 * 60, prompt: 'Summarize mistakes and schedule next review window.' }
+        ]
+    }
+};
+
+const normalizeTechniqueKey = (technique) => {
+    const raw = String(technique || '').toLowerCase();
+    if (raw.includes('feynman')) return 'feynman';
+    if (raw.includes('spaced')) return 'spaced_repetition';
+    return 'pomodoro';
+};
+
+const buildInitialTechniqueState = (technique) => {
+    const now = new Date();
+    const key = normalizeTechniqueKey(technique);
+
+    if (key === 'pomodoro') {
+        const config = TECHNIQUE_DEFINITIONS.pomodoro;
+        return {
+            techniqueKey: key,
+            isRunning: true,
+            phaseKey: 'focus',
+            phaseLabel: 'Focus Sprint',
+            phasePrompt: config.prompts.focus,
+            phaseDurationSec: config.focusSec,
+            phaseIndex: 0,
+            cycleCount: 1,
+            focusRoundsCompleted: 0,
+            phaseStartedAt: now,
+            phaseEndsAt: new Date(now.getTime() + config.focusSec * 1000),
+            remainingSec: config.focusSec,
+            version: 1,
+            updatedAt: now
+        };
+    }
+
+    const def = TECHNIQUE_DEFINITIONS[key];
+    const first = def.phases[0];
+    return {
+        techniqueKey: key,
+        isRunning: true,
+        phaseKey: first.key,
+        phaseLabel: first.label,
+        phasePrompt: first.prompt,
+        phaseDurationSec: first.durationSec,
+        phaseIndex: 0,
+        cycleCount: 1,
+        focusRoundsCompleted: 0,
+        phaseStartedAt: now,
+        phaseEndsAt: new Date(now.getTime() + first.durationSec * 1000),
+        remainingSec: first.durationSec,
+        version: 1,
+        updatedAt: now
+    };
+};
+
+const ensureTechniqueState = (room) => {
+    if (!room.techniqueState || !room.techniqueState.techniqueKey) {
+        room.techniqueState = buildInitialTechniqueState(room.technique);
+    } else {
+        const targetKey = normalizeTechniqueKey(room.technique);
+        if (room.techniqueState.techniqueKey !== targetKey) {
+            room.techniqueState = buildInitialTechniqueState(room.technique);
+        }
+    }
+    return room.techniqueState;
+};
+
+const applyPhase = (state, phase, now, phaseIndex = 0) => {
+    state.phaseKey = phase.key;
+    state.phaseLabel = phase.label;
+    state.phasePrompt = phase.prompt;
+    state.phaseDurationSec = phase.durationSec;
+    state.phaseIndex = phaseIndex;
+    state.phaseStartedAt = now;
+    state.phaseEndsAt = new Date(now.getTime() + phase.durationSec * 1000);
+    state.remainingSec = phase.durationSec;
+};
+
+const advanceTechniqueState = (state) => {
+    const now = new Date();
+
+    if (state.techniqueKey === 'pomodoro') {
+        const config = TECHNIQUE_DEFINITIONS.pomodoro;
+        if (state.phaseKey === 'focus') {
+            state.focusRoundsCompleted = (state.focusRoundsCompleted || 0) + 1;
+            const isLongBreak = state.focusRoundsCompleted % config.longBreakEvery === 0;
+            const nextPhase = isLongBreak
+                ? { key: 'long_break', label: 'Long Break', durationSec: config.longBreakSec, prompt: config.prompts.long_break }
+                : { key: 'short_break', label: 'Short Break', durationSec: config.shortBreakSec, prompt: config.prompts.short_break };
+            applyPhase(state, nextPhase, now);
+        } else {
+            const focusPhase = { key: 'focus', label: 'Focus Sprint', durationSec: config.focusSec, prompt: config.prompts.focus };
+            applyPhase(state, focusPhase, now);
+            state.cycleCount = (state.cycleCount || 1) + 1;
+        }
+    } else {
+        const def = TECHNIQUE_DEFINITIONS[state.techniqueKey] || TECHNIQUE_DEFINITIONS.spaced_repetition;
+        const currentIndex = Number.isInteger(state.phaseIndex) ? state.phaseIndex : 0;
+        const nextIndex = (currentIndex + 1) % def.phases.length;
+        if (nextIndex === 0) {
+            state.cycleCount = (state.cycleCount || 1) + 1;
+        }
+        const nextPhase = def.phases[nextIndex];
+        applyPhase(state, nextPhase, now, nextIndex);
+    }
+
+    state.isRunning = true;
+    state.version = (state.version || 1) + 1;
+    state.updatedAt = now;
 };
 
 // @route   GET /api/community/rooms
@@ -93,7 +249,8 @@ router.post('/rooms', auth, async (req, res) => {
             technique,
             topic,
             createdBy: req.user.id,
-            participants: [{ user: req.user.id }]
+            participants: [{ user: req.user.id }],
+            techniqueState: buildInitialTechniqueState(technique)
         });
 
         await room.save();
@@ -149,6 +306,142 @@ router.get('/rooms/:roomId', auth, async (req, res) => {
         res.json({ success: true, room: mapRoom(room) });
     } catch (error) {
         console.error('Error fetching room:', error);
+        res.status(500).json({ success: false, message: 'Server Error' });
+    }
+});
+
+// @route   GET /api/community/rooms/:roomId/technique-state
+// @desc    Get technique automation state for a room
+// @access  Private
+router.get('/rooms/:roomId/technique-state', auth, async (req, res) => {
+    try {
+        const room = await StudyRoom.findById(req.params.roomId).select('technique techniqueState');
+        if (!room) {
+            return res.status(404).json({ success: false, message: 'Room not found' });
+        }
+
+        const hadState = !!room.techniqueState?.techniqueKey;
+        const state = ensureTechniqueState(room);
+        if (!hadState) {
+            room.markModified('techniqueState');
+            await room.save();
+        }
+
+        res.json({
+            success: true,
+            technique: room.technique,
+            techniqueState: state
+        });
+    } catch (error) {
+        console.error('Error fetching technique state:', error);
+        res.status(500).json({ success: false, message: 'Server Error' });
+    }
+});
+
+// @route   PUT /api/community/rooms/:roomId/technique-state
+// @desc    Start/pause/reset/change room technique automation state
+// @access  Private
+router.put('/rooms/:roomId/technique-state', auth, async (req, res) => {
+    try {
+        const { action, expectedVersion, techniqueKey } = req.body || {};
+        const room = await StudyRoom.findById(req.params.roomId);
+        if (!room) {
+            return res.status(404).json({ success: false, message: 'Room not found' });
+        }
+
+        const state = ensureTechniqueState(room);
+
+        if (typeof expectedVersion === 'number' && expectedVersion !== state.version) {
+            return res.status(200).json({
+                success: true,
+                stale: true,
+                technique: room.technique,
+                techniqueState: state
+            });
+        }
+
+        const now = new Date();
+        if (action === 'pause') {
+            const endsAt = new Date(state.phaseEndsAt).getTime();
+            const remaining = Math.max(0, Math.ceil((endsAt - now.getTime()) / 1000));
+            state.isRunning = false;
+            state.remainingSec = remaining;
+            state.updatedAt = now;
+            state.version = (state.version || 1) + 1;
+        } else if (action === 'start') {
+            const remaining = Math.max(1, state.remainingSec || state.phaseDurationSec || 1);
+            state.isRunning = true;
+            state.phaseStartedAt = now;
+            state.phaseEndsAt = new Date(now.getTime() + remaining * 1000);
+            state.remainingSec = remaining;
+            state.updatedAt = now;
+            state.version = (state.version || 1) + 1;
+        } else if (action === 'reset') {
+            room.techniqueState = buildInitialTechniqueState(room.technique);
+        } else if (action === 'set_technique') {
+            const nextKey = ['pomodoro', 'feynman', 'spaced_repetition'].includes(techniqueKey)
+                ? techniqueKey
+                : normalizeTechniqueKey(techniqueKey || room.technique);
+
+            const humanName = TECHNIQUE_DEFINITIONS[nextKey]?.name || room.technique || 'Pomodoro Technique';
+            room.technique = humanName;
+            room.techniqueState = buildInitialTechniqueState(humanName);
+        } else {
+            return res.status(400).json({ success: false, message: 'Invalid action' });
+        }
+
+        room.markModified('techniqueState');
+        await room.save();
+
+        emitTechniqueUpdate(req.app.get('io'), room);
+        emitRoomUpdate(req.app.get('io'), room);
+
+        res.json({
+            success: true,
+            technique: room.technique,
+            techniqueState: room.techniqueState
+        });
+    } catch (error) {
+        console.error('Error updating technique state:', error);
+        res.status(500).json({ success: false, message: 'Server Error' });
+    }
+});
+
+// @route   POST /api/community/rooms/:roomId/technique-state/advance
+// @desc    Advance room technique to the next phase
+// @access  Private
+router.post('/rooms/:roomId/technique-state/advance', auth, async (req, res) => {
+    try {
+        const { expectedVersion } = req.body || {};
+        const room = await StudyRoom.findById(req.params.roomId);
+        if (!room) {
+            return res.status(404).json({ success: false, message: 'Room not found' });
+        }
+
+        const state = ensureTechniqueState(room);
+        if (typeof expectedVersion === 'number' && expectedVersion !== state.version) {
+            return res.status(200).json({
+                success: true,
+                stale: true,
+                technique: room.technique,
+                techniqueState: state
+            });
+        }
+
+        advanceTechniqueState(state);
+        room.markModified('techniqueState');
+        await room.save();
+
+        emitTechniqueUpdate(req.app.get('io'), room);
+        emitRoomUpdate(req.app.get('io'), room);
+
+        res.json({
+            success: true,
+            technique: room.technique,
+            techniqueState: room.techniqueState
+        });
+    } catch (error) {
+        console.error('Error advancing technique state:', error);
         res.status(500).json({ success: false, message: 'Server Error' });
     }
 });

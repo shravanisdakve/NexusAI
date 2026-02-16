@@ -3,6 +3,7 @@ import { extractTextFromFile, summarizeAudioFromBase64 } from './geminiService';
 import axios from 'axios';
 
 const API_URL = import.meta.env.VITE_API_BASE_URL || '';
+const isGeneralCourse = (courseId: string) => courseId === 'general';
 
 // Get auth token from localStorage
 const getAuthHeaders = () => {
@@ -171,6 +172,9 @@ export const deleteNote = async (courseId: string, note: Note): Promise<void> =>
 
 export const getFlashcards = async (courseId: string): Promise<Flashcard[]> => {
     console.log(`[notesService] Fetching flashcards for course ${courseId}`);
+    if (isGeneralCourse(courseId)) {
+        return [];
+    }
     try {
         const response = await axios.get(`${API_URL}/api/notes/${courseId}/flashcards`, {
             headers: getAuthHeaders()
@@ -190,6 +194,9 @@ export const getFlashcards = async (courseId: string): Promise<Flashcard[]> => {
 
 export const addFlashcards = async (courseId: string, flashcards: Flashcard[]): Promise<void> => {
     console.log(`[notesService] Adding ${flashcards.length} flashcards to course ${courseId}`);
+    if (isGeneralCourse(courseId)) {
+        return;
+    }
     try {
         await axios.post(
             `${API_URL}/api/notes/${courseId}/flashcards`,
@@ -205,6 +212,9 @@ export const addFlashcards = async (courseId: string, flashcards: Flashcard[]): 
 
 export const updateFlashcard = async (courseId: string, flashcardId: string, updates: Partial<Flashcard>): Promise<void> => {
     console.log(`[notesService] Updating flashcard ${flashcardId}`);
+    if (isGeneralCourse(courseId)) {
+        return;
+    }
     try {
         await axios.put(
             `${API_URL}/api/notes/${courseId}/flashcards/${flashcardId}`,
@@ -220,6 +230,9 @@ export const updateFlashcard = async (courseId: string, flashcardId: string, upd
 
 export const deleteFlashcard = async (courseId: string, flashcardId: string): Promise<void> => {
     console.log(`[notesService] Deleting flashcard ${flashcardId}`);
+    if (isGeneralCourse(courseId)) {
+        return;
+    }
     try {
         await axios.delete(`${API_URL}/api/notes/${courseId}/flashcards/${flashcardId}`, {
             headers: getAuthHeaders()

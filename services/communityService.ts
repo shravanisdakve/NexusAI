@@ -1,4 +1,4 @@
-import { type StudyRoom, type ChatMessage, type Quiz, type Thread, type Post } from '../types';
+import { type StudyRoom, type ChatMessage, type Quiz, type Thread, type Post, type TechniqueState, type TechniqueKey } from '../types';
 import axios from 'axios';
 import { io, Socket } from 'socket.io-client';
 import { getResources } from './resourceService';
@@ -111,6 +111,80 @@ export const onRoomUpdate = (roomId: string, callback: (room: any) => void) => {
 
     socket.on('room-update', handler);
     return () => socket?.off('room-update', handler);
+};
+
+// --- Technique Orchestration ---
+export const getTechniqueState = async (roomId: string): Promise<{ technique: string; techniqueState: TechniqueState | null }> => {
+    try {
+        const response = await axios.get(`${API_URL}/api/community/rooms/${roomId}/technique-state`, {
+            headers: getAuthHeaders()
+        });
+        return {
+            technique: response.data?.technique || 'Pomodoro Technique',
+            techniqueState: response.data?.techniqueState || null
+        };
+    } catch (error) {
+        console.error(`Error fetching technique state for ${roomId}:`, error);
+        return { technique: 'Pomodoro Technique', techniqueState: null };
+    }
+};
+
+export const updateTechniqueState = async (
+    roomId: string,
+    action: 'start' | 'pause' | 'reset' | 'set_technique',
+    expectedVersion?: number,
+    techniqueKey?: TechniqueKey
+): Promise<{ stale?: boolean; technique: string; techniqueState: TechniqueState | null }> => {
+    const response = await axios.put(`${API_URL}/api/community/rooms/${roomId}/technique-state`, {
+        action,
+        expectedVersion,
+        techniqueKey
+    }, {
+        headers: getAuthHeaders()
+    });
+
+    return {
+        stale: response.data?.stale,
+        technique: response.data?.technique || 'Pomodoro Technique',
+        techniqueState: response.data?.techniqueState || null
+    };
+};
+
+export const advanceTechniquePhase = async (
+    roomId: string,
+    expectedVersion?: number
+): Promise<{ stale?: boolean; technique: string; techniqueState: TechniqueState | null }> => {
+    const response = await axios.post(`${API_URL}/api/community/rooms/${roomId}/technique-state/advance`, {
+        expectedVersion
+    }, {
+        headers: getAuthHeaders()
+    });
+
+    return {
+        stale: response.data?.stale,
+        technique: response.data?.technique || 'Pomodoro Technique',
+        techniqueState: response.data?.techniqueState || null
+    };
+};
+
+export const onTechniqueUpdate = (
+    roomId: string,
+    callback: (data: { technique: string; techniqueState: TechniqueState | null }) => void
+) => {
+    getTechniqueState(roomId).then(callback);
+    if (!socket) return () => { };
+
+    const handler = (payload: { roomId: string; technique?: string; techniqueState: TechniqueState | null }) => {
+        if (payload.roomId === roomId) {
+            callback({
+                technique: payload.technique || 'Pomodoro Technique',
+                techniqueState: payload.techniqueState || null
+            });
+        }
+    };
+
+    socket.on('room-technique-updated', handler);
+    return () => socket?.off('room-technique-updated', handler);
 };
 
 // --- Message Management ---

@@ -69,7 +69,8 @@ const socketHandler = (server) => {
                     })),
                     createdBy: room.createdBy?.displayName || 'Unknown',
                     technique: room.technique,
-                    topic: room.topic
+                    topic: room.topic,
+                    techniqueState: room.techniqueState || null
                 };
 
                 io.to(roomId).emit('room-update', roomData);
