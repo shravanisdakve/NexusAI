@@ -24,7 +24,7 @@ export const getGoals = async (): Promise<Goal[]> => {
     }
 };
 
-export const addGoal = async (goal: Omit<Goal, 'id' | 'userId'>): Promise<Goal | null> => {
+export const addGoal = async (goal: Omit<Goal, 'id' | 'userId' | 'createdAt'>): Promise<Goal | null> => {
     try {
         const response = await axios.post(`${API_URL}/api/goals`, goal, {
             headers: getAuthHeaders()

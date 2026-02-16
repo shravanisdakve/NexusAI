@@ -5,14 +5,10 @@ import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import {
     onRoomUpdate,
-    onMessagesUpdate,
     onNotesUpdate,
-    saveRoomMessages,
     joinRoom,
     leaveRoom,
     saveRoomAINotes,
-    saveUserNotes,
-    onUserNotesUpdate,
     uploadResource,
     deleteResource,
     onResourcesUpdate,
@@ -229,11 +225,6 @@ const StudyRoom: React.FC = () => {
             user: { displayName: 'Focus Bot', email: SYSTEM_EMAIL },
             timestamp: Date.now()
         };
-        // await saveRoomMessages(roomId, [systemMessage]); // REMOVED STUB
-        // System messages might need a special sender or be handled by backend. 
-        // For now, let's just send it as a special user or skip if backend handles join/leave.
-        // Backend handles join/leave system messages, so we might not need this client-side logic for "X left".
-        // But for "X uploaded resource", we might want it.
         await sendChatMessage(roomId, { ...systemMessage, text: text, sender: 'System' });
     }, [roomId]);
 
@@ -372,7 +363,6 @@ const StudyRoom: React.FC = () => {
                 return [...prev, newMessage];
             });
         });
-        // const unsubMessages = onMessagesUpdate(roomId, setAllMessages); // REMOVED STUB
         const unsubNotes = onNotesUpdate(roomId, setNotes);
 
         const unsubResources = onResourcesUpdate(roomId, setResources);
@@ -777,7 +767,7 @@ const StudyRoom: React.FC = () => {
 
     const handleModerationRequest = () => {
         if (!roomId) return;
-        requestModeration(roomId); // You'll need to export this from communityService or define it locally calling socket directly
+        requestModeration(roomId);
     };
 
     // --- Component Return ---

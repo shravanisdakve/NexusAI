@@ -234,6 +234,7 @@ export interface Thread {
         email: string;
     };
     upvotes: number;
+    upvotedBy?: string[];
     repliesCount: number;
     isVerified: boolean;
     pyqTag?: string;
@@ -250,6 +251,7 @@ export interface Post {
         email: string;
     };
     upvotes: number;
+    upvotedBy?: string[];
     isBestAnswer: boolean;
     createdAt: number;
 }

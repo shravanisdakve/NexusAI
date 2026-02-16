@@ -4,7 +4,6 @@ import { io, Socket } from 'socket.io-client';
 import { getResources } from './resourceService';
 
 const API_URL = import.meta.env.VITE_API_BASE_URL || '';
-// Socket URL is same as API URL usually, but can be different in production
 const SOCKET_URL = API_URL;
 
 let socket: Socket | null = null;
@@ -14,14 +13,7 @@ const getAuthHeaders = () => {
     return token ? { Authorization: `Bearer ${token}` } : {};
 };
 
-const getUserId = () => {
-    // Helper to get ID from token or context (simplified)
-    // Actually we should get this from AuthContext or decode token, 
-    // but for now we'll pass it in function args or rely on server auth middleware.
-    // For socket messages, we need to send userID explicitly.
-    // Let's assume the caller handles user info for now.
-    return '';
-}
+const isRoomId = (value: string) => /^[a-f0-9]{24}$/i.test(value);
 
 // --- Socket Initialization ---
 export const initializeSocket = (token: string) => {
@@ -51,121 +43,148 @@ export const getRooms = async (): Promise<StudyRoom[]> => {
         const response = await axios.get(`${API_URL}/api/community/rooms`, {
             headers: getAuthHeaders()
         });
-        if (response.data.success) {
-            return response.data.rooms;
-        }
-        return [];
+        return response.data.success ? response.data.rooms : [];
     } catch (error) {
-        console.error("Error fetching rooms:", error);
+        console.error('Error fetching rooms:', error);
         return [];
     }
 };
 
 export const getRoom = async (id: string): Promise<StudyRoom | null> => {
-    // For now, we fetch all and find one, or we can add a specific endpoint later
-    const rooms = await getRooms();
-    return rooms.find(r => r.id === id) || null;
+    try {
+        const response = await axios.get(`${API_URL}/api/community/rooms/${id}`, {
+            headers: getAuthHeaders()
+        });
+        return response.data.success ? response.data.room : null;
+    } catch (error) {
+        console.error(`Error fetching room ${id}:`, error);
+        return null;
+    }
 };
 
 export const addRoom = async (name: string, courseId: string, maxUsers: number, createdBy: any, university?: string, technique?: string, topic?: string): Promise<StudyRoom | null> => {
     try {
-        const response = await axios.post(`${API_URL}/api/community/rooms`, {
-            name, courseId, maxUsers, technique, topic
-        }, {
-            headers: getAuthHeaders()
-        });
+        const response = await axios.post(
+            `${API_URL}/api/community/rooms`,
+            { name, courseId, maxUsers, technique, topic },
+            { headers: getAuthHeaders() }
+        );
 
-        if (response.data.success) {
-            return response.data.room;
-        }
-        return null;
+        return response.data.success ? response.data.room : null;
     } catch (error) {
-        console.error("Error creating room:", error);
+        console.error('Error creating room:', error);
         return null;
     }
 };
 
-// --- Socket Events Wrappers ---
-
+// --- Socket Events ---
 export const joinRoom = (roomId: string, user?: any) => {
-    if (socket && user) {
+    if (!socket) return;
+    if (user) {
         socket.emit('join-room', roomId, { id: user.id, displayName: user.displayName, email: user.email });
-    } else if (socket) {
+    } else {
         socket.emit('join-room', roomId);
     }
 };
 
-export const leaveRoom = (roomId: string) => {
-    // Socket.io handles leave automatically on disconnect, or we can emit 'leave-room'
-    // For now, just client side cleanup
+export const leaveRoom = async (roomId: string) => {
+    try {
+        if (socket) {
+            socket.emit('leave-room', roomId);
+        }
+        await axios.post(`${API_URL}/api/community/rooms/${roomId}/leave`, {}, {
+            headers: getAuthHeaders()
+        });
+    } catch (error) {
+        console.error(`Error leaving room ${roomId}:`, error);
+    }
+};
+
+export const onRoomUpdate = (roomId: string, callback: (room: any) => void) => {
+    if (!socket) return () => { };
+
+    const handler = (room: any) => {
+        if (!roomId || room?.id === roomId) {
+            callback(room);
+        }
+    };
+
+    socket.on('room-update', handler);
+    return () => socket?.off('room-update', handler);
 };
 
 // --- Message Management ---
-
 export const getRoomMessages = async (roomId: string): Promise<ChatMessage[]> => {
     try {
         const response = await axios.get(`${API_URL}/api/community/rooms/${roomId}/messages`, {
             headers: getAuthHeaders()
         });
 
-        if (response.data.success) {
-            return response.data.messages.map((msg: any) => ({
-                id: msg.id,
-                text: msg.text,
-                sender: msg.sender,
-                isUser: msg.isUser,
-                timestamp: new Date(msg.timestamp).getTime()
-            })); // Map to ChatMessage type
-        }
-        return [];
+        if (!response.data.success) return [];
+
+        return response.data.messages.map((msg: any) => ({
+            id: msg.id,
+            role: 'user',
+            parts: [{ text: msg.text || '' }],
+            user: {
+                displayName: msg.sender || 'Unknown',
+                email: msg.email || msg.userId || 'unknown'
+            },
+            timestamp: msg.timestamp ? new Date(msg.timestamp).getTime() : Date.now()
+        }));
     } catch (error) {
-        console.error("Error fetching messages:", error);
+        console.error('Error fetching messages:', error);
         return [];
     }
 };
 
 export const sendChatMessage = async (roomId: string, message: any) => {
-    if (socket) {
-        socket.emit('send-message', {
-            roomId,
-            userId: message.userId,
-            email: message.email,
-            senderName: message.sender,
-            content: message.text
-        });
-    }
+    if (!socket) return;
+
+    socket.emit('send-message', {
+        roomId,
+        userId: message.userId,
+        email: message.email,
+        senderName: message.sender,
+        content: message.text
+    });
 };
 
+// Legacy API kept for compatibility with older call sites.
 export const onMessagesUpdate = (roomId: string, callback: (messages: ChatMessage[]) => void) => {
     if (!socket) return () => { };
 
-    const messageHandler = (msg: any) => {
-        // We receive a single message, but the callback expects an array usually?
-        // Or we can modify the callback to accept one.
-        // Actually, existing code expects a full list or we handle state update in component.
-        // Let's assume the component will append the new message.
-        // Wait, typical use is: `setMessages(prev => [...prev, newMessage])`
-        // But the signature here is `callback(messages[])`.
+    let currentMessages: ChatMessage[] = [];
+    getRoomMessages(roomId).then((messages) => {
+        currentMessages = messages;
+        callback(messages);
+    });
 
-        // Strategy: The component should listen to 'receive-message' directly via socket?
-        // Or we bridge it here.
-        // Given existing architecture, let's expose specific listener.
+    const handler = (rawMsg: any) => {
+        const newMessage: ChatMessage = {
+            id: rawMsg.id || Date.now().toString(),
+            role: 'user',
+            parts: [{ text: rawMsg.text || '' }],
+            user: {
+                displayName: rawMsg.sender || 'Unknown',
+                email: rawMsg.email || rawMsg.userId || 'unknown'
+            },
+            timestamp: rawMsg.timestamp ? new Date(rawMsg.timestamp).getTime() : Date.now()
+        };
+        currentMessages = [...currentMessages, newMessage];
+        callback(currentMessages);
     };
 
-    // This function signature is legacy Firebase (snapshot).
-    // It's better to let the COMPONENT subscribe to socket events.
-    // For now, we'll return a cleanup function.
-    return () => { };
+    socket.on('receive-message', handler);
+    return () => socket?.off('receive-message', handler);
 };
 
-// --- Helper to subscribe to socket messages in Component ---
 export const subscribeToMessages = (callback: (msg: any) => void) => {
     if (!socket) return () => { };
     socket.on('receive-message', callback);
     return () => socket?.off('receive-message', callback);
 };
 
-// --- Helper for Whiteboard ---
 export const subscribeToDraw = (callback: (data: any) => void) => {
     if (!socket) return () => { };
     socket.on('draw', callback);
@@ -180,48 +199,185 @@ export const requestModeration = (roomId: string) => {
     if (socket) socket.emit('request-moderation', { roomId });
 };
 
-// --- Legacy stubs to prevent crashing ---
-// --- Legacy stubs to prevent crashing ---
-export const saveRoomMessages = async (roomId: string, messages: any[]) => { };
-export const getRoomAINotes = async (roomId: string) => '';
-export const saveRoomAINotes = async (roomId: string, content: string) => { };
-export const onRoomUpdate = (roomId: string, callback: (room: any) => void) => {
+// --- Shared Room Notes ---
+export const saveRoomMessages = async (roomId: string, messages: any[]) => {
+    if (!messages.length) return;
+    await Promise.all(messages.map((message) => sendChatMessage(roomId, message)));
+};
+
+export const getRoomAINotes = async (roomId: string) => {
+    try {
+        const response = await axios.get(`${API_URL}/api/community/rooms/${roomId}/notes`, {
+            headers: getAuthHeaders()
+        });
+        return response.data.success ? (response.data.notes || '') : '';
+    } catch (error) {
+        console.error(`Error fetching room notes for ${roomId}:`, error);
+        return '';
+    }
+};
+
+export const saveRoomAINotes = async (roomId: string, content: string) => {
+    try {
+        await axios.put(`${API_URL}/api/community/rooms/${roomId}/notes`, { content }, {
+            headers: getAuthHeaders()
+        });
+    } catch (error) {
+        console.error(`Error saving room notes for ${roomId}:`, error);
+        throw error;
+    }
+};
+
+export const onNotesUpdate = (roomId: string, callback: any) => {
+    getRoomAINotes(roomId).then(callback);
     if (!socket) return () => { };
 
-    const handler = (room: any) => {
-        callback(room);
+    const handler = (payload: { roomId: string; content: string }) => {
+        if (payload.roomId === roomId) {
+            callback(payload.content || '');
+        }
     };
 
-    socket.on('room-update', handler);
-    return () => socket?.off('room-update', handler);
+    socket.on('room-notes-updated', handler);
+    return () => socket?.off('room-notes-updated', handler);
 };
-export const onNotesUpdate = (roomId: string, callback: any) => { return () => { } };
-export const saveUserNotes = async (roomId: string, userId: string, content: string) => { };
-export const onUserNotesUpdate = (roomId: string, userId: string, callback: any) => { return () => { } };
-export const deleteResource = async (roomId: string, fileName: string) => { };
-export const uploadResource = async (roomId: string, file: any, metadata: any) => { };
-export const getRoomResources = async (courseName: string) => {
+
+export const saveUserNotes = async (roomId: string, userId: string, content: string) => {
+    await axios.put(`${API_URL}/api/community/rooms/${roomId}/user-notes`, { userId, content }, {
+        headers: getAuthHeaders()
+    });
+};
+
+export const onUserNotesUpdate = (roomId: string, userId: string, callback: any) => {
+    axios.get(`${API_URL}/api/community/rooms/${roomId}/user-notes/${userId}`, {
+        headers: getAuthHeaders()
+    }).then((response) => {
+        callback(response.data?.content || '');
+    }).catch((error) => {
+        console.error(`Error loading initial user notes for ${roomId}/${userId}:`, error);
+        callback('');
+    });
+    if (!socket) return () => { };
+
+    const handler = (payload: { roomId: string; userId: string; content: string }) => {
+        if (payload.roomId === roomId && payload.userId === userId) {
+            callback(payload.content || '');
+        }
+    };
+
+    socket.on('room-user-notes-updated', handler);
+    return () => socket?.off('room-user-notes-updated', handler);
+};
+
+// --- Room Resources ---
+export const deleteResource = async (roomId: string, fileName: string) => {
+    await axios.delete(`${API_URL}/api/community/rooms/${roomId}/resources/${encodeURIComponent(fileName)}`, {
+        headers: getAuthHeaders()
+    });
+};
+
+export const uploadResource = async (roomId: string, file: any, metadata: any) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    if (metadata?.displayName) {
+        formData.append('displayName', metadata.displayName);
+    }
+
+    await axios.post(`${API_URL}/api/community/rooms/${roomId}/resources`, formData, {
+        headers: {
+            ...getAuthHeaders(),
+            'Content-Type': 'multipart/form-data'
+        }
+    });
+};
+
+export const getRoomResources = async (roomIdOrCourseName: string) => {
     try {
-        const resources = await getResources({ subject: courseName });
-        return resources;
-    } catch (e) {
-        console.error("Error fetching room resources:", e);
+        if (isRoomId(roomIdOrCourseName)) {
+            const response = await axios.get(`${API_URL}/api/community/rooms/${roomIdOrCourseName}/resources`, {
+                headers: getAuthHeaders()
+            });
+            return response.data.success ? response.data.resources : [];
+        }
+
+        // Fallback for course community (subject-based resources)
+        const resources = await getResources({ subject: roomIdOrCourseName });
+        return resources.map((resource: any) => ({
+            name: resource.title,
+            url: resource.link,
+            mimeType: 'external/link',
+            uploader: typeof resource.uploadedBy === 'string'
+                ? 'User'
+                : (resource.uploadedBy?.displayName || 'Unknown'),
+            timeCreated: resource.createdAt
+        }));
+    } catch (error) {
+        console.error('Error fetching room resources:', error);
         return [];
     }
 };
 
-export const onResourcesUpdate = (courseName: string, callback: any) => {
-    // For now, since we don't have a real subscription, just fetch once and call callback
-    getRoomResources(courseName).then(callback);
+export const onResourcesUpdate = (roomIdOrCourseName: string, callback: any) => {
+    if (isRoomId(roomIdOrCourseName)) {
+        getRoomResources(roomIdOrCourseName).then(callback);
+        if (!socket) return () => { };
+
+        const handler = (payload: { roomId: string; resources: any[] }) => {
+            if (payload.roomId === roomIdOrCourseName) {
+                callback(payload.resources || []);
+            }
+        };
+
+        socket.on('room-resources-updated', handler);
+        return () => socket?.off('room-resources-updated', handler);
+    }
+
+    // Course-community usage: one-shot fetch from global resource library.
+    getRoomResources(roomIdOrCourseName).then(callback);
     return () => { };
 };
-export const onQuizUpdate = (roomId: string, callback: any) => { return () => { } };
-export const saveQuiz = async (roomId: string, quiz: any) => { };
-export const saveQuizAnswer = async (roomId: string, userId: string, userName: string, index: number) => { };
-export const clearQuiz = async (roomId: string) => { };
+
+// --- Shared Quiz ---
+export const onQuizUpdate = (roomId: string, callback: any) => {
+    axios.get(`${API_URL}/api/community/rooms/${roomId}/quiz`, {
+        headers: getAuthHeaders()
+    }).then((response) => {
+        callback(response.data?.quiz || null);
+    }).catch((error) => {
+        console.error(`Error loading initial quiz for ${roomId}:`, error);
+        callback(null);
+    });
+    if (!socket) return () => { };
+
+    const handler = (payload: { roomId: string; quiz: any }) => {
+        if (payload.roomId === roomId) {
+            callback(payload.quiz || null);
+        }
+    };
+
+    socket.on('room-quiz-updated', handler);
+    return () => socket?.off('room-quiz-updated', handler);
+};
+
+export const saveQuiz = async (roomId: string, quiz: any) => {
+    await axios.put(`${API_URL}/api/community/rooms/${roomId}/quiz`, { quiz }, {
+        headers: getAuthHeaders()
+    });
+};
+
+export const saveQuizAnswer = async (roomId: string, userId: string, userName: string, index: number) => {
+    await axios.post(`${API_URL}/api/community/rooms/${roomId}/quiz/answer`, { userId, userName, index }, {
+        headers: getAuthHeaders()
+    });
+};
+
+export const clearQuiz = async (roomId: string) => {
+    await axios.delete(`${API_URL}/api/community/rooms/${roomId}/quiz`, {
+        headers: getAuthHeaders()
+    });
+};
 
 // --- Q&A FORUM SERVICES ---
-
 export const getThreads = async (courseId: string): Promise<Thread[]> => {
     try {
         const response = await axios.get(`${API_URL}/api/community/courses/${courseId}/threads`, {
@@ -229,19 +385,19 @@ export const getThreads = async (courseId: string): Promise<Thread[]> => {
         });
         return response.data.success ? response.data.threads : [];
     } catch (error) {
-        console.error("Error fetching threads:", error);
+        console.error('Error fetching threads:', error);
         return [];
     }
 };
 
-export const createThread = async (data: { courseId: string, title: string, content: string, category: string, pyqTag?: string }): Promise<Thread | null> => {
+export const createThread = async (data: { courseId: string; title: string; content: string; category: string; pyqTag?: string }): Promise<Thread | null> => {
     try {
         const response = await axios.post(`${API_URL}/api/community/threads`, data, {
             headers: getAuthHeaders()
         });
         return response.data.success ? response.data.thread : null;
     } catch (error) {
-        console.error("Error creating thread:", error);
+        console.error('Error creating thread:', error);
         return null;
     }
 };
@@ -253,7 +409,7 @@ export const getThreadPosts = async (threadId: string): Promise<Post[]> => {
         });
         return response.data.success ? response.data.posts : [];
     } catch (error) {
-        console.error("Error fetching posts:", error);
+        console.error('Error fetching posts:', error);
         return [];
     }
 };
@@ -265,31 +421,31 @@ export const createPost = async (threadId: string, content: string): Promise<Pos
         });
         return response.data.success ? response.data.post : null;
     } catch (error) {
-        console.error("Error creating post:", error);
+        console.error('Error creating post:', error);
         return null;
     }
 };
 
-export const upvoteThread = async (threadId: string): Promise<{ success: boolean, upvotes: number }> => {
+export const upvoteThread = async (threadId: string): Promise<{ success: boolean; upvotes: number }> => {
     try {
         const response = await axios.patch(`${API_URL}/api/community/threads/${threadId}/upvote`, {}, {
             headers: getAuthHeaders()
         });
         return { success: response.data.success, upvotes: response.data.upvotes };
     } catch (error) {
-        console.error("Error upvoting thread:", error);
+        console.error('Error upvoting thread:', error);
         return { success: false, upvotes: 0 };
     }
 };
 
-export const upvotePost = async (postId: string): Promise<{ success: boolean, upvotes: number }> => {
+export const upvotePost = async (postId: string): Promise<{ success: boolean; upvotes: number }> => {
     try {
         const response = await axios.patch(`${API_URL}/api/community/posts/${postId}/upvote`, {}, {
             headers: getAuthHeaders()
         });
         return { success: response.data.success, upvotes: response.data.upvotes };
     } catch (error) {
-        console.error("Error upvoting post:", error);
+        console.error('Error upvoting post:', error);
         return { success: false, upvotes: 0 };
     }
 };
@@ -301,7 +457,7 @@ export const markBestAnswer = async (postId: string): Promise<boolean> => {
         });
         return response.data.success;
     } catch (error) {
-        console.error("Error marking best answer:", error);
+        console.error('Error marking best answer:', error);
         return false;
     }
 };
@@ -312,6 +468,7 @@ export const joinCommunity = () => {
 
 export const onCommunityUpdate = (type: 'threads' | 'posts' | 'typing', callback: (data: any) => void) => {
     if (!socket) return () => { };
+
     let event = '';
     if (type === 'threads') event = 'update-threads';
     else if (type === 'posts') event = 'update-posts';
@@ -325,7 +482,7 @@ export const emitNewThread = (thread: any) => {
     if (socket) socket.emit('new-thread', thread);
 };
 
-export const emitNewPost = (data: { threadId: string, post: any }) => {
+export const emitNewPost = (data: { threadId: string; post: any }) => {
     if (socket) socket.emit('new-post', data);
 };
 

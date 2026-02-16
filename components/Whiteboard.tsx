@@ -133,7 +133,7 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ roomId }) => {
             <div className="p-4 bg-slate-800 border-b border-slate-700 flex justify-between items-center">
                 <div className="flex gap-2">
                     <Button
-                        variant={tool === 'pencil' ? 'default' : 'ghost'}
+                        variant={tool === 'pencil' ? 'secondary' : 'ghost'}
                         size="sm"
                         onClick={() => setTool('pencil')}
                         className={tool === 'pencil' ? 'bg-violet-600' : ''}
@@ -141,7 +141,7 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ roomId }) => {
                         <Pencil size={16} className="mr-2" /> Pencil
                     </Button>
                     <Button
-                        variant={tool === 'eraser' ? 'default' : 'ghost'}
+                        variant={tool === 'eraser' ? 'secondary' : 'ghost'}
                         size="sm"
                         onClick={() => setTool('eraser')}
                         className={tool === 'eraser' ? 'bg-slate-600' : ''}

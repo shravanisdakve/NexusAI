@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { getCourse } from '../services/courseService';
 import {
@@ -223,7 +223,13 @@ const CourseCommunity: React.FC = () => {
                   <span className="truncate">{res.name}</span>
                 </div>
               ))}
-              <Button variant="ghost" className="w-full text-xs text-violet-400 h-8">View Library</Button>
+              <Button
+                variant="ghost"
+                className="w-full text-xs text-violet-400 h-8"
+                onClick={() => navigate('/resources')}
+              >
+                View Library
+              </Button>
             </div>
           </div>
         </aside>
