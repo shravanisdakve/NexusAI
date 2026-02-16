@@ -24,7 +24,7 @@ const validatePassword = (password) => {
 // --- SIGNUP ENDPOINT ---
 router.post("/signup", async (req, res) => {
   try {
-    const { email, password, displayName, branch, year, college, avatar } = req.body;
+    const { email, password, displayName, branch, year, college, avatar, learningGoals, learningStyle, studyTime, targetExam, minorDegree, backlogs } = req.body;
 
     if (!email || !password || !displayName || !branch || !year || !college) {
       return res.status(400).json({ success: false, message: "All fields are required" });
@@ -49,6 +49,12 @@ router.post("/signup", async (req, res) => {
       year,
       college,
       avatar,
+      learningGoals,
+      learningStyle,
+      studyTime,
+      targetExam,
+      minorDegree,
+      backlogs,
       lastActive: Date.now()
     });
 

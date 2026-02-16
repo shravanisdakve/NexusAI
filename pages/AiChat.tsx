@@ -8,6 +8,7 @@ import { trackToolUsage } from '../services/personalizationService';
 import { startSession, endSession, recordQuizResult, getProductivityReport } from '../services/analyticsService';
 import { createChatSession, addMessageToSession } from '../services/aiChatService'; // Added import
 import { useLanguage } from '../contexts/LanguageContext';
+import { useAuth } from '../contexts/AuthContext';
 import { Bot, User, Send, Mic, Volume2, VolumeX, Lightbulb, Sparkles, Calendar, Image as ImageIcon, X, Paperclip } from 'lucide-react';
 
 interface Quiz {
@@ -140,7 +141,21 @@ const AiTutor: React.FC = () => {
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const location = useLocation();
     const navigate = useNavigate();
+    const { user } = useAuth(); // Get user context
     const proactiveMessageSent = useRef(false);
+
+    // Construct User System Context
+    const getUserContext = () => {
+        if (!user) return '';
+        const parts = [
+            `User: ${user.displayName || 'Student'}`,
+            `Context: ${user.branch || 'Engineering'} ${user.year ? user.year + ' Year' : ''}`,
+        ];
+        if (user.learningGoals?.length) parts.push(`Goals: ${user.learningGoals.join(', ')}`);
+        if (user.learningStyle) parts.push(`Learning Style: ${user.learningStyle}`);
+        if (user.targetExam) parts.push(`Preparing for: ${user.targetExam}`);
+        return `[SYSTEM_CONTEXT: ${parts.join(' | ')}]`;
+    };
 
     // Initialize Chat Session on Mount
     useEffect(() => {
@@ -307,6 +322,14 @@ const AiTutor: React.FC = () => {
 
         try {
             let contextPrompt = currentMessage;
+
+            // Inject User Context for better personalization
+            const userContext = getUserContext();
+            if (userContext) {
+                // We prepend it so the model knows who it is talking to
+                contextPrompt = `${userContext}\n\n${contextPrompt}`;
+            }
+
             if (studyMode === 'Feynman Technique') {
                 contextPrompt = `[MODE: FEYNMAN TECHNIQUE - Explain like I'm 10. Identify gaps.] User says: ${currentMessage}`;
             } else if (studyMode === 'Spaced Repetition') {

@@ -7,7 +7,7 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  signup: (displayName: string, email: string, password: string, college: string, branch: string, year: number) => Promise<void>;
+  signup: (displayName: string, email: string, password: string, college: string, branch: string, year: number, additionalData?: any) => Promise<void>;
   logout: () => void;
   isAuthenticated: boolean;
   updateUserProfile: (updates: Partial<User>) => Promise<void>;
@@ -75,7 +75,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  const signup = async (displayName: string, email: string, password: string, college: string, branch: string, year: number) => {
+  const signup = async (
+    displayName: string,
+    email: string,
+    password: string,
+    college: string,
+    branch: string,
+    year: number,
+    additionalData?: any // Added for personalization flow
+  ) => {
     try {
       const response = await axios.post('/api/auth/signup', {
         displayName,
@@ -84,6 +92,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         college,
         branch,
         year,
+        ...additionalData // Spread the additional data
       });
 
       if (response.data.success) {
