@@ -2,9 +2,11 @@ import React, { useState, useMemo } from 'react';
 import { PageHeader, Button, Input } from '../components/ui';
 import { Shield, AlertTriangle, CheckCircle, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useLanguage } from '../contexts/LanguageContext';
 
 const KTCalculator: React.FC = () => {
     const navigate = useNavigate();
+    const { t } = useLanguage();
     const [ia1, setIa1] = useState<number | ''>('');
     const [ia2, setIa2] = useState<number | ''>('');
     const [endSemMax, setEndSemMax] = useState<80 | 60>(80);
@@ -47,56 +49,56 @@ const KTCalculator: React.FC = () => {
                     <ArrowLeft size={20} />
                 </Button>
                 <PageHeader
-                    title="KT Avoidance Tool"
-                    subtitle="Calculate exactly what you need to clear your Mumbai University papers."
+                    title={t('kt.title')}
+                    subtitle={t('kt.subtitle')}
                 />
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 <div className="bg-slate-800/50 rounded-2xl p-8 ring-1 ring-slate-700 space-y-6">
                     <h3 className="text-xl font-bold text-slate-100 flex items-center gap-3">
-                        <Shield className="text-sky-400" /> Exam Parameters
+                        <Shield className="text-sky-400" /> {t('kt.examParameters')}
                     </h3>
 
                     <div className="space-y-4">
                         <div>
-                            <label className="block text-sm font-medium text-slate-400 mb-2">Internal Assessment 1 (Out of 20)</label>
+                            <label className="block text-sm font-medium text-slate-400 mb-2">{t('kt.ia1')}</label>
                             <Input
                                 id="ia1-marks"
                                 name="ia1"
                                 type="number"
                                 value={ia1}
                                 onChange={(e) => setIa1(e.target.value === '' ? '' : Math.min(20, Math.max(0, parseInt(e.target.value))))}
-                                placeholder="Enter IA1 marks"
+                                placeholder={t('kt.enterIa1')}
                                 className="bg-slate-900/50"
                             />
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-slate-400 mb-2">Internal Assessment 2 (Out of 20)</label>
+                            <label className="block text-sm font-medium text-slate-400 mb-2">{t('kt.ia2')}</label>
                             <Input
                                 id="ia2-marks"
                                 name="ia2"
                                 type="number"
                                 value={ia2}
                                 onChange={(e) => setIa2(e.target.value === '' ? '' : Math.min(20, Math.max(0, parseInt(e.target.value))))}
-                                placeholder="Enter IA2 marks"
+                                placeholder={t('kt.enterIa2')}
                                 className="bg-slate-900/50"
                             />
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-slate-400 mb-2">End Sem Paper Weightage</label>
+                            <label className="block text-sm font-medium text-slate-400 mb-2">{t('kt.endSemWeightage')}</label>
                             <div className="flex gap-4 mt-2">
                                 <button
                                     onClick={() => setEndSemMax(80)}
                                     className={`flex-1 py-3 rounded-xl border-2 transition-all ${endSemMax === 80 ? 'border-sky-500 bg-sky-500/10 text-sky-400' : 'border-slate-700 text-slate-400 hover:border-slate-600'}`}
                                 >
-                                    80 Marks
+                                    {t('kt.marks80')}
                                 </button>
                                 <button
                                     onClick={() => setEndSemMax(60)}
                                     className={`flex-1 py-3 rounded-xl border-2 transition-all ${endSemMax === 60 ? 'border-sky-500 bg-sky-500/10 text-sky-400' : 'border-slate-700 text-slate-400 hover:border-slate-600'}`}
                                 >
-                                    60 Marks
+                                    {t('kt.marks60')}
                                 </button>
                             </div>
                         </div>
@@ -110,7 +112,7 @@ const KTCalculator: React.FC = () => {
                         }`}>
                         <div className="flex justify-between items-start mb-6">
                             <div>
-                                <h3 className="text-slate-400 text-sm font-semibold uppercase tracking-wider">Required Marks</h3>
+                                <h3 className="text-slate-400 text-sm font-semibold uppercase tracking-wider">{t('kt.requiredMarks')}</h3>
                                 <div className="text-5xl font-black text-slate-100 mt-2">
                                     {calculation.finalRequired}
                                     <span className="text-xl text-slate-500 font-medium ml-2">/ {endSemMax}</span>
@@ -128,30 +130,30 @@ const KTCalculator: React.FC = () => {
 
                         <div className="space-y-4">
                             <div className="p-4 rounded-xl bg-slate-900/50 flex justify-between items-center">
-                                <span className="text-slate-400 text-sm">IA Average Score</span>
+                                <span className="text-slate-400 text-sm">{t('kt.iaAverage')}</span>
                                 <span className="text-slate-100 font-bold">{calculation.iaTotal} / 20</span>
                             </div>
                             <div className="p-4 rounded-xl bg-slate-900/50 flex justify-between items-center">
-                                <span className="text-slate-400 text-sm">Min. Required in Theory</span>
+                                <span className="text-slate-400 text-sm">{t('kt.minRequiredTheory')}</span>
                                 <span className="text-slate-100 font-bold">{calculation.minInEndSem} / {endSemMax}</span>
                             </div>
                         </div>
 
                         <div className="mt-8">
                             <p className="text-sm font-medium opacity-80 leading-relaxed italic">
-                                {calculation.status === 'safe' && "You're in the safe zone! Focus on maintaining consistent scores."}
-                                {calculation.status === 'caution' && "Stay cautious. You need a solid performance in the End Sem to clear this."}
-                                {calculation.status === 'danger' && "Danger! IA scores are low. You must score highly in the End Sem to avoid a KT."}
+                                {calculation.status === 'safe' && t('kt.safe')}
+                                {calculation.status === 'caution' && t('kt.caution')}
+                                {calculation.status === 'danger' && t('kt.danger')}
                             </p>
                         </div>
                     </div>
 
                     <div className="bg-slate-800/30 rounded-2xl p-6 ring-1 ring-slate-700 border-l-4 border-sky-500">
                         <h4 className="text-sky-400 font-bold mb-2 flex items-center gap-2">
-                            <Shield size={16} /> MU Passing Rule Note
+                            <Shield size={16} /> {t('kt.ruleNoteTitle')}
                         </h4>
                         <p className="text-xs text-slate-400 leading-relaxed">
-                            Under Mumbai University regulations, you generally need 40% combined in Internal Assessment and End Sem. However, you MUST score at least 40% (32/80 or 24/60) in the theory paper specifically to pass the subject.
+                            {t('kt.ruleNoteBody')}
                         </p>
                     </div>
                 </div>

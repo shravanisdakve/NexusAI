@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Shuffle, Brain, Check, X, Star, Zap } from 'lucide-react';
 import { Button } from './ui';
 import Flashcard from './Flashcard';
@@ -9,12 +9,18 @@ interface FlashcardDeckProps {
     cards: FlashcardType[];
     title?: string;
     courseId?: string;
+    onCardsChange?: (cards: FlashcardType[]) => void;
 }
 
-const FlashcardDeck: React.FC<FlashcardDeckProps> = ({ cards: initialCards, title, courseId }) => {
+const FlashcardDeck: React.FC<FlashcardDeckProps> = ({ cards: initialCards, title, courseId, onCardsChange }) => {
     const [currentIndex, setCurrentIndex] = useState(0);
     const [cards, setCards] = useState(initialCards);
     const [isFlipped, setIsFlipped] = useState(false);
+
+    useEffect(() => {
+        setCards(initialCards);
+        setCurrentIndex((prev) => Math.min(prev, Math.max(0, initialCards.length - 1)));
+    }, [initialCards]);
 
     const handleNext = () => {
         setIsFlipped(false);
@@ -29,12 +35,13 @@ const FlashcardDeck: React.FC<FlashcardDeckProps> = ({ cards: initialCards, titl
     const handleShuffle = () => {
         const shuffled = [...cards].sort(() => Math.random() - 0.5);
         setCards(shuffled);
+        onCardsChange?.(shuffled);
         setCurrentIndex(0);
         setIsFlipped(false);
     };
 
     const handleReview = async (quality: 'again' | 'hard' | 'good' | 'easy') => {
-        if (!courseId) return;
+        if (cards.length === 0) return;
 
         const currentCard = cards[currentIndex];
         let newBucket = currentCard.bucket || 1;
@@ -46,19 +53,39 @@ const FlashcardDeck: React.FC<FlashcardDeckProps> = ({ cards: initialCards, titl
             case 'easy': newBucket = Math.min(5, newBucket + 2); break;
         }
 
+        const reviewedAt = Date.now();
+        const updatedCard: FlashcardType = {
+            ...currentCard,
+            bucket: newBucket,
+            lastReview: reviewedAt
+        };
+
+        // Spaced repetition queue behavior:
+        // difficult cards reappear sooner, easy cards much later.
+        const sessionOffsetByQuality: Record<'again' | 'hard' | 'good' | 'easy', number> = {
+            again: 1,
+            hard: 2,
+            good: Math.max(3, Math.min(6, cards.length - 1)),
+            easy: Math.max(5, Math.min(10, cards.length - 1))
+        };
+
+        const reordered = [...cards];
+        reordered.splice(currentIndex, 1);
+        const insertAt = Math.min(reordered.length, sessionOffsetByQuality[quality]);
+        reordered.splice(insertAt, 0, updatedCard);
+
+        setCards(reordered);
+        onCardsChange?.(reordered);
+        setCurrentIndex(0);
+        setIsFlipped(false);
+
         try {
-            await updateFlashcard(courseId, currentCard.id, {
-                bucket: newBucket,
-                lastReview: Date.now()
-            });
-
-            // Update local state
-            const updatedCards = [...cards];
-            updatedCards[currentIndex] = { ...currentCard, bucket: newBucket, lastReview: Date.now() };
-            setCards(updatedCards);
-
-            // Move to next card automatically (gamification / flow)
-            setTimeout(handleNext, 300);
+            if (courseId) {
+                await updateFlashcard(courseId, currentCard.id, {
+                    bucket: newBucket,
+                    lastReview: reviewedAt
+                });
+            }
         } catch (error) {
             console.error("Failed to update flashcard", error);
         }

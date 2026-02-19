@@ -28,6 +28,7 @@ import ProjectGenerator from './pages/ProjectGenerator';
 import MockPaperGenerator from './pages/MockPaperGenerator';
 import ATKTCalculator from './pages/ATKTCalculator';
 import CurriculumExplorer from './pages/CurriculumExplorer';
+import ResumeBuilder from './pages/ResumeBuilder';
 
 import PlacementArena from './pages/PlacementArena';
 import TCSNQTSimulator from './pages/TCSNQTSimulator';
@@ -81,7 +82,9 @@ const App: React.FC = () => {
         <Route path="/curriculum" element={<ProtectedRoute><CurriculumExplorer /></ProtectedRoute>} />
 
         <Route path="/placement" element={<ProtectedRoute><PlacementArena /></ProtectedRoute>} />
+        <Route path="/resume-builder" element={<ProtectedRoute><ResumeBuilder /></ProtectedRoute>} />
         <Route path="/placement/tcs-nqt" element={<ProtectedRoute><TCSNQTSimulator /></ProtectedRoute>} />
+        <Route path="/placement/:simulatorSlug" element={<ProtectedRoute><TCSNQTSimulator /></ProtectedRoute>} />
         <Route path="/university-status" element={<ProtectedRoute><UniversityStatus /></ProtectedRoute>} />
         <Route path="/gpa-calculator" element={<ProtectedRoute><GPACalculator /></ProtectedRoute>} />
         <Route path="/project-generator" element={<ProtectedRoute><ProjectGenerator /></ProtectedRoute>} />

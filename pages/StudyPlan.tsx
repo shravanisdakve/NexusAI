@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { PageHeader, Button, Input, Select, Textarea } from '../components/ui';
 import { Calendar, Target, Clock, Sparkles, ArrowLeft, Download, CheckCircle, List } from 'lucide-react';
-import { generateStudyPlan } from '../services/geminiService';
+import { generateStudyPlan, parseStudyPlanPayload } from '../services/geminiService';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../contexts/LanguageContext';
 
@@ -16,6 +16,57 @@ interface StudyPlanData {
     }[];
     tips: string[];
 }
+
+const inferTechniqueFromType = (type: string): string => {
+    const normalized = String(type || '').toLowerCase();
+    if (normalized === 'quiz') return 'Active Recall';
+    if (normalized === 'study-room') return 'Collaborative Learning';
+    if (normalized === 'review') return 'Spaced Repetition';
+    return 'Focused Practice';
+};
+
+const normalizeStudyPlanForDisplay = (raw: any, goal: string, durationDays: number): StudyPlanData => {
+    const rawDays = Array.isArray(raw)
+        ? raw
+        : Array.isArray(raw?.schedule)
+            ? raw.schedule
+            : Array.isArray(raw?.days)
+                ? raw.days
+                : [];
+
+    const schedule = rawDays.map((entry: any, index: number) => {
+        const tasksRaw = Array.isArray(entry?.tasks) ? entry.tasks : [];
+        const tasks = tasksRaw.map((task: any, taskIndex: number) => ({
+            task: String(task?.task || task?.title || `Task ${taskIndex + 1}`),
+            duration: String(task?.duration || '45 min'),
+            technique: String(task?.technique || inferTechniqueFromType(task?.type)),
+        }));
+
+        const resources = Array.isArray(entry?.resources)
+            ? entry.resources.map((item: any) => String(item)).filter(Boolean)
+            : [];
+
+        return {
+            day: Number(entry?.day) || index + 1,
+            focus: String(entry?.focus || entry?.title || `Day ${index + 1} Focus`),
+            tasks,
+            resources,
+        };
+    });
+
+    return {
+        title: String(raw?.title || `Study Plan: ${goal}`),
+        overview: String(raw?.overview || `A ${durationDays}-day roadmap to help you achieve: ${goal}`),
+        schedule,
+        tips: Array.isArray(raw?.tips)
+            ? raw.tips.map((tip: any) => String(tip)).filter(Boolean)
+            : [
+                'Stick to the plan consistently and track progress daily.',
+                'Use active recall and short self-tests after every session.',
+                'Revise weak areas at the end of each day.',
+            ],
+    };
+};
 
 const StudyPlan: React.FC = () => {
     const navigate = useNavigate();
@@ -38,8 +89,8 @@ const StudyPlan: React.FC = () => {
 
             const context = `Level: ${currentLevel}. Subjects: ${subjects}. Timeframe: ${timeframe}`;
             const resultJson = await generateStudyPlan(goal, days, context, language);
-            const parsedPlan = JSON.parse(resultJson);
-            setPlan(parsedPlan);
+            const parsedPlan = parseStudyPlanPayload(resultJson);
+            setPlan(normalizeStudyPlanForDisplay(parsedPlan, goal, days));
         } catch (error) {
             console.error("Error generating plan:", error);
         } finally {

@@ -33,22 +33,36 @@ const uploadRoomResource = multer({
 const mapUsers = (room) => (
     room.participants
         .map((p) => ({
+            id: p.user?._id?.toString() || '',
             email: p.user?.email || '',
             displayName: p.user?.displayName || 'Unknown'
         }))
 );
 
-const mapRoom = (room) => ({
-    id: room._id,
-    name: room.name,
-    courseId: room.courseId,
-    maxUsers: room.maxUsers,
-    users: mapUsers(room),
-    createdBy: room.createdBy?.displayName || 'Unknown',
-    technique: room.technique,
-    topic: room.topic,
-    techniqueState: room.techniqueState || null
-});
+const mapRoom = (room) => {
+    const users = mapUsers(room);
+    const mutedUserIdSet = new Set((room.chatMutedUserIds || []).map((id) => id.toString()));
+    const mutedUserEmails = users
+        .filter((user) => user.id && mutedUserIdSet.has(user.id))
+        .map((user) => user.email)
+        .filter(Boolean);
+
+    return {
+        id: room._id,
+        name: room.name,
+        courseId: room.courseId,
+        maxUsers: room.maxUsers,
+        users,
+        createdBy: room.createdBy?.displayName || 'Unknown',
+        createdById: room.createdBy?._id?.toString() || '',
+        createdByEmail: room.createdBy?.email || '',
+        mutedUserIds: Array.from(mutedUserIdSet),
+        mutedUserEmails,
+        technique: room.technique,
+        topic: room.topic,
+        techniqueState: room.techniqueState || null
+    };
+};
 
 const emitRoomUpdate = (io, room) => {
     if (!io) return;
@@ -224,7 +238,7 @@ const advanceTechniqueState = (state) => {
 router.get('/rooms', auth, async (req, res) => {
     try {
         const rooms = await StudyRoom.find({ active: true })
-            .populate('createdBy', 'displayName')
+            .populate('createdBy', 'displayName email')
             .populate('participants.user', 'displayName email')
             .sort({ createdAt: -1 });
 
@@ -254,7 +268,7 @@ router.post('/rooms', auth, async (req, res) => {
         });
 
         await room.save();
-        await room.populate('createdBy', 'displayName');
+        await room.populate('createdBy', 'displayName email');
         await room.populate('participants.user', 'displayName email');
 
         res.status(201).json({ success: true, room: mapRoom(room) });
@@ -270,7 +284,7 @@ router.post('/rooms', auth, async (req, res) => {
 router.post('/rooms/:roomId/leave', auth, async (req, res) => {
     try {
         const room = await StudyRoom.findById(req.params.roomId)
-            .populate('createdBy', 'displayName')
+            .populate('createdBy', 'displayName email')
             .populate('participants.user', 'displayName email');
 
         if (!room) {
@@ -278,6 +292,7 @@ router.post('/rooms/:roomId/leave', auth, async (req, res) => {
         }
 
         room.participants = room.participants.filter((p) => p.user?._id?.toString() !== req.user.id);
+        room.chatMutedUserIds = (room.chatMutedUserIds || []).filter((id) => id.toString() !== req.user.id);
         await room.save();
         await room.populate('participants.user', 'displayName email');
 
@@ -290,16 +305,212 @@ router.post('/rooms/:roomId/leave', auth, async (req, res) => {
     }
 });
 
+// @route   PATCH /api/community/rooms/:roomId
+// @desc    Update room metadata (host only)
+// @access  Private
+router.patch('/rooms/:roomId', auth, async (req, res) => {
+    try {
+        const { name, topic, maxUsers } = req.body || {};
+
+        const room = await StudyRoom.findById(req.params.roomId)
+            .populate('createdBy', 'displayName email')
+            .populate('participants.user', 'displayName email');
+
+        if (!room || !room.active) {
+            return res.status(404).json({ success: false, message: 'Room not found' });
+        }
+
+        const hostId = room.createdBy?._id?.toString();
+        if (!hostId || hostId !== req.user.id) {
+            return res.status(403).json({ success: false, message: 'Only the room host can update this room' });
+        }
+
+        if (typeof name === 'string') {
+            const trimmed = name.trim();
+            if (trimmed.length < 3 || trimmed.length > 120) {
+                return res.status(400).json({ success: false, message: 'Room name must be between 3 and 120 characters' });
+            }
+            room.name = trimmed;
+        }
+
+        if (typeof topic === 'string') {
+            room.topic = topic.trim().slice(0, 120);
+        }
+
+        if (maxUsers !== undefined) {
+            const parsedMaxUsers = Number(maxUsers);
+            if (!Number.isInteger(parsedMaxUsers) || parsedMaxUsers < 2 || parsedMaxUsers > 60) {
+                return res.status(400).json({ success: false, message: 'Max users must be an integer between 2 and 60' });
+            }
+            if (parsedMaxUsers < room.participants.length) {
+                return res.status(400).json({ success: false, message: 'Max users cannot be lower than current participant count' });
+            }
+            room.maxUsers = parsedMaxUsers;
+        }
+
+        await room.save();
+        await room.populate('createdBy', 'displayName email');
+        await room.populate('participants.user', 'displayName email');
+
+        emitRoomUpdate(req.app.get('io'), room);
+
+        res.json({ success: true, room: mapRoom(room) });
+    } catch (error) {
+        console.error('Error updating room:', error);
+        res.status(500).json({ success: false, message: 'Server Error' });
+    }
+});
+
+// @route   DELETE /api/community/rooms/:roomId
+// @desc    Delete (deactivate) room (host only)
+// @access  Private
+router.delete('/rooms/:roomId', auth, async (req, res) => {
+    try {
+        const room = await StudyRoom.findById(req.params.roomId)
+            .populate('createdBy', 'displayName email')
+            .populate('participants.user', 'displayName email');
+
+        if (!room || !room.active) {
+            return res.status(404).json({ success: false, message: 'Room not found' });
+        }
+
+        const hostId = room.createdBy?._id?.toString();
+        if (!hostId || hostId !== req.user.id) {
+            return res.status(403).json({ success: false, message: 'Only the room host can delete this room' });
+        }
+
+        room.active = false;
+        room.participants = [];
+        room.chatMutedUserIds = [];
+        await room.save();
+
+        const io = req.app.get('io');
+        if (io) {
+            io.to(room._id.toString()).emit('room-update', null);
+            io.to(room._id.toString()).emit('room-closed', {
+                roomId: room._id.toString(),
+                reason: 'deleted_by_host'
+            });
+        }
+
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Error deleting room:', error);
+        res.status(500).json({ success: false, message: 'Server Error' });
+    }
+});
+
+// @route   POST /api/community/rooms/:roomId/members/moderate
+// @desc    Host moderation actions on room members
+// @access  Private (host only)
+router.post('/rooms/:roomId/members/moderate', auth, async (req, res) => {
+    try {
+        const { action, targetUserId, targetUserEmail } = req.body || {};
+        const allowedActions = new Set(['mute_chat', 'unmute_chat', 'remove', 'transfer_host']);
+
+        if (!allowedActions.has(action)) {
+            return res.status(400).json({ success: false, message: 'Unsupported moderation action' });
+        }
+
+        const room = await StudyRoom.findById(req.params.roomId)
+            .populate('createdBy', 'displayName email')
+            .populate('participants.user', 'displayName email');
+
+        if (!room) {
+            return res.status(404).json({ success: false, message: 'Room not found' });
+        }
+
+        const hostId = room.createdBy?._id?.toString();
+        if (!hostId || hostId !== req.user.id) {
+            return res.status(403).json({ success: false, message: 'Only the room host can perform this action' });
+        }
+
+        const normalizedEmail = String(targetUserEmail || '').trim().toLowerCase();
+        const normalizedTargetId = String(targetUserId || '').trim();
+
+        const targetParticipant = room.participants.find((participant) => {
+            const participantId = participant.user?._id?.toString() || '';
+            const participantEmail = String(participant.user?.email || '').trim().toLowerCase();
+            if (normalizedTargetId && participantId === normalizedTargetId) return true;
+            if (normalizedEmail && participantEmail === normalizedEmail) return true;
+            return false;
+        });
+
+        if (!targetParticipant?.user?._id) {
+            return res.status(404).json({ success: false, message: 'Target participant not found in this room' });
+        }
+
+        const targetId = targetParticipant.user._id.toString();
+        const targetDisplayName = targetParticipant.user.displayName || 'Student';
+        const targetEmail = targetParticipant.user.email || '';
+
+        if (action === 'transfer_host' && targetId === hostId) {
+            return res.status(400).json({ success: false, message: 'This user is already the host' });
+        }
+
+        if ((action === 'mute_chat' || action === 'remove') && targetId === hostId) {
+            return res.status(400).json({ success: false, message: 'Host action on self is not allowed' });
+        }
+
+        let message = '';
+
+        if (action === 'mute_chat') {
+            const alreadyMuted = (room.chatMutedUserIds || []).some((id) => id.toString() === targetId);
+            if (!alreadyMuted) {
+                room.chatMutedUserIds = [...(room.chatMutedUserIds || []), targetId];
+            }
+            message = `${targetDisplayName} was muted in room chat.`;
+        }
+
+        if (action === 'unmute_chat') {
+            room.chatMutedUserIds = (room.chatMutedUserIds || []).filter((id) => id.toString() !== targetId);
+            message = `${targetDisplayName} was unmuted in room chat.`;
+        }
+
+        if (action === 'remove') {
+            room.participants = room.participants.filter((participant) => participant.user?._id?.toString() !== targetId);
+            room.chatMutedUserIds = (room.chatMutedUserIds || []).filter((id) => id.toString() !== targetId);
+            message = `${targetDisplayName} was removed from the room.`;
+        }
+
+        if (action === 'transfer_host') {
+            room.createdBy = targetId;
+            message = `${targetDisplayName} is now the room host.`;
+        }
+
+        await room.save();
+        await room.populate('createdBy', 'displayName email');
+        await room.populate('participants.user', 'displayName email');
+
+        emitRoomUpdate(req.app.get('io'), room);
+
+        res.json({
+            success: true,
+            message,
+            action,
+            target: {
+                id: targetId,
+                email: targetEmail,
+                displayName: targetDisplayName
+            },
+            room: mapRoom(room)
+        });
+    } catch (error) {
+        console.error('Error moderating room member:', error);
+        res.status(500).json({ success: false, message: 'Server Error' });
+    }
+});
+
 // @route   GET /api/community/rooms/:roomId
 // @desc    Get a specific room's details with participants
 // @access  Private
 router.get('/rooms/:roomId', auth, async (req, res) => {
     try {
         const room = await StudyRoom.findById(req.params.roomId)
-            .populate('createdBy', 'displayName')
+            .populate('createdBy', 'displayName email')
             .populate('participants.user', 'displayName email');
 
-        if (!room) {
+        if (!room || !room.active) {
             return res.status(404).json({ success: false, message: 'Room not found' });
         }
 
@@ -392,6 +603,8 @@ router.put('/rooms/:roomId/technique-state', auth, async (req, res) => {
 
         room.markModified('techniqueState');
         await room.save();
+        await room.populate('createdBy', 'displayName email');
+        await room.populate('participants.user', 'displayName email');
 
         emitTechniqueUpdate(req.app.get('io'), room);
         emitRoomUpdate(req.app.get('io'), room);
@@ -431,6 +644,8 @@ router.post('/rooms/:roomId/technique-state/advance', auth, async (req, res) => 
         advanceTechniqueState(state);
         room.markModified('techniqueState');
         await room.save();
+        await room.populate('createdBy', 'displayName email');
+        await room.populate('participants.user', 'displayName email');
 
         emitTechniqueUpdate(req.app.get('io'), room);
         emitRoomUpdate(req.app.get('io'), room);

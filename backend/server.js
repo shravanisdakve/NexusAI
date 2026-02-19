@@ -22,17 +22,38 @@ const rateLimit = require('express-rate-limit');
 // ... (DB Connection and Socket setup remians same)
 
 // 2. Security & Performance Middleware
+const isProduction = process.env.NODE_ENV === 'production';
 app.use(helmet({
   contentSecurityPolicy: false, // Disabled for simplicity in dev/demo; enable and configure for strict prod
-  crossOriginEmbedderPolicy: false
+  crossOriginEmbedderPolicy: false,
+  // Allow localhost frontend (different port/origin) to embed backend content during development.
+  xFrameOptions: isProduction ? { action: 'sameorigin' } : false
 }));
+
+if (!isProduction) {
+  app.use((req, res, next) => {
+    res.removeHeader('X-Frame-Options');
+    next();
+  });
+}
 app.use(compression());
 
 // CORS Configuration
+const devAllowedOrigins = [
+  'http://localhost:3000',
+  'http://localhost:5173',
+  'http://localhost:5174',
+  'http://localhost:4173',
+  'http://127.0.0.1:3000',
+  'http://127.0.0.1:5173',
+  'http://127.0.0.1:5174',
+  'http://127.0.0.1:4173'
+];
+
 const corsOptions = {
-  origin: process.env.NODE_ENV === 'production'
+  origin: isProduction
     ? (process.env.FRONTEND_URL || 'https://yourdomain.com') // Update this after deployment
-    : ['http://localhost:3000', 'http://localhost:5173', 'http://localhost:5174'],
+    : devAllowedOrigins,
   credentials: true
 };
 app.use(cors(corsOptions));
@@ -40,7 +61,7 @@ app.use(cors(corsOptions));
 // Rate Limiting (Apply to API requests)
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: process.env.NODE_ENV === 'production' ? 600 : 5000,
+  max: isProduction ? 600 : 5000,
   standardHeaders: true,
   legacyHeaders: false,
   skip: (req) => req.method === 'OPTIONS'
@@ -48,8 +69,9 @@ const limiter = rateLimit({
 app.use('/api', limiter);
 
 // 3. Body Parsers
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+const requestBodyLimit = process.env.REQUEST_BODY_LIMIT || '10mb';
+app.use(express.json({ limit: requestBodyLimit }));
+app.use(express.urlencoded({ extended: true, limit: requestBodyLimit }));
 
 // 3.5. Serve uploaded files
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
@@ -76,6 +98,8 @@ app.use('/api/goals', require('./routes/goals'));
 app.use('/api/atkt', require('./routes/atkt'));
 app.use('/api/curriculum', require('./routes/curriculum'));
 app.use('/api/placement', require('./routes/placement'));
+app.use('/api/university', require('./routes/university'));
+app.use('/api/personalization', require('./routes/personalization'));
 app.use('/api/ai-chat', require('./routes/aiChat'));
 app.use('/api/gamification', require('./routes/gamification'));
 
@@ -85,7 +109,7 @@ app.get('/api/health', (req, res) => {
 });
 
 // 7. Serve Frontend in Production
-if (process.env.NODE_ENV === 'production') {
+if (isProduction) {
   // Serve static files from the React frontend app
   app.use(express.static(path.join(__dirname, '../dist')));
 
@@ -105,7 +129,7 @@ app.use((err, req, res, next) => {
   console.error('Server Error:', err.stack);
   res.status(err.status || 500).json({
     success: false,
-    message: process.env.NODE_ENV === 'production'
+    message: isProduction
       ? 'Internal server error'
       : err.message
   });

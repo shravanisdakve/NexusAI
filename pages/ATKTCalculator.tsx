@@ -12,8 +12,10 @@ import {
 } from 'lucide-react';
 import { calculateGrace, checkProgression, SubjectMarks } from '@/services/atkService';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useLanguage } from '../contexts/LanguageContext';
 
 const ATKTCalculator: React.FC = () => {
+    const { t } = useLanguage();
     const [subjects, setSubjects] = useState<SubjectMarks[]>([
         { name: 'Applied Mathematics-I', obtainedMarks: 0, passingMarks: 32, distinctionMarks: 60, status: 'Fail' },
         { name: 'Engineering Mechanics', obtainedMarks: 0, passingMarks: 32, distinctionMarks: 60, status: 'Fail' },
@@ -69,8 +71,8 @@ const ATKTCalculator: React.FC = () => {
     return (
         <div className="space-y-6 max-w-6xl mx-auto">
             <PageHeader
-                title="MU ATKT & Grace Marks Navigator"
-                subtitle="Navigate the complexities of Mumbai University ordinances and NEP progression rules with precision."
+                title={t('atk.title')}
+                subtitle={t('atk.subtitle')}
                 icon={<Calculator className="w-8 h-8 text-purple-400" />}
             />
 
@@ -81,10 +83,10 @@ const ATKTCalculator: React.FC = () => {
                         <div className="flex items-center justify-between mb-6">
                             <h2 className="text-xl font-semibold flex items-center gap-2">
                                 <GraduationCap className="text-blue-400" />
-                                Academic Scorecard
+                                {t('atk.academicScorecard')}
                             </h2>
                             <Button variant="outline" size="sm" onClick={addSubject} className="gap-2">
-                                <TrendingUp className="w-4 h-4" /> Add Subject
+                                <TrendingUp className="w-4 h-4" /> {t('atk.addSubject')}
                             </Button>
                         </div>
 
@@ -97,15 +99,15 @@ const ATKTCalculator: React.FC = () => {
                                     className="grid grid-cols-1 md:grid-cols-12 gap-4 p-4 rounded-xl bg-slate-900/50 border border-slate-700/50 relative group"
                                 >
                                     <div className="md:col-span-5">
-                                        <label className="text-xs text-slate-400 mb-1 block">Subject Name</label>
+                                        <label className="text-xs text-slate-400 mb-1 block">{t('atk.subjectName')}</label>
                                         <Input
                                             value={subject.name}
                                             onChange={(e) => handleSubjectChange(index, 'name', e.target.value)}
-                                            placeholder="e.g. Applied Math"
+                                            placeholder={t('atk.subjectPlaceholder')}
                                         />
                                     </div>
                                     <div className="md:col-span-2">
-                                        <label className="text-xs text-slate-400 mb-1 block">Marks Obtained</label>
+                                        <label className="text-xs text-slate-400 mb-1 block">{t('atk.marksObtained')}</label>
                                         <Input
                                             type="number"
                                             value={subject.obtainedMarks}
@@ -113,7 +115,7 @@ const ATKTCalculator: React.FC = () => {
                                         />
                                     </div>
                                     <div className="md:col-span-2">
-                                        <label className="text-xs text-slate-400 mb-1 block">Passing Marks</label>
+                                        <label className="text-xs text-slate-400 mb-1 block">{t('atk.passingMarks')}</label>
                                         <Input
                                             type="number"
                                             value={subject.passingMarks}
@@ -122,7 +124,7 @@ const ATKTCalculator: React.FC = () => {
                                     </div>
                                     <div className="md:col-span-2 flex items-end justify-center pb-2">
                                         <span className={`px-3 py-1 rounded-full text-xs font-bold ${subject.status === 'Pass' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'}`}>
-                                            {subject.status}
+                                            {subject.status === 'Pass' ? t('atk.pass') : t('atk.fail')}
                                         </span>
                                     </div>
                                     <button
@@ -137,28 +139,28 @@ const ATKTCalculator: React.FC = () => {
                     </Card>
 
                     <Card className="p-6 bg-slate-800/50 border-slate-700 backdrop-blur-sm">
-                        <h2 className="text-xl font-semibold mb-6 flex items-center gap-2">
-                            <TrendingUp className="text-purple-400" />
-                            Progression Metrics (NEP 2024-25)
-                        </h2>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div>
-                                <label className="text-sm text-slate-400 mb-2 block">Current Semester</label>
-                                <select
-                                    className="w-full bg-slate-900 border-slate-700 rounded-lg p-2 text-slate-200"
-                                    value={currentSemester}
-                                    onChange={(e) => setCurrentSemester(parseInt(e.target.value))}
-                                >
-                                    {[1, 2, 3, 4, 5, 6, 7, 8].map(s => (
-                                        <option key={s} value={s}>Semester {s}</option>
-                                    ))}
-                                </select>
-                            </div>
-                            <div>
-                                <label className="text-sm text-slate-400 mb-2 block">Cumulative Credits Earned</label>
-                                <Input
-                                    type="number"
-                                    value={cumulativeCredits}
+                            <h2 className="text-xl font-semibold mb-6 flex items-center gap-2">
+                                <TrendingUp className="text-purple-400" />
+                                {t('atk.progressionMetrics')}
+                            </h2>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label className="text-sm text-slate-400 mb-2 block">{t('atk.currentSemester')}</label>
+                                    <select
+                                        className="w-full bg-slate-900 border-slate-700 rounded-lg p-2 text-slate-200"
+                                        value={currentSemester}
+                                        onChange={(e) => setCurrentSemester(parseInt(e.target.value))}
+                                    >
+                                        {[1, 2, 3, 4, 5, 6, 7, 8].map(s => (
+                                            <option key={s} value={s}>{t('atk.semester')} {s}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="text-sm text-slate-400 mb-2 block">{t('atk.cumulativeCredits')}</label>
+                                    <Input
+                                        type="number"
+                                        value={cumulativeCredits}
                                     onChange={(e) => setCumulativeCredits(parseInt(e.target.value))}
                                 />
                             </div>
@@ -171,7 +173,7 @@ const ATKTCalculator: React.FC = () => {
                                     onChange={(e) => setExtracurriculars(e.target.checked)}
                                     className="w-5 h-5 rounded border-slate-700 bg-slate-900 text-purple-500 focus:ring-purple-500"
                                 />
-                                <span className="text-sm text-slate-300">Participation in NSS / NCC / Cultural Activities (O.229-A)</span>
+                                <span className="text-sm text-slate-300">{t('atk.participation')}</span>
                             </label>
                         </div>
                     </Card>
@@ -181,7 +183,7 @@ const ATKTCalculator: React.FC = () => {
                         onClick={handleCalculate}
                         disabled={loading}
                     >
-                        {loading ? 'Analyzing Ordinances...' : 'Execute Calculation Engine'}
+                        {loading ? t('atk.analyzing') : t('atk.execute')}
                     </Button>
                 </div>
 
@@ -197,7 +199,7 @@ const ATKTCalculator: React.FC = () => {
                                 <Card className="p-6 border-emerald-500/30 bg-emerald-500/5 backdrop-blur-lg">
                                     <h3 className="text-lg font-bold mb-4 flex items-center gap-2 text-emerald-400">
                                         <CheckCircle2 className="w-5 h-5" />
-                                        Eligibility Report
+                                        {t('atk.eligibilityReport')}
                                     </h3>
                                     <div className="space-y-4">
                                         {Object.entries(report).map(([key, val]: [string, any]) => {
@@ -207,14 +209,14 @@ const ATKTCalculator: React.FC = () => {
                                                     <div className="flex justify-between items-start mb-2">
                                                         <span className="text-xs font-mono text-slate-400">{key.toUpperCase()}</span>
                                                         <span className={`text-[10px] px-2 py-0.5 rounded-full ${val.eligible ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-700 text-slate-400'}`}>
-                                                            {val.eligible ? 'ELIGIBLE' : 'NOT APPLICABLE'}
+                                                            {val.eligible ? t('atk.eligible') : t('atk.notApplicable')}
                                                         </span>
                                                     </div>
                                                     <p className="text-sm text-slate-300">{val.details}</p>
                                                     {val.marksRecommended > 0 && (
                                                         <div className="mt-2 text-xs flex items-center gap-1 text-emerald-400">
                                                             <Trophy className="w-3 h-3" />
-                                                            Recommended Grace: +{val.marksRecommended} Marks
+                                                            {t('atk.recommendedGrace', { marks: val.marksRecommended })}
                                                         </div>
                                                     )}
                                                 </div>
@@ -227,7 +229,7 @@ const ATKTCalculator: React.FC = () => {
                                     <Card className={`p-6 border-blue-500/30 backdrop-blur-lg ${progression.canPromote ? 'bg-blue-500/5' : 'bg-rose-500/5 border-rose-500/30'}`}>
                                         <h3 className={`text-lg font-bold mb-2 flex items-center gap-2 ${progression.canPromote ? 'text-blue-400' : 'text-rose-400'}`}>
                                             <TrendingUp className="w-5 h-5" />
-                                            NEP Progression Status
+                                            {t('atk.nepProgressionStatus')}
                                         </h3>
                                         <p className="text-sm text-slate-300 mb-4">{progression.message}</p>
                                         <div className="w-full bg-slate-900 h-2 rounded-full overflow-hidden">
@@ -237,8 +239,8 @@ const ATKTCalculator: React.FC = () => {
                                             />
                                         </div>
                                         <div className="flex justify-between mt-2 text-[10px] font-mono text-slate-500">
-                                            <span>CREDITS: {cumulativeCredits}</span>
-                                            <span>TARGET: {progression.threshold}</span>
+                                            <span>{t('atk.credits')}: {cumulativeCredits}</span>
+                                            <span>{t('atk.target')}: {progression.threshold}</span>
                                         </div>
                                     </Card>
                                 )}
@@ -247,7 +249,7 @@ const ATKTCalculator: React.FC = () => {
                                     <div className="flex gap-2">
                                         <Info className="w-4 h-4 shrink-0 text-amber-400" />
                                         <p>
-                                            Disclaimer: This report is based on Mumbai University Ordinances 0.5042-A, 0.5044-A, 0.229-A and NEP 2024-25 progression rules. Actual results depend on the university's final decision and individual eligibility criteria.
+                                            {t('atk.disclaimer')}
                                         </p>
                                     </div>
                                 </Card>
@@ -258,8 +260,8 @@ const ATKTCalculator: React.FC = () => {
                     {!report && (
                         <div className="h-full flex flex-col items-center justify-center p-8 text-center bg-slate-800/20 rounded-3xl border border-dashed border-slate-700">
                             <AlertCircle className="w-12 h-12 text-slate-600 mb-4" />
-                            <h3 className="text-slate-400 font-medium">No Data Processed</h3>
-                            <p className="text-slate-500 text-sm mt-2">Enter your academic scores to receive a detailed ordinance analysis.</p>
+                            <h3 className="text-slate-400 font-medium">{t('atk.noDataTitle')}</h3>
+                            <p className="text-slate-500 text-sm mt-2">{t('atk.noDataSubtitle')}</p>
                         </div>
                     )}
                 </div>

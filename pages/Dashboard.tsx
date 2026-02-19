@@ -5,7 +5,15 @@ import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { type Course, type Mood as MoodType, type MoodLabel, type StudyPlan } from '../types';
 import { getStudyPlan } from '../services/studyPlanService';
-import { getTimeOfDayGreeting, getMostUsedTool, getQuickAccessTools, addToQuickAccess, removeFromQuickAccess } from '../services/personalizationService';
+import {
+    getTimeOfDayGreeting,
+    getMostUsedTool,
+    getQuickAccessTools,
+    addToQuickAccess,
+    removeFromQuickAccess,
+    hydratePersonalizationFromServer,
+    getPersonalizationRecommendations
+} from '../services/personalizationService';
 import { getProductivityReport } from '../services/analyticsService';
 import { getCourses, addCourse, deleteCourse } from '../services/courseService';
 import GoalsWidget from '../components/GoalsWidget';
@@ -33,6 +41,7 @@ const formatSeconds = (seconds: number) => {
 };
 
 const ProductivityInsights: React.FC = () => {
+    const { t } = useLanguage();
     const [report, setReport] = useState<Awaited<ReturnType<typeof getProductivityReport>> | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
@@ -54,14 +63,14 @@ const ProductivityInsights: React.FC = () => {
     if (isLoading) {
         return (
             <div className="bg-slate-800/50 rounded-xl p-6 ring-1 ring-slate-700 text-center">
-                <p className="text-slate-400">Loading weekly snapshot...</p>
+                <p className="text-slate-400">{t('dashboard.weeklyLoading')}</p>
             </div>
         );
     }
 
     if (!report) return (
         <div className="bg-slate-800/50 rounded-xl p-6 ring-1 ring-slate-700 text-center">
-            <p className="text-slate-400">Could not load productivity data.</p>
+            <p className="text-slate-400">{t('dashboard.weeklyLoadError')}</p>
         </div>
     );
 
@@ -70,43 +79,44 @@ const ProductivityInsights: React.FC = () => {
     return (
         <div className="bg-slate-800 rounded-xl p-8 border border-white/10 shadow-card hover:shadow-card-hover transition-all duration-300">
             <h3 className="text-xl font-bold text-slate-100 flex items-center mb-4">
-                <BarChart className="w-6 h-6 mr-3 text-violet-400" /> Weekly Snapshot
+                <BarChart className="w-6 h-6 mr-3 text-violet-400" /> {t('dashboard.weeklySnapshotTitle')}
             </h3>
             {!hasData ? (
-                <p className="text-center text-slate-400 py-4">Start a study session or take a quiz to see your insights here.</p>
+                <p className="text-center text-slate-400 py-4">{t('dashboard.weeklyEmpty')}</p>
             ) : (
                 <div className="space-y-4">
                     <div className="flex justify-between items-center text-sm bg-slate-800 p-3 rounded-lg">
                         <div className="flex items-center gap-2">
                             <Clock size={16} className="text-slate-400" />
-                            <span className="font-medium text-slate-300">Total Study Time</span>
+                            <span className="font-medium text-slate-300">{t('dashboard.totalStudyTime')}</span>
                         </div>
                         <span className="font-mono text-white">{formatSeconds(report.totalStudyTime)}</span>
                     </div>
                     <div className="flex justify-between items-center text-sm bg-slate-800 p-3 rounded-lg">
                         <div className="flex items-center gap-2">
                             <Brain size={16} className="text-slate-400" />
-                            <span className="font-medium text-slate-300">Quiz Accuracy</span>
+                            <span className="font-medium text-slate-300">{t('dashboard.quizAccuracy')}</span>
                         </div>
                         <span className="font-mono text-white">{report.quizAccuracy}%</span>
                     </div>
                     <div className="flex justify-between items-center text-sm bg-slate-800 p-3 rounded-lg">
                         <div className="flex items-center gap-2">
                             <Target size={16} className="text-slate-400" />
-                            <span className="font-medium text-slate-300">Goal Progress</span>
+                            <span className="font-medium text-slate-300">{t('dashboard.goalProgress')}</span>
                         </div>
                         <span className="font-mono text-white">{(report as any).goalProgress || 0}%</span>
                     </div>
                 </div>
             )}
             <Link to="/insights">
-                <Button className="w-full mt-6 text-sm">View Detailed Insights</Button>
+                <Button className="w-full mt-6 text-sm">{t('dashboard.viewInsights')}</Button>
             </Link>
         </div>
     );
 };
 
 const ActivePlanWidget: React.FC = () => {
+    const { t } = useLanguage();
     const [plan, setPlan] = useState<StudyPlan | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const navigate = useNavigate();
@@ -139,12 +149,12 @@ const ActivePlanWidget: React.FC = () => {
             <div className="p-4 bg-slate-700/30 rounded-full mb-4">
                 <Calendar className="w-8 h-8 text-slate-400" />
             </div>
-            <h3 className="text-xl font-bold text-slate-100 mb-2">No Active Study Plan</h3>
-            <p className="text-slate-400 max-w-md mb-6">You don't have a study plan for today. Create one to stay organized and ace your exams!</p>
+            <h3 className="text-xl font-bold text-slate-100 mb-2">{t('dashboard.noActivePlanTitle')}</h3>
+            <p className="text-slate-400 max-w-md mb-6">{t('dashboard.noActivePlanSubtitle')}</p>
             <Link to="/study-plan">
                 <Button className="px-6 uppercase tracking-wide text-sm font-medium">
                     <PlusCircle size={18} className="mr-2" />
-                    CREATE STUDY PLAN
+                    {t('dashboard.createStudyPlan')}
                 </Button>
             </Link>
         </div>
@@ -157,12 +167,12 @@ const ActivePlanWidget: React.FC = () => {
     return (
         <div className="bg-slate-800 rounded-xl p-8 border border-white/10 shadow-card hover:shadow-card-hover transition-all duration-300 mb-10">
             <h3 className="text-xl font-bold text-slate-100 flex items-center mb-4">
-                <Calendar className="w-6 h-6 mr-3 text-violet-400" /> Today's Study Step
+                <Calendar className="w-6 h-6 mr-3 text-violet-400" /> {t('dashboard.todayStudyStep')}
             </h3>
             <div className="space-y-4">
                 <div>
-                    <p className="text-sm font-semibold text-violet-400 uppercase tracking-wider mb-1 line-clamp-1">Goal: {plan.goal}</p>
-                    <h4 className="text-lg font-bold text-white">Day {currentDayPlan?.day || 1} of {plan.durationDays}</h4>
+                    <p className="text-sm font-semibold text-violet-400 uppercase tracking-wider mb-1 line-clamp-1">{t('dashboard.goalLabel', { goal: plan.goal })}</p>
+                    <h4 className="text-lg font-bold text-white">{t('dashboard.dayProgress', { day: currentDayPlan?.day || 1, total: plan.durationDays })}</h4>
                 </div>
                 <div className="space-y-2">
                     {currentDayPlan?.tasks.map((task: any) => (
@@ -174,7 +184,7 @@ const ActivePlanWidget: React.FC = () => {
                 </div>
                 <Link to="/notes" state={{ activeTab: 'plan', courseId: plan.courseId }}>
                     <Button className="w-full mt-2 text-sm">
-                        View Full Plan
+                        {t('dashboard.viewFullPlan')}
                     </Button>
                 </Link>
             </div>
@@ -183,6 +193,7 @@ const ActivePlanWidget: React.FC = () => {
 };
 
 const MyCourses: React.FC = () => {
+    const { t } = useLanguage();
     const [courses, setCourses] = useState<Course[]>([]);
     const [newCourseName, setNewCourseName] = useState('');
     const [isAdding, setIsAdding] = useState(false);
@@ -220,7 +231,7 @@ const MyCourses: React.FC = () => {
                 setIsAdding(false);
             } catch (error) {
                 console.error("[MyCourses] Error in handleAddCourse:", error);
-                alert(`Failed to add course. Please check the console for details.`);
+                alert(t('dashboard.addCourseFailed'));
             }
         }
     }
@@ -236,13 +247,13 @@ const MyCourses: React.FC = () => {
     return (
         <div className="bg-slate-800 rounded-xl p-8 border border-white/10 shadow-card hover:shadow-card-hover transition-all duration-300">
             <h3 className="text-xl font-bold text-slate-100 flex items-center mb-4">
-                <BookOpen className="w-6 h-6 mr-3 text-violet-400" /> My Courses
+                <BookOpen className="w-6 h-6 mr-3 text-violet-400" /> {t('dashboard.myCoursesTitle')}
             </h3>
             <div className="space-y-2">
-                {isLoading && <p className="text-slate-400 text-center">Loading courses...</p>}
+                {isLoading && <p className="text-slate-400 text-center">{t('dashboard.loadingCourses')}</p>}
                 {!isLoading && courses.length === 0 && !isAdding && (
                     <div className="text-center py-4">
-                        <p className="text-slate-400 mb-4">You haven't added any courses yet. Add one to get started!</p>
+                        <p className="text-slate-400 mb-4">{t('dashboard.noCourses')}</p>
                     </div>
                 )}
                 {courses.map(course => (
@@ -264,18 +275,18 @@ const MyCourses: React.FC = () => {
                         name="newCourseName"
                         value={newCourseName}
                         onChange={(e) => setNewCourseName(e.target.value)}
-                        placeholder="e.g., Organic Chemistry"
+                        placeholder={t('dashboard.coursePlaceholder')}
                         className="text-sm flex-1"
                         autoComplete="off"
                         autoFocus
                     />
-                    <Button type="submit" className="px-3 py-2 text-sm">Add</Button>
-                    <Button type="button" variant="ghost" size="sm" onClick={() => setIsAdding(false)} className="px-3 py-2 text-sm text-slate-400">Cancel</Button>
+                    <Button type="submit" className="px-3 py-2 text-sm">{t('dashboard.addCourseAction')}</Button>
+                    <Button type="button" variant="ghost" size="sm" onClick={() => setIsAdding(false)} className="px-3 py-2 text-sm text-slate-400">{t('sidebar.profile.cancel')}</Button>
                 </form>
             ) : (
                 <Button onClick={() => setIsAdding(true)} className="w-full mt-4 bg-slate-700/50 hover:bg-slate-700 text-sm shadow-none">
                     <PlusCircle size={16} className="mr-2" />
-                    Add Course
+                    {t('dashboard.addCourse')}
                 </Button>
             )}
         </div>
@@ -307,6 +318,7 @@ interface ToolCardProps {
     bgColor: string; // Kept for compatibility but we will override
 }
 const ToolCard: React.FC<ToolCardProps> = ({ name, href, description, icon: Icon, color }) => {
+    const { t } = useLanguage();
     // Extract color class (e.g., text-sky-400) to determine base color if possible, 
     // or just use a generic approach for the professional look.
     // Professional look: Monochromatic icon backgrounds with subtle opacity.
@@ -321,7 +333,7 @@ const ToolCard: React.FC<ToolCardProps> = ({ name, href, description, icon: Icon
             </div>
             <p className="text-sm text-slate-400/80 leading-relaxed mb-6 h-10 overflow-hidden">{description}</p>
             <div className="flex items-center text-sm font-medium text-violet-400 group-hover:text-violet-300">
-                <span className="uppercase tracking-wider text-xs">Start Session</span>
+                <span className="uppercase tracking-wider text-xs">{t('dashboard.startSession')}</span>
                 <ArrowRight className="ml-2 w-4 h-4 transition-transform duration-300 group-hover:translate-x-1" />
             </div>
         </Link>
@@ -345,8 +357,9 @@ const Dashboard: React.FC = () => {
     const [quickAccessTools, setQuickAccessTools] = useState<string[]>([]);
     const [stats, setStats] = useState<UserStats | null>(null);
     const [showAddToolDropdown, setShowAddToolDropdown] = useState(false);
+    const [adaptiveSummary, setAdaptiveSummary] = useState<string | null>(null);
     const dropdownRef = React.useRef<HTMLDivElement>(null);
-    const { language } = useLanguage();
+    const { language, t } = useLanguage();
 
     useEffect(() => {
         const refreshStats = async () => {
@@ -377,21 +390,48 @@ const Dashboard: React.FC = () => {
     }, []);
 
     useEffect(() => {
-        const getMostUsed = async () => {
+        const initializePersonalization = async () => {
+            await hydratePersonalizationFromServer();
+
             const key = await getMostUsedTool();
             setMostUsedToolKey(key);
-        };
-        getMostUsed();
 
-        // Load saved Quick Access tools
-        const savedTools = getQuickAccessTools();
-        setQuickAccessTools(savedTools);
+            const savedTools = getQuickAccessTools();
+            let effectiveTools = savedTools;
+
+            const recommendations = await getPersonalizationRecommendations();
+            if (recommendations) {
+                if (recommendations.recommendedTools?.length > 0 && savedTools.length === 0) {
+                    effectiveTools = recommendations.recommendedTools.slice(0, 4);
+                    effectiveTools.forEach((tool) => addToQuickAccess(tool));
+                }
+
+                if (recommendations.latestPlacement) {
+                    setAdaptiveSummary(
+                        t('dashboard.adaptivePlacementSummary', {
+                            band: recommendations.latestPlacement.readinessBand,
+                            accuracy: recommendations.latestPlacement.accuracy,
+                            focus: recommendations.latestPlacement.focusAreas.join(', ') || t('dashboard.timedDrills'),
+                        })
+                    );
+                } else if (recommendations.weakTopics?.length > 0) {
+                    const topWeak = recommendations.weakTopics[0];
+                    setAdaptiveSummary(t('dashboard.adaptiveFocusSummary', { topic: topWeak.topic, accuracy: topWeak.accuracy }));
+                }
+            }
+
+            setQuickAccessTools(savedTools);
+            if (effectiveTools !== savedTools) {
+                setQuickAccessTools(effectiveTools);
+            }
+        };
+        initializePersonalization();
 
         const sessionMood = sessionStorage.getItem(SESSION_MOOD_CHECKIN_KEY);
         if (sessionMood) {
             setShowMoodCheckin(false);
         }
-    }, []);
+    }, [t]);
 
     // Close dropdown when clicking outside
     useEffect(() => {
@@ -437,49 +477,16 @@ const Dashboard: React.FC = () => {
         }
     };
 
-    const greeting = getTimeOfDayGreeting();
+    const greeting = getTimeOfDayGreeting(language);
     const mostUsedTool = tools.find(t => t.key === mostUsedToolKey);
 
     const pageSubtitle = useMemo(() => {
         const parts = [];
         if (user?.branch) parts.push(user.branch);
-        if (user?.year) parts.push(`${user.year}${user.year === 1 ? 'st' : user.year === 2 ? 'nd' : user.year === 3 ? 'rd' : 'th'} Year`);
-        if (user?.targetExam) parts.push(`Targeting: ${user.targetExam}`);
-        return parts.length > 0 ? parts.join(' • ') : 'Your engineering student hub';
-    }, [user]);
-
-    // Pre-populate Quick Access based on Personalization
-    useEffect(() => {
-        if (quickAccessTools.length === 0 && user) {
-            const suggestedTools = [];
-
-            // Exam based
-            if (user.targetExam === 'GATE') {
-                suggestedTools.push('paper', 'tutor');
-            } else if (user.targetExam === 'Placements') {
-                suggestedTools.push('placement', 'math');
-            } else if (user.targetExam === 'Semester Exams') {
-                suggestedTools.push('curriculum', 'summaries');
-            }
-
-            // Learning Style based
-            if (user.learningStyle === 'Visual') {
-                suggestedTools.push('project'); // Visual learners might like project ideas
-            } else if (user.learningStyle === 'Interactive') {
-                suggestedTools.push('quizzes');
-            }
-
-            // Default fallback
-            if (suggestedTools.length === 0) {
-                suggestedTools.push('tutor', 'study-plan');
-            }
-
-            // Deduplicate and set
-            const uniqueTools = [...new Set(suggestedTools)];
-            setQuickAccessTools(uniqueTools);
-            uniqueTools.forEach(t => addToQuickAccess(t)); // Persist
-        }
-    }, [user, quickAccessTools.length]);
+        if (user?.year) parts.push(t('dashboard.yearLabel', { year: user.year }));
+        if (user?.targetExam) parts.push(t('dashboard.targeting', { exam: user.targetExam }));
+        return parts.length > 0 ? parts.join(' | ') : t('dashboard.studentHubSubtitle');
+    }, [user, t]);
 
     const pageTitle = `${greeting}, ${user?.displayName?.split(' ')[0] || 'User'}!`;
 
@@ -523,12 +530,12 @@ const Dashboard: React.FC = () => {
                         <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
                             <div>
                                 <h2 className="text-3xl font-bold text-white mb-3 tracking-tight">
-                                    Ready to focus?
+                                    {t('dashboard.readyToFocus')}
                                 </h2>
-                                <p className="text-slate-400 mb-6 max-w-md text-lg leading-relaxed">Create a dedicated study room to collaborate, chat with AI, and track your progress.</p>
+                                <p className="text-slate-400 mb-6 max-w-md text-lg leading-relaxed">{t('dashboard.readyToFocusSubtitle')}</p>
                                 <Button onClick={() => navigate('/study-lobby')} className="px-8 py-4 text-sm font-medium uppercase tracking-wider shadow-lg shadow-violet-500/25">
                                     <Users className="w-5 h-5 mr-3" />
-                                    ENTER STUDY LOBBY
+                                    {t('dashboard.enterStudyLobby')}
                                 </Button>
                             </div>
                             <div className="hidden md:block p-4 bg-slate-800/50 rounded-2xl border border-white/5 backdrop-blur-sm">
@@ -539,8 +546,8 @@ const Dashboard: React.FC = () => {
 
                     <div>
                         <div className="flex items-center justify-between mb-6">
-                            <h2 className="text-xl font-semibold text-slate-100">Resource Library</h2>
-                            <Link to="/resources" className="text-sm font-medium text-violet-400 hover:text-violet-300 transition-colors">View All Resources</Link>
+                            <h2 className="text-xl font-semibold text-slate-100">{t('dashboard.resourceLibraryTitle')}</h2>
+                            <Link to="/resources" className="text-sm font-medium text-violet-400 hover:text-violet-300 transition-colors">{t('dashboard.viewAllResources')}</Link>
                         </div>
                         <Link to="/resources" className="group block p-8 bg-slate-800 rounded-xl border border-white/10 shadow-card hover:shadow-card-hover transition-all duration-300 relative overflow-hidden">
                             <div className="absolute inset-0 bg-gradient-to-r from-violet-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
@@ -550,8 +557,8 @@ const Dashboard: React.FC = () => {
                                         <BookOpen className="w-8 h-8 text-white" />
                                     </div>
                                     <div>
-                                        <h3 className="text-xl font-bold text-white mb-1">Engineering Resources</h3>
-                                        <p className="text-slate-400 font-light">Access notes, past papers, and reference books.</p>
+                                        <h3 className="text-xl font-bold text-white mb-1">{t('dashboard.engineeringResourcesTitle')}</h3>
+                                        <p className="text-slate-400 font-light">{t('dashboard.engineeringResourcesSubtitle')}</p>
                                     </div>
                                 </div>
                                 <div className="hidden sm:flex w-12 h-12 rounded-full border border-white/10 items-center justify-center group-hover:bg-violet-500 group-hover:border-transparent transition-all duration-300">
@@ -568,10 +575,15 @@ const Dashboard: React.FC = () => {
                             <div className="bg-slate-800/50 p-4 rounded-xl ring-1 ring-slate-700 flex items-center gap-4">
                                 <Sparkles className="text-sky-400 w-8 h-8 flex-shrink-0" />
                                 <div>
-                                    <h4 className="font-semibold text-lg text-sky-300">Smart Suggestion</h4>
-                                    {isLoadingSuggestion && <p className="text-slate-300">Thinking...</p>}
+                                    <h4 className="font-semibold text-lg text-sky-300">{t('dashboard.smartSuggestionTitle')}</h4>
+                                    {isLoadingSuggestion && <p className="text-slate-300">{t('dashboard.thinking')}</p>}
                                     {aiSuggestion && <p className="text-slate-100">{aiSuggestion}</p>}
                                 </div>
+                            </div>
+                        )}
+                        {adaptiveSummary && (
+                            <div className="bg-indigo-500/10 border border-indigo-500/30 p-4 rounded-xl">
+                                <p className="text-sm text-indigo-200">{adaptiveSummary}</p>
                             </div>
                         )}
                         <ProductivityInsights />
@@ -585,7 +597,7 @@ const Dashboard: React.FC = () => {
                     <div>
                         <div className="flex items-center justify-between mb-6">
                             <h2 className="text-xl font-semibold text-slate-100 flex items-center">
-                                <Star className="w-5 h-5 mr-3 text-violet-500" fill="currentColor" /> Quick Access
+                                <Star className="w-5 h-5 mr-3 text-violet-500" fill="currentColor" /> {t('dashboard.quickAccess')}
                             </h2>
                             <div className="relative" ref={dropdownRef}>
                                 <Button
@@ -594,7 +606,7 @@ const Dashboard: React.FC = () => {
                                     disabled={availableToolsToAdd.length === 0}
                                 >
                                     <Plus size={14} className="mr-1" />
-                                    Add Tool
+                                    {t('dashboard.addTool')}
                                     <ChevronDown size={14} className="ml-1" />
                                 </Button>
                                 {showAddToolDropdown && availableToolsToAdd.length > 0 && (
@@ -617,8 +629,8 @@ const Dashboard: React.FC = () => {
                         {quickAccessTools.length === 0 ? (
                             <div className="bg-slate-800/50 rounded-xl p-8 border border-dashed border-slate-600 text-center">
                                 <Pin className="w-10 h-10 text-slate-500 mx-auto mb-4" />
-                                <p className="text-slate-400 mb-2">No pinned tools yet</p>
-                                <p className="text-sm text-slate-500">Click "Add Tool" to pin your favorite tools here for quick access</p>
+                                <p className="text-slate-400 mb-2">{t('dashboard.noPinnedTools')}</p>
+                                <p className="text-sm text-slate-500">{t('dashboard.noPinnedToolsHint')}</p>
                             </div>
                         ) : (
                             <div className="space-y-3">
@@ -649,7 +661,7 @@ const Dashboard: React.FC = () => {
                                                     handleRemoveFromQuickAccess(tool.key);
                                                 }}
                                                 className="absolute -top-2 -right-2 w-6 h-6 bg-slate-700 hover:bg-red-500 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-200 border border-slate-600 hover:border-red-500"
-                                                title="Remove from Quick Access"
+                                                title={t('dashboard.removeQuickAccessTitle')}
                                             >
                                                 <X size={12} className="text-slate-300" />
                                             </button>
@@ -660,7 +672,7 @@ const Dashboard: React.FC = () => {
                         )}
                     </div>
                     <div>
-                        <h2 className="text-xl font-semibold text-slate-100 mb-6">Your AI Toolkit</h2>
+                        <h2 className="text-xl font-semibold text-slate-100 mb-6">{t('dashboard.aiToolkitTitle')}</h2>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-5"> {/* Reduced gap for toolkit grid */}
                             {tools.map(tool => {
                                 const { key, ...rest } = tool;

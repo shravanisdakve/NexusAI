@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Layers, Network, Brain, Wand2 } from 'lucide-react';
 import { Button, Spinner } from './ui';
 import FlashcardDeck from './FlashcardDeck';
 import KnowledgeMap from './KnowledgeMap';
 import FeynmanAssistant from './FeynmanAssistant';
 import { generateFlashcards as generateFlashcardsApi } from '../services/geminiService';
-import { getFlashcards, addFlashcards } from '../services/notesService';
+import { getFlashcards, addFlashcards, getQuizzes } from '../services/notesService';
 import { Flashcard as FlashcardType } from '../types';
 
 type ToolTab = 'flashcards' | 'map' | 'feynman';
@@ -22,13 +22,207 @@ const StudyToolsPanel: React.FC<StudyToolsPanelProps> = ({ notes, topic, isActiv
     const [flashcards, setFlashcards] = useState<FlashcardType[]>([]);
     const [isGeneratingCards, setIsGeneratingCards] = useState(false);
     const [isFetchingCards, setIsFetchingCards] = useState(false);
-    const [mapData, setMapData] = useState<any[]>([]);
+    const [quizScores, setQuizScores] = useState<number[]>([]);
     const canPersistFlashcards = !!courseId && courseId !== 'general';
+    const generalFlashcardsStorageKey = useMemo(() => {
+        if (canPersistFlashcards) return null;
+        const safeTopic = (topic || 'general')
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/^-+|-+$/g, '')
+            .slice(0, 64) || 'general';
+        return `nexusai:flashcards:general:${safeTopic}`;
+    }, [canPersistFlashcards, topic]);
+
+    const normalizeFlashcards = (value: unknown): { front: string; back: string }[] => {
+        if (Array.isArray(value)) return value as { front: string; back: string }[];
+        if (!value || typeof value !== 'object') return [];
+
+        const obj = value as Record<string, unknown>;
+        if (Array.isArray(obj.flashcards)) return obj.flashcards as { front: string; back: string }[];
+        if (Array.isArray(obj.cards)) return obj.cards as { front: string; back: string }[];
+        if (Array.isArray(obj.data)) return obj.data as { front: string; back: string }[];
+        return [];
+    };
+
+    const normalizeDeckCards = (value: unknown): FlashcardType[] => {
+        if (!Array.isArray(value)) return [];
+        return value
+            .filter((card: any) => card && typeof card.id === 'string' && typeof card.front === 'string' && typeof card.back === 'string')
+            .map((card: any) => ({
+                id: card.id,
+                front: card.front,
+                back: card.back,
+                bucket: Math.min(5, Math.max(1, Number(card.bucket) || 1)),
+                lastReview: typeof card.lastReview === 'number'
+                    ? card.lastReview
+                    : new Date(card.lastReview || Date.now()).getTime()
+            }));
+    };
+
+    const getNextDueTimestamp = (card: FlashcardType): number => {
+        const intervalByBucketMs = [
+            0,
+            5 * 60 * 1000,
+            20 * 60 * 1000,
+            2 * 60 * 60 * 1000,
+            12 * 60 * 60 * 1000,
+            24 * 60 * 60 * 1000
+        ];
+        const bucket = Math.min(5, Math.max(1, Number(card.bucket) || 1));
+        const lastReview = typeof card.lastReview === 'number'
+            ? card.lastReview
+            : new Date(card.lastReview || Date.now()).getTime();
+        return lastReview + intervalByBucketMs[bucket];
+    };
+
+    const sortCardsForReview = (cards: FlashcardType[]): FlashcardType[] => {
+        return [...cards].sort((a, b) => getNextDueTimestamp(a) - getNextDueTimestamp(b));
+    };
+
+    const clamp01 = (value: number): number => Math.max(0, Math.min(1, value));
+
+    const mapData = useMemo(() => {
+        const topicLabel = (topic || 'Current Topic').trim() || 'Current Topic';
+        const totalCards = flashcards.length;
+        const now = Date.now();
+
+        let mastery = 0.15;
+        let retention = 0.15;
+        let coverage = 0.05;
+        let gapClosure = 0.2;
+        let avgBucket = 1;
+        let dueCount = 0;
+        let hardCards = 0;
+
+        if (totalCards > 0) {
+            avgBucket = flashcards.reduce((sum, card) => {
+                const bucket = Math.min(5, Math.max(1, Number(card.bucket) || 1));
+                return sum + bucket;
+            }, 0) / totalCards;
+
+            mastery = clamp01(avgBucket / 5);
+            coverage = clamp01(totalCards / 20);
+
+            dueCount = flashcards.filter((card) => {
+                const bucket = Math.min(5, Math.max(1, Number(card.bucket) || 1));
+                const lastReview = typeof card.lastReview === 'number'
+                    ? card.lastReview
+                    : new Date(card.lastReview || Date.now()).getTime();
+                const intervalByBucketMs = [
+                    0,
+                    5 * 60 * 1000,
+                    20 * 60 * 1000,
+                    2 * 60 * 60 * 1000,
+                    12 * 60 * 60 * 1000,
+                    24 * 60 * 60 * 1000
+                ];
+                return now >= (lastReview + intervalByBucketMs[bucket]);
+            }).length;
+
+            retention = clamp01(1 - (dueCount / totalCards));
+
+            hardCards = flashcards.filter((card) => (Number(card.bucket) || 1) <= 2).length;
+            gapClosure = clamp01(1 - (hardCards / totalCards));
+        }
+
+        const validQuizScores = quizScores.filter((score) => Number.isFinite(score));
+        const avgQuizScore = validQuizScores.length > 0
+            ? validQuizScores.reduce((sum, score) => sum + score, 0) / validQuizScores.length
+            : null;
+        const quizAccuracy = avgQuizScore !== null
+            ? clamp01(avgQuizScore / 100)
+            : clamp01((mastery * 0.6) + (retention * 0.4));
+
+        const topicStrength = clamp01(
+            (mastery * 0.35)
+            + (retention * 0.25)
+            + (quizAccuracy * 0.25)
+            + (coverage * 0.15)
+        );
+
+        return [
+            {
+                name: topicLabel,
+                strength: topicStrength,
+                details: [
+                    `Overall = 35% mastery + 25% retention + 25% quiz + 15% coverage`,
+                    `Flashcards: ${totalCards}`,
+                    `Due cards now: ${dueCount}`,
+                    avgQuizScore !== null ? `Avg quiz score: ${avgQuizScore.toFixed(1)}%` : 'Quiz data: not available yet',
+                ]
+            },
+            {
+                name: 'Flashcard Mastery',
+                strength: mastery,
+                details: [
+                    `From average bucket level`,
+                    `Avg bucket: ${avgBucket.toFixed(2)} / 5`,
+                    `Higher bucket means stronger long-term memory`,
+                ]
+            },
+            {
+                name: 'Recall Retention',
+                strength: retention,
+                details: [
+                    `Based on how many cards are due vs not due`,
+                    `Due cards: ${dueCount}/${totalCards || 0}`,
+                    `More due cards lowers retention score`,
+                ]
+            },
+            {
+                name: 'Quiz Accuracy',
+                strength: quizAccuracy,
+                details: [
+                    avgQuizScore !== null
+                        ? `Average from saved quiz scores: ${avgQuizScore.toFixed(1)}%`
+                        : 'No quiz history yet, using fallback from flashcard signals',
+                    `Quizzes counted: ${validQuizScores.length}`,
+                ]
+            },
+            {
+                name: 'Gap Closure',
+                strength: gapClosure,
+                details: [
+                    `Measures weak-card reduction`,
+                    `Hard cards (bucket <= 2): ${hardCards}/${totalCards || 0}`,
+                    `Fewer weak cards = higher score`,
+                ]
+            },
+        ];
+    }, [topic, flashcards, quizScores]);
+
+    const loadLocalFlashcards = useCallback((): FlashcardType[] => {
+        if (!generalFlashcardsStorageKey) return [];
+        try {
+            const raw = localStorage.getItem(generalFlashcardsStorageKey);
+            if (!raw) return [];
+            const parsed = JSON.parse(raw);
+            return sortCardsForReview(normalizeDeckCards(parsed));
+        } catch (error) {
+            console.error('Failed to parse locally saved flashcards', error);
+            return [];
+        }
+    }, [generalFlashcardsStorageKey]);
+
+    const persistLocalFlashcards = useCallback((nextCards: FlashcardType[]) => {
+        if (!generalFlashcardsStorageKey) return;
+        try {
+            localStorage.setItem(generalFlashcardsStorageKey, JSON.stringify(nextCards));
+        } catch (error) {
+            console.error('Failed to persist local flashcards', error);
+        }
+    }, [generalFlashcardsStorageKey]);
 
     // Fetch existing flashcards
     useEffect(() => {
         const fetchCards = async () => {
-            if (!canPersistFlashcards || !courseId) {
+            if (!canPersistFlashcards) {
+                setFlashcards(loadLocalFlashcards());
+                return;
+            }
+
+            if (!courseId) {
                 setFlashcards([]);
                 return;
             }
@@ -37,7 +231,7 @@ const StudyToolsPanel: React.FC<StudyToolsPanelProps> = ({ notes, topic, isActiv
             try {
                 const existing = await getFlashcards(courseId);
                 if (existing && existing.length > 0) {
-                    setFlashcards(existing);
+                    setFlashcards(sortCardsForReview(normalizeDeckCards(existing)));
                 } else {
                     setFlashcards([]);
                 }
@@ -48,34 +242,54 @@ const StudyToolsPanel: React.FC<StudyToolsPanelProps> = ({ notes, topic, isActiv
             }
         };
         fetchCards();
-    }, [courseId, canPersistFlashcards]);
+    }, [courseId, canPersistFlashcards, loadLocalFlashcards]);
 
-    // Initialize Map Data based on topic (Mock)
+    // Fetch quiz performance for knowledge-map signals
     useEffect(() => {
-        if (topic) {
-            setMapData([
-                { name: topic, strength: 1.0 },
-                { name: 'Prior Knowledge', strength: 0.8 },
-                { name: 'Core Concepts', strength: 0.4 },
-                { name: 'Advanced Theory', strength: 0.1 },
-            ]);
+        const loadQuizScores = async () => {
+            if (!canPersistFlashcards || !courseId) {
+                setQuizScores([]);
+                return;
+            }
+
+            try {
+                const quizzes = await getQuizzes(courseId);
+                const scores = (quizzes || [])
+                    .map((quiz: any) => Number(quiz?.score))
+                    .filter((score: number) => Number.isFinite(score));
+                setQuizScores(scores);
+            } catch (error) {
+                console.error('Failed to fetch quiz stats for knowledge map', error);
+                setQuizScores([]);
+            }
         }
-    }, [topic]);
+        loadQuizScores();
+    }, [courseId, canPersistFlashcards]);
 
     const handleGenerateFlashcards = async () => {
         if (!notes) return;
         setIsGeneratingCards(true);
         try {
             const result = await generateFlashcardsApi(notes);
-            const rawCards = JSON.parse(result);
+            let parsed: unknown = result;
+            if (typeof result === 'string') {
+                parsed = JSON.parse(result);
+            }
+            const rawCards = normalizeFlashcards(parsed);
 
-            const enrichedCards: FlashcardType[] = rawCards.map((c: any) => ({
+            const enrichedCards: FlashcardType[] = rawCards
+                .filter((c: any) => c && typeof c.front === 'string' && typeof c.back === 'string')
+                .map((c: any) => ({
                 id: Math.random().toString(36).substr(2, 9),
                 front: c.front,
                 back: c.back,
                 bucket: 1,
                 lastReview: Date.now()
-            }));
+                }));
+
+            if (enrichedCards.length === 0) {
+                throw new Error('No valid flashcards were returned by the AI.');
+            }
 
             if (canPersistFlashcards && courseId) {
                 // Save to DB only for course-backed rooms.
@@ -83,11 +297,24 @@ const StudyToolsPanel: React.FC<StudyToolsPanelProps> = ({ notes, topic, isActiv
             }
 
             // Append to existing
-            setFlashcards(prev => [...prev, ...enrichedCards]);
+            setFlashcards(prev => {
+                const next = [...prev, ...enrichedCards];
+                if (!canPersistFlashcards) {
+                    persistLocalFlashcards(next);
+                }
+                return next;
+            });
         } catch (error) {
             console.error("Failed to generate flashcards", error);
         } finally {
             setIsGeneratingCards(false);
+        }
+    };
+
+    const handleDeckCardsChange = (nextCards: FlashcardType[]) => {
+        setFlashcards(nextCards);
+        if (!canPersistFlashcards) {
+            persistLocalFlashcards(nextCards);
         }
     };
 
@@ -170,7 +397,11 @@ const StudyToolsPanel: React.FC<StudyToolsPanelProps> = ({ notes, topic, isActiv
                                         <Wand2 size={10} className="mr-1" /> Regenerate
                                     </Button>
                                 </div>
-                                <FlashcardDeck cards={flashcards} courseId={canPersistFlashcards ? courseId : undefined} />
+                                <FlashcardDeck
+                                    cards={flashcards}
+                                    courseId={canPersistFlashcards ? courseId : undefined}
+                                    onCardsChange={handleDeckCardsChange}
+                                />
                             </div>
                         )}
                     </div>

@@ -38,6 +38,10 @@ const StudyRoomSchema = new mongoose.Schema({
         user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
         joinedAt: { type: Date, default: Date.now }
     }],
+    chatMutedUserIds: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
+    }],
     sharedNotes: {
         type: String,
         default: ''

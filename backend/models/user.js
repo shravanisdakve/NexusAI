@@ -84,6 +84,23 @@ const UserSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
+  preferredLanguage: {
+    type: String,
+    enum: ['en', 'mr', 'hi'],
+    default: 'en'
+  },
+  quickAccessTools: [{
+    type: String
+  }],
+  toolUsageCounters: {
+    type: Map,
+    of: Number,
+    default: {}
+  },
+  lastSamarthSyncAt: {
+    type: Date,
+    default: null
+  },
   // End Personalization Fields
   createdAt: {
     type: Date,

@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
-import { PageHeader, Input, Button } from '../components/ui';
-import { Brain, Home, Sparkles, AlertCircle, CheckCircle2, XCircle, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { Brain, Home, Sparkles, AlertCircle, CheckCircle2, XCircle, ArrowRight } from 'lucide-react';
+import { PageHeader, Input, Button } from '../components/ui';
 import { generateQuizQuestion } from '../services/geminiService';
+import { useLanguage } from '../contexts/LanguageContext';
 
 type Question = {
   question: string;
   options: string[];
   correctIndex: number;
-  explanation?: string; // Enhanced to include explanation
 };
 
 type WrongAnswer = {
@@ -17,13 +17,15 @@ type WrongAnswer = {
   correct: string;
 };
 
+const TOTAL_QUESTIONS = 5;
+
 const InterviewQuiz: React.FC = () => {
   const navigate = useNavigate();
+  const { t } = useLanguage();
 
   const [topic, setTopic] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [gameStarted, setGameStarted] = useState(false);
-
   const [questions, setQuestions] = useState<Question[]>([]);
   const [current, setCurrent] = useState(0);
   const [selected, setSelected] = useState<number | null>(null);
@@ -31,6 +33,18 @@ const InterviewQuiz: React.FC = () => {
   const [finished, setFinished] = useState(false);
   const [wrongAnswers, setWrongAnswers] = useState<WrongAnswer[]>([]);
   const [feedback, setFeedback] = useState<string | null>(null);
+
+  const generateNextQuestion = async (quizTopic: string) => {
+    const context = `Generate a technical interview question about "${quizTopic}". Return JSON with: question, options (array of 4 strings), correctOptionIndex (0-3 number).`;
+    const jsonStr = await generateQuizQuestion(context);
+    const parsed = JSON.parse(jsonStr);
+    const newQuestion: Question = {
+      question: parsed.question,
+      options: parsed.options,
+      correctIndex: parsed.correctOptionIndex,
+    };
+    setQuestions((prev) => [...prev, newQuestion]);
+  };
 
   const startQuiz = async () => {
     if (!topic.trim()) return;
@@ -40,79 +54,62 @@ const InterviewQuiz: React.FC = () => {
     setCurrent(0);
     setFinished(false);
     setWrongAnswers([]);
+    setFeedback(null);
+    setSelected(null);
 
     try {
-      // Generate the first question to start
       await generateNextQuestion(topic);
       setGameStarted(true);
     } catch (error) {
-      console.error("Failed to start quiz:", error);
-      alert("Failed to generate interview questions. Please try again.");
+      console.error('Failed to start quiz:', error);
+      alert(t('interviewQuiz.failedStart'));
     } finally {
       setIsGenerating(false);
     }
   };
 
-  const generateNextQuestion = async (quizTopic: string) => {
-    const context = `Generate a technical interview question about "${quizTopic}". Return JSON with: question, options (array of 4 strings), correctOptionIndex (0-3 number).`;
-    const jsonStr = await generateQuizQuestion(context);
-    const parsed = JSON.parse(jsonStr);
-
-    // Adapt to our local type
-    const newQuestion: Question = {
-      question: parsed.question,
-      options: parsed.options,
-      correctIndex: parsed.correctOptionIndex,
-      explanation: parsed.explanation // Optional if backend supports it
-    };
-
-    setQuestions(prev => [...prev, newQuestion]);
-  };
-
   const handleOptionSelect = (idx: number) => {
-    if (selected !== null) return; // Prevent changing answer
+    if (selected !== null) return;
     setSelected(idx);
 
     const q = questions[current];
     const isCorrect = idx === q.correctIndex;
-
     if (isCorrect) {
-      setScore(prev => prev + 1);
-      setFeedback("Correct! 🎉");
-    } else {
-      setFeedback(`Incorrect. The correct answer was: ${q.options[q.correctIndex]}`);
-      setWrongAnswers(prev => [
-        ...prev,
-        {
-          question: q.question,
-          selected: q.options[idx],
-          correct: q.options[q.correctIndex],
-        },
-      ]);
+      setScore((prev) => prev + 1);
+      setFeedback(t('interviewQuiz.correct'));
+      return;
     }
+
+    setFeedback(t('interviewQuiz.incorrect', { answer: q.options[q.correctIndex] }));
+    setWrongAnswers((prev) => [
+      ...prev,
+      {
+        question: q.question,
+        selected: q.options[idx],
+        correct: q.options[q.correctIndex],
+      },
+    ]);
   };
 
   const handleNext = async () => {
     setFeedback(null);
     setSelected(null);
 
-    // If we are at the last loaded question, fetch more or finish
-    // For this simple version, let's do a 5-question round
-    if (current + 1 < 5) {
-      // Pre-fetch next question if needed (optional optimization), but here we just wait
+    if (current + 1 < TOTAL_QUESTIONS) {
       setIsGenerating(true);
       try {
         await generateNextQuestion(topic);
-        setCurrent(prev => prev + 1);
-      } catch (e) {
-        console.error(e);
-        setFinished(true); // End if fail to generate
+        setCurrent((prev) => prev + 1);
+      } catch (error) {
+        console.error(error);
+        setFinished(true);
       } finally {
         setIsGenerating(false);
       }
-    } else {
-      setFinished(true);
+      return;
     }
+
+    setFinished(true);
   };
 
   return (
@@ -122,8 +119,8 @@ const InterviewQuiz: React.FC = () => {
           <Home size={20} />
         </Button>
         <PageHeader
-          title="AI Interview Prep"
-          subtitle="Master your tech interviews with dynamic, AI-generated questions."
+          title={t('interviewQuiz.title')}
+          subtitle={t('interviewQuiz.subtitle')}
         />
       </div>
 
@@ -132,16 +129,16 @@ const InterviewQuiz: React.FC = () => {
           <div className="bg-violet-600/20 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
             <Brain size={40} className="text-violet-400" />
           </div>
-          <h2 className="text-2xl font-bold text-white mb-2">Configure Your Interview</h2>
-          <p className="text-slate-400 mb-8">Enter a topic (e.g., React Hooks, System Design, Python Basics) and the AI will challenge you.</p>
+          <h2 className="text-2xl font-bold text-white mb-2">{t('interviewQuiz.configureTitle')}</h2>
+          <p className="text-slate-400 mb-8">{t('interviewQuiz.configureSubtitle')}</p>
 
           <div className="space-y-4 text-left">
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1.5">Interview Topic</label>
+              <label className="block text-sm font-medium text-slate-300 mb-1.5">{t('interviewQuiz.topicLabel')}</label>
               <Input
                 value={topic}
-                onChange={e => setTopic(e.target.value)}
-                placeholder="e.g. JavaScript Event Loop"
+                onChange={(e) => setTopic(e.target.value)}
+                placeholder={t('interviewQuiz.topicPlaceholder')}
                 autoFocus
               />
             </div>
@@ -151,7 +148,7 @@ const InterviewQuiz: React.FC = () => {
               className="w-full h-12 text-lg font-semibold bg-violet-600 hover:bg-violet-700"
               isLoading={isGenerating}
             >
-              <Sparkles size={18} className="mr-2" /> Start Interview
+              <Sparkles size={18} className="mr-2" /> {t('interviewQuiz.startInterview')}
             </Button>
           </div>
         </div>
@@ -160,13 +157,13 @@ const InterviewQuiz: React.FC = () => {
           <div className="absolute top-0 left-0 w-full h-1 bg-slate-800 rounded-t-2xl overflow-hidden">
             <div
               className="h-full bg-violet-500 transition-all duration-500"
-              style={{ width: `${((current + 1) / 5) * 100}%` }}
+              style={{ width: `${((current + 1) / TOTAL_QUESTIONS) * 100}%` }}
             />
           </div>
 
           <div className="flex justify-between items-center mb-6">
-            <span className="text-sm font-bold text-slate-500 uppercase tracking-widest">Question {current + 1} / 5</span>
-            <span className="bg-slate-800 text-slate-300 px-3 py-1 rounded-full text-xs font-mono">Score: {score}</span>
+            <span className="text-sm font-bold text-slate-500 uppercase tracking-widest">{t('interviewQuiz.questionProgress', { current: current + 1, total: TOTAL_QUESTIONS })}</span>
+            <span className="bg-slate-800 text-slate-300 px-3 py-1 rounded-full text-xs font-mono">{t('interviewQuiz.score')}: {score}</span>
           </div>
 
           {questions[current] ? (
@@ -177,11 +174,11 @@ const InterviewQuiz: React.FC = () => {
 
               <div className="space-y-3 mb-8">
                 {questions[current].options.map((opt, idx) => {
-                  let stateClass = "bg-slate-800 border-slate-700 hover:bg-slate-700";
+                  let stateClass = 'bg-slate-800 border-slate-700 hover:bg-slate-700';
                   if (selected !== null) {
-                    if (idx === questions[current].correctIndex) stateClass = "bg-emerald-500/20 border-emerald-500 text-emerald-300";
-                    else if (selected === idx) stateClass = "bg-red-500/20 border-red-500 text-red-300";
-                    else stateClass = "bg-slate-800 border-slate-700 opacity-50";
+                    if (idx === questions[current].correctIndex) stateClass = 'bg-emerald-500/20 border-emerald-500 text-emerald-300';
+                    else if (selected === idx) stateClass = 'bg-red-500/20 border-red-500 text-red-300';
+                    else stateClass = 'bg-slate-800 border-slate-700 opacity-50';
                   }
 
                   return (
@@ -213,36 +210,36 @@ const InterviewQuiz: React.FC = () => {
                   isLoading={isGenerating}
                   className="bg-white text-slate-900 hover:bg-slate-200"
                 >
-                  {current < 4 ? 'Next Question' : 'Finish Interview'} <ArrowRight size={18} className="ml-2" />
+                  {current < TOTAL_QUESTIONS - 1 ? t('interviewQuiz.nextQuestion') : t('interviewQuiz.finishInterview')} <ArrowRight size={18} className="ml-2" />
                 </Button>
               </div>
             </>
           ) : (
             <div className="py-20 text-center">
               <div className="animate-spin w-8 h-8 border-4 border-violet-500 border-t-transparent rounded-full mx-auto mb-4"></div>
-              <p className="text-slate-400">Generating next challenge...</p>
+              <p className="text-slate-400">{t('interviewQuiz.generating')}</p>
             </div>
           )}
         </div>
       ) : (
         <div className="max-w-xl mx-auto bg-slate-800/50 rounded-2xl p-10 text-center ring-1 ring-slate-700 shadow-xl animate-in zoom-in-95">
-          <h2 className="text-3xl font-black text-white mb-2">Interview Complete! 🎉</h2>
-          <p className="text-slate-400 mb-8">Here is how you performed on <span className="text-violet-400 font-semibold">{topic}</span>.</p>
+          <h2 className="text-3xl font-black text-white mb-2">{t('interviewQuiz.completeTitle')}</h2>
+          <p className="text-slate-400 mb-8">{t('interviewQuiz.completeSubtitle', { topic })}</p>
 
           <div className="text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-fuchsia-400 mb-8">
-            {score} / 5
+            {score} / {TOTAL_QUESTIONS}
           </div>
 
           {wrongAnswers.length > 0 && (
             <div className="mb-8 text-left bg-slate-900/50 rounded-xl p-6 max-h-60 overflow-y-auto">
-              <h3 className="text-sm font-bold text-slate-500 uppercase tracking-widest mb-4">Areas for Improvement</h3>
+              <h3 className="text-sm font-bold text-slate-500 uppercase tracking-widest mb-4">{t('interviewQuiz.improvementAreas')}</h3>
               <div className="space-y-4">
                 {wrongAnswers.map((wa, idx) => (
                   <div key={idx} className="border-b border-slate-800 pb-4 last:border-0 last:pb-0">
                     <p className="font-medium text-slate-200 text-sm mb-1">{wa.question}</p>
                     <div className="flex justify-between text-xs">
-                      <span className="text-red-400">You: {wa.selected}</span>
-                      <span className="text-emerald-400">Correct: {wa.correct}</span>
+                      <span className="text-red-400">{t('interviewQuiz.you')}: {wa.selected}</span>
+                      <span className="text-emerald-400">{t('interviewQuiz.correctLabel')}: {wa.correct}</span>
                     </div>
                   </div>
                 ))}
@@ -252,10 +249,10 @@ const InterviewQuiz: React.FC = () => {
 
           <div className="grid grid-cols-2 gap-4">
             <Button variant="outline" onClick={() => setGameStarted(false)} className="w-full">
-              Try Another Topic
+              {t('interviewQuiz.tryAnotherTopic')}
             </Button>
             <Button onClick={() => navigate('/')} className="w-full">
-              Back to Dashboard
+              {t('interviewQuiz.backToDashboard')}
             </Button>
           </div>
         </div>

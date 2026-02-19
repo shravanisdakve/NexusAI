@@ -7,12 +7,23 @@ const { processModeration } = require('./services/moderatorService');
 
 const roomActivity = new Map(); // Track messages per room for autonomous tips
 
+const devAllowedOrigins = [
+    'http://localhost:3000',
+    'http://localhost:5173',
+    'http://localhost:5174',
+    'http://localhost:4173',
+    'http://127.0.0.1:3000',
+    'http://127.0.0.1:5173',
+    'http://127.0.0.1:5174',
+    'http://127.0.0.1:4173'
+];
+
 const socketHandler = (server) => {
     const io = socketIo(server, {
         cors: {
             origin: process.env.NODE_ENV === 'production'
                 ? (process.env.FRONTEND_URL || 'https://yourdomain.com')
-                : ['http://localhost:3000', 'http://localhost:5173', 'http://localhost:5174'],
+                : devAllowedOrigins,
             methods: ["GET", "POST"],
             credentials: true
         }
@@ -32,10 +43,10 @@ const socketHandler = (server) => {
         socket.on('join-room', async (roomId, user) => {
             try {
                 const room = await StudyRoom.findById(roomId)
-                    .populate('createdBy', 'displayName')
+                    .populate('createdBy', 'displayName email')
                     .populate('participants.user', 'displayName email');
 
-                if (!room) {
+                if (!room || !room.active) {
                     socket.emit('room-error', { message: 'Room not found' });
                     return;
                 }
@@ -64,10 +75,18 @@ const socketHandler = (server) => {
                     courseId: room.courseId,
                     maxUsers: room.maxUsers,
                     users: room.participants.map(p => ({
+                        id: p.user?._id?.toString() || '',
                         email: p.user?.email || '',
                         displayName: p.user?.displayName || 'Unknown'
                     })),
                     createdBy: room.createdBy?.displayName || 'Unknown',
+                    createdById: room.createdBy?._id?.toString() || '',
+                    createdByEmail: room.createdBy?.email || '',
+                    mutedUserIds: (room.chatMutedUserIds || []).map((id) => id.toString()),
+                    mutedUserEmails: room.participants
+                        .filter((p) => p.user?._id && (room.chatMutedUserIds || []).some((id) => id.toString() === p.user._id.toString()))
+                        .map((p) => p.user?.email || '')
+                        .filter(Boolean),
                     technique: room.technique,
                     topic: room.topic,
                     techniqueState: room.techniqueState || null
@@ -95,6 +114,36 @@ const socketHandler = (server) => {
         // Chat Message Event
         socket.on('send-message', async (data) => {
             try {
+                const senderId = data.userId ? String(data.userId) : '';
+                const room = await StudyRoom.findById(data.roomId).select('chatMutedUserIds participants.user');
+                const participantUserIds = new Set((room?.participants || [])
+                    .map((participant) => participant.user?.toString())
+                    .filter(Boolean));
+                const mutedUserIds = new Set((room?.chatMutedUserIds || []).map((id) => id.toString()));
+
+                if (senderId && !participantUserIds.has(senderId)) {
+                    socket.emit('receive-message', {
+                        id: `sys-membership-${Date.now()}`,
+                        text: 'You are no longer a participant in this room.',
+                        sender: 'System Moderator',
+                        userId: 'system-moderator',
+                        timestamp: new Date()
+                    });
+                    socket.leave(data.roomId);
+                    return;
+                }
+
+                if (senderId && mutedUserIds.has(senderId)) {
+                    socket.emit('receive-message', {
+                        id: `sys-muted-${Date.now()}`,
+                        text: 'You are muted by the host and cannot send chat messages right now.',
+                        sender: 'System Moderator',
+                        userId: 'system-moderator',
+                        timestamp: new Date()
+                    });
+                    return;
+                }
+
                 const modResult = await processModeration(data.content);
 
                 // Tier 1: Reflex
@@ -152,6 +201,9 @@ const socketHandler = (server) => {
                                 .sort({ timestamp: -1 })
                                 .limit(10);
                             const intervention = await analyzeChatContext(recentMessages.reverse());
+                            if (!intervention) {
+                                return;
+                            }
 
                             io.to(data.roomId).emit('receive-message', {
                                 id: `mod-${Date.now()}`,
@@ -188,6 +240,9 @@ const socketHandler = (server) => {
                     .limit(12);
 
                 const intervention = await analyzeChatContext(recentMessages.reverse());
+                if (!intervention) {
+                    return;
+                }
 
                 io.to(roomId).emit('receive-message', {
                     id: `mod-manual-${Date.now()}`,

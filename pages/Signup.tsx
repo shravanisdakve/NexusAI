@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
 import { BrainCircuit, Eye, EyeOff } from 'lucide-react';
 import { Input, Select } from '../components/ui';
+import { useAuth } from '../contexts/AuthContext';
+import { useLanguage } from '../contexts/LanguageContext';
 
 const Signup: React.FC = () => {
   const { signup } = useAuth();
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const location = useLocation();
   const personalizationData = location.state?.personalizationData || {};
@@ -16,16 +18,12 @@ const Signup: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-
-  // Pre-fill from personalization data
   const [college, setCollege] = useState(personalizationData.college || '');
   const [branch, setBranch] = useState(personalizationData.branch || '');
   const [year, setYear] = useState(personalizationData.year ? personalizationData.year.replace(/\D/g, '') : '');
-
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
-
   const [errors, setErrors] = useState({
     displayName: '',
     email: '',
@@ -38,39 +36,48 @@ const Signup: React.FC = () => {
   });
 
   const validateForm = () => {
-    const newErrors = { displayName: '', email: '', password: '', confirmPassword: '', college: '', branch: '', year: '', terms: '' };
+    const newErrors = {
+      displayName: '',
+      email: '',
+      password: '',
+      confirmPassword: '',
+      college: '',
+      branch: '',
+      year: '',
+      terms: '',
+    };
     let isValid = true;
 
-    if (displayName.length < 2) {
-      newErrors.displayName = 'Name must be at least 2 characters';
+    if (displayName.trim().length < 2) {
+      newErrors.displayName = t('signup.error.nameMin');
       isValid = false;
     }
-    if (college.length < 2) {
-      newErrors.college = 'College name is required';
+    if (college.trim().length < 2) {
+      newErrors.college = t('signup.error.collegeRequired');
       isValid = false;
     }
     if (!branch) {
-      newErrors.branch = 'Please select a branch';
+      newErrors.branch = t('signup.error.branchRequired');
       isValid = false;
     }
     if (!year) {
-      newErrors.year = 'Please select a year';
+      newErrors.year = t('signup.error.yearRequired');
       isValid = false;
     }
     if (!/\S+@\S+\.\S+/.test(email)) {
-      newErrors.email = 'Please enter a valid email address';
+      newErrors.email = t('signup.error.emailInvalid');
       isValid = false;
     }
     if (password.length < 8 || !/\d/.test(password) || !/[!@#$%^&*]/.test(password)) {
-      newErrors.password = 'Password must be 8+ characters with a number and special character';
+      newErrors.password = t('signup.error.passwordWeak');
       isValid = false;
     }
     if (password !== confirmPassword) {
-      newErrors.confirmPassword = 'Passwords do not match';
+      newErrors.confirmPassword = t('signup.error.passwordMismatch');
       isValid = false;
     }
     if (!agreedToTerms) {
-      newErrors.terms = 'You must agree to the Terms of Service and Privacy Policy.';
+      newErrors.terms = t('signup.error.termsRequired');
       isValid = false;
     }
 
@@ -95,11 +102,11 @@ const Signup: React.FC = () => {
         college,
         branch,
         parseInt(year, 10),
-        personalizationData // Pass the extra data
+        personalizationData
       );
       navigate('/');
     } catch (err: any) {
-      setApiError(err.message || 'Failed to create an account. Please try again.');
+      setApiError(err.message || t('signup.error.apiFailed'));
     } finally {
       setLoading(false);
     }
@@ -114,11 +121,11 @@ const Signup: React.FC = () => {
               <BrainCircuit className="w-8 h-8 text-white" />
             </div>
             <h1 className="text-3xl font-bold ml-3 bg-gradient-to-r from-violet-400 to-cyan-400 text-transparent bg-clip-text">
-              NexusAI
+              {t('sidebar.brand')}
             </h1>
           </div>
-          <h2 className="text-2xl font-bold text-white">Create your Account</h2>
-          <p className="mt-2 text-slate-400">Join the #1 platform for Engineering Students.</p>
+          <h2 className="text-2xl font-bold text-white">{t('signup.title')}</h2>
+          <p className="mt-2 text-slate-400">{t('signup.subtitle')}</p>
         </div>
 
         {(apiError || errors.terms) && (
@@ -128,18 +135,17 @@ const Signup: React.FC = () => {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Personalization Info */}
           {Object.keys(personalizationData).length > 0 && (
             <div className="bg-violet-500/10 border border-violet-500/30 rounded-lg p-3 flex justify-between items-center mb-4">
-              <span className="text-sm text-violet-300">Applying your personalized settings</span>
+              <span className="text-sm text-violet-300">{t('signup.personalizedSettings')}</span>
               <Link to="/personalization" className="text-xs text-white bg-violet-600 px-2 py-1 rounded hover:bg-violet-700 transition-colors">
-                Edit
+                {t('signup.edit')}
               </Link>
             </div>
           )}
 
           <div>
-            <label htmlFor="displayName" className="block text-sm font-medium text-slate-300 mb-2">Full Name</label>
+            <label htmlFor="displayName" className="block text-sm font-medium text-slate-300 mb-2">{t('signup.fullName')}</label>
             <Input
               id="displayName"
               name="displayName"
@@ -147,7 +153,7 @@ const Signup: React.FC = () => {
               autoComplete="name"
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
-              placeholder="John Doe"
+              placeholder={t('signup.fullNamePlaceholder')}
               required
               disabled={loading}
             />
@@ -155,7 +161,7 @@ const Signup: React.FC = () => {
           </div>
 
           <div>
-            <label htmlFor="college" className="block text-sm font-medium text-slate-300 mb-2">College Name</label>
+            <label htmlFor="college" className="block text-sm font-medium text-slate-300 mb-2">{t('signup.college')}</label>
             <Input
               id="college"
               name="college"
@@ -163,9 +169,9 @@ const Signup: React.FC = () => {
               autoComplete="organization"
               value={college}
               onChange={(e) => setCollege(e.target.value)}
-              placeholder="e.g., Massachusetts Institute of Technology"
+              placeholder={t('signup.collegePlaceholder')}
               required
-              disabled={loading || !!personalizationData.college} // Disable if pre-filled
+              disabled={loading || !!personalizationData.college}
               className={personalizationData.college ? 'opacity-70 cursor-not-allowed bg-slate-900 border-slate-700' : ''}
             />
             {errors.college && <p className="text-red-400 text-xs mt-1">{errors.college}</p>}
@@ -173,7 +179,7 @@ const Signup: React.FC = () => {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label htmlFor="branch" className="block text-sm font-medium text-slate-300 mb-2">Branch</label>
+              <label htmlFor="branch" className="block text-sm font-medium text-slate-300 mb-2">{t('signup.branch')}</label>
               <Select
                 id="branch"
                 name="branch"
@@ -181,22 +187,22 @@ const Signup: React.FC = () => {
                 value={branch}
                 onChange={(e) => setBranch(e.target.value)}
                 required
-                disabled={loading || !!personalizationData.branch} // Disable if pre-filled
+                disabled={loading || !!personalizationData.branch}
                 className={personalizationData.branch ? 'opacity-70 cursor-not-allowed bg-slate-900 border-slate-700' : ''}
               >
-                <option value="">Select Branch</option>
-                <option value="CSE">Computer Science (CSE)</option>
-                <option value="ECE">Electronics & Comm. (ECE)</option>
-                <option value="ME">Mechanical (ME)</option>
-                <option value="CE">Civil (CE)</option>
-                <option value="EE">Electrical (EE)</option>
-                <option value="IT">Information Technology (IT)</option>
-                <option value="Other">Other</option>
+                <option value="">{t('signup.selectBranch')}</option>
+                <option value="CSE">{t('signup.branch.cse')}</option>
+                <option value="ECE">{t('signup.branch.ece')}</option>
+                <option value="ME">{t('signup.branch.me')}</option>
+                <option value="CE">{t('signup.branch.ce')}</option>
+                <option value="EE">{t('signup.branch.ee')}</option>
+                <option value="IT">{t('signup.branch.it')}</option>
+                <option value="Other">{t('signup.branch.other')}</option>
               </Select>
               {errors.branch && <p className="text-red-400 text-xs mt-1">{errors.branch}</p>}
             </div>
             <div>
-              <label htmlFor="year" className="block text-sm font-medium text-slate-300 mb-2">Year of Study</label>
+              <label htmlFor="year" className="block text-sm font-medium text-slate-300 mb-2">{t('signup.year')}</label>
               <Select
                 id="year"
                 name="year"
@@ -204,21 +210,21 @@ const Signup: React.FC = () => {
                 value={year}
                 onChange={(e) => setYear(e.target.value)}
                 required
-                disabled={loading || !!personalizationData.year} // Disable if pre-filled
+                disabled={loading || !!personalizationData.year}
                 className={personalizationData.year ? 'opacity-70 cursor-not-allowed bg-slate-900 border-slate-700' : ''}
               >
-                <option value="">Select Year</option>
-                <option value="1">1st Year</option>
-                <option value="2">2nd Year</option>
-                <option value="3">3rd Year</option>
-                <option value="4">4th Year</option>
+                <option value="">{t('signup.selectYear')}</option>
+                <option value="1">{t('signup.year.1')}</option>
+                <option value="2">{t('signup.year.2')}</option>
+                <option value="3">{t('signup.year.3')}</option>
+                <option value="4">{t('signup.year.4')}</option>
               </Select>
               {errors.year && <p className="text-red-400 text-xs mt-1">{errors.year}</p>}
             </div>
           </div>
 
           <div>
-            <label htmlFor="email-signup" className="block text-sm font-medium text-slate-300 mb-2">Email Address</label>
+            <label htmlFor="email-signup" className="block text-sm font-medium text-slate-300 mb-2">{t('login.email')}</label>
             <Input
               id="email-signup"
               name="email"
@@ -226,14 +232,14 @@ const Signup: React.FC = () => {
               autoComplete="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@example.com"
+              placeholder={t('login.emailPlaceholder')}
               required
               disabled={loading}
             />
             {errors.email && <p className="text-red-400 text-xs mt-1">{errors.email}</p>}
           </div>
           <div>
-            <label htmlFor="password-signup" className="block text-sm font-medium text-slate-300 mb-2">Password</label>
+            <label htmlFor="password-signup" className="block text-sm font-medium text-slate-300 mb-2">{t('login.password')}</label>
             <div className="relative">
               <Input
                 id="password-signup"
@@ -242,7 +248,7 @@ const Signup: React.FC = () => {
                 autoComplete="new-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
+                placeholder={t('login.passwordPlaceholder')}
                 required
                 disabled={loading}
               />
@@ -250,6 +256,7 @@ const Signup: React.FC = () => {
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
                 className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-200"
+                aria-label={showPassword ? t('signup.hidePassword') : t('signup.showPassword')}
               >
                 {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
               </button>
@@ -257,7 +264,7 @@ const Signup: React.FC = () => {
             {errors.password && <p className="text-red-400 text-xs mt-1">{errors.password}</p>}
           </div>
           <div>
-            <label htmlFor="confirm-password-signup" className="block text-sm font-medium text-slate-300 mb-2">Confirm Password</label>
+            <label htmlFor="confirm-password-signup" className="block text-sm font-medium text-slate-300 mb-2">{t('signup.confirmPassword')}</label>
             <div className="relative">
               <Input
                 id="confirm-password-signup"
@@ -266,7 +273,7 @@ const Signup: React.FC = () => {
                 autoComplete="new-password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="••••••••"
+                placeholder={t('login.passwordPlaceholder')}
                 required
                 disabled={loading}
               />
@@ -274,6 +281,7 @@ const Signup: React.FC = () => {
                 type="button"
                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                 className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-200"
+                aria-label={showConfirmPassword ? t('signup.hidePassword') : t('signup.showPassword')}
               >
                 {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
               </button>
@@ -291,13 +299,13 @@ const Signup: React.FC = () => {
               className="h-4 w-4 text-violet-600 focus:ring-violet-500 border-gray-300 rounded"
             />
             <label htmlFor="terms" className="ml-2 block text-sm text-slate-400">
-              I agree to the{' '}
+              {t('signup.termsPrefix')}{' '}
               <Link to="/terms" className="font-medium text-violet-400 hover:text-violet-300">
-                Terms of Service
+                {t('signup.termsOfService')}
               </Link>{' '}
-              and{' '}
+              {t('signup.and')}{' '}
               <Link to="/privacy" className="font-medium text-violet-400 hover:text-violet-300">
-                Privacy Policy
+                {t('signup.privacyPolicy')}
               </Link>
               .
             </label>
@@ -306,25 +314,23 @@ const Signup: React.FC = () => {
           <button
             type="submit"
             disabled={loading || !agreedToTerms}
-            className="w-full py-3 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 
-                     disabled:cursor-not-allowed text-white rounded-lg transition-colors
-                     flex items-center justify-center gap-2"
+            className="w-full py-3 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg transition-colors flex items-center justify-center gap-2"
           >
             {loading ? (
               <>
                 <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                <span>Creating Account...</span>
+                <span>{t('signup.creatingAccount')}</span>
               </>
             ) : (
-              'Create Account'
+              t('signup.createAccount')
             )}
           </button>
         </form>
 
         <p className="text-sm text-center text-slate-400">
-          Already have an account?{' '}
+          {t('signup.alreadyAccount')}{' '}
           <Link to="/login" className="font-medium text-violet-400 hover:text-violet-300">
-            Log in
+            {t('signup.logIn')}
           </Link>
         </p>
       </div>

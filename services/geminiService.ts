@@ -2,6 +2,67 @@ import { GeminiRequest, GeminiResponse } from '../types';
 
 const API_URL = import.meta.env.VITE_API_BASE_URL || '';
 
+const stripCodeFences = (value: string): string =>
+    String(value || '')
+        .replace(/^\s*```(?:json)?\s*/i, '')
+        .replace(/\s*```\s*$/i, '')
+        .trim();
+
+const extractJsonPayload = (value: string): string => {
+    const text = stripCodeFences(value);
+    const firstObject = text.indexOf('{');
+    const firstArray = text.indexOf('[');
+    const hasObject = firstObject !== -1;
+    const hasArray = firstArray !== -1;
+
+    if (!hasObject && !hasArray) return text;
+
+    const start =
+        hasObject && hasArray
+            ? Math.min(firstObject, firstArray)
+            : hasObject
+                ? firstObject
+                : firstArray;
+
+    const startChar = text[start];
+    const end = startChar === '{' ? text.lastIndexOf('}') : text.lastIndexOf(']');
+    if (end === -1 || end <= start) return text.slice(start).trim();
+    return text.slice(start, end + 1).trim();
+};
+
+const repairJsonText = (value: string): string =>
+    value
+        .replace(/[\u201C\u201D]/g, '"')
+        .replace(/[\u2018\u2019]/g, "'")
+        .replace(/,\s*([}\]])/g, '$1')
+        .trim();
+
+const normalizeJsonString = (raw: unknown): string => {
+    const baseText = typeof raw === 'string' ? raw : JSON.stringify(raw ?? {});
+    const extracted = extractJsonPayload(baseText);
+    const attempts = [
+        extracted,
+        repairJsonText(extracted),
+        repairJsonText(stripCodeFences(baseText)),
+    ];
+
+    for (const attempt of attempts) {
+        if (!attempt) continue;
+        try {
+            const parsed = JSON.parse(attempt);
+            return JSON.stringify(parsed);
+        } catch {
+            // Continue trying repaired variants.
+        }
+    }
+
+    throw new Error('Invalid JSON returned for study plan generation.');
+};
+
+export const parseStudyPlanPayload = (raw: unknown): any => {
+    return JSON.parse(normalizeJsonString(raw));
+};
+
 // --- AI TUTOR SERVICE ---
 export const streamChat = async (message: string, base64Data?: string, mimeType?: string, language?: string): Promise<ReadableStream<Uint8Array> | null> => {
     const requestBody: GeminiRequest = { message, base64Data, mimeType, language };
@@ -153,8 +214,18 @@ export const extractTextFromFile = async (base64Data: string, mimeType: string):
     });
 
     if (!response.ok) {
-        const errorData: GeminiResponse = await response.json();
-        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+        let errorData: any = {};
+        try {
+            errorData = await response.json();
+        } catch {
+            // Ignore JSON parsing errors and fallback to status-based message.
+        }
+
+        const err: any = new Error(errorData.error || `HTTP error! status: ${response.status}`);
+        err.status = response.status;
+        if (errorData.code) err.code = errorData.code;
+        if (typeof errorData.retryAfterSec === 'number') err.retryAfterSec = errorData.retryAfterSec;
+        throw err;
     }
 
     const data: GeminiResponse = await response.json();
@@ -400,7 +471,10 @@ export const generateStudyPlan = async (goal: string, durationDays: number, note
     }
 
     const data = await response.json();
-    return data.planJson;
+    if (!Object.prototype.hasOwnProperty.call(data || {}, 'planJson')) {
+        throw new Error('Study plan not found in response');
+    }
+    return normalizeJsonString(data.planJson);
 };
 // --- FEYNMAN TECHNIQUE SERVICE ---
 export const streamFeynmanChat = async (message: string, topic: string, notes: string, language?: string): Promise<ReadableStream<Uint8Array> | null> => {

@@ -3,6 +3,7 @@ import { PageHeader, Spinner } from '../components/ui';
 import { Clock, Gamepad2, Activity, Zap, Brain, Target, ShieldAlert } from 'lucide-react';
 import { getProductivityReport } from '../services/analyticsService';
 import KnowledgeMap from '../components/KnowledgeMap';
+import { useLanguage } from '../contexts/LanguageContext';
 
 // -------------------- TYPES --------------------
 interface ProductivityData {
@@ -25,18 +26,18 @@ const StatCard = ({ title, value, icon: Icon, colorClass = 'text-slate-400' }: a
   </div>
 );
 
-// Helper function to format time
-const formatTime = (seconds: number): string => {
-  if (!seconds || isNaN(seconds)) return '0 sec';
-  const mins = Math.floor(seconds / 60);
-  const hrs = Math.floor(mins / 60);
-  if (hrs > 0) return `${hrs}h ${mins % 60}m`;
-  return `${mins}m`;
-};
-
 const Insights: React.FC = () => {
+  const { t } = useLanguage();
   const [report, setReport] = useState<ProductivityData | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const formatTime = (seconds: number): string => {
+    if (!seconds || isNaN(seconds)) return t('insights.zeroSeconds');
+    const mins = Math.floor(seconds / 60);
+    const hrs = Math.floor(mins / 60);
+    if (hrs > 0) return `${hrs}h ${mins % 60}m`;
+    return `${mins}m`;
+  };
 
   useEffect(() => {
     const fetchReport = async () => {
@@ -63,25 +64,25 @@ const Insights: React.FC = () => {
 
   // If no data, show placeholder topics for demo
   const finalMapData = mapData.length > 0 ? mapData : [
-    { name: 'Linked Lists', strength: 0.85 },
-    { name: 'Trees', strength: 0.45 },
-    { name: 'Recursion', strength: 0.92 },
-    { name: 'Dynamic Programming', strength: 0.30 },
-    { name: 'Greedy Algorithms', strength: 0.65 }
+      { name: 'Linked Lists', strength: 0.85 },
+      { name: 'Trees', strength: 0.45 },
+      { name: 'Recursion', strength: 0.92 },
+      { name: 'Dynamic Programming', strength: 0.30 },
+      { name: 'Greedy Algorithms', strength: 0.65 }
   ];
 
   return (
     <div className="space-y-8 pb-12">
       <PageHeader
-        title="Academic Insights"
-        subtitle="Deep analysis of your learning patterns and performance."
+        title={t('insights.title')}
+        subtitle={t('insights.subtitle')}
       />
 
       {mapData.length === 0 && (
         <div className="bg-amber-900/30 border border-amber-600/50 rounded-lg p-3 flex items-center gap-3 text-amber-200 mb-6">
           <ShieldAlert size={20} className="flex-shrink-0" />
           <p className="text-sm">
-            <strong>Viewing Sample Data:</strong> You haven't taken enough quizzes to generate a personalized Knowledge Map yet. The data below is for demonstration.
+            <strong>{t('insights.sampleDataTitle')}</strong> {t('insights.sampleDataSubtitle')}
           </p>
         </div>
       )}
@@ -89,25 +90,25 @@ const Insights: React.FC = () => {
       {/* SUMMARY CARDS */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard
-          title="Study Time (Weekly)"
+          title={t('insights.studyTimeWeekly')}
           value={formatTime(report.totalStudyTime)}
           icon={Clock}
           colorClass="text-sky-400"
         />
         <StatCard
-          title="Quiz Accuracy"
+          title={t('insights.quizAccuracy')}
           value={`${report.quizAccuracy}%`}
           icon={Brain}
           colorClass="text-rose-400"
         />
         <StatCard
-          title="Completed Pomodoros"
+          title={t('insights.completedPomodoros')}
           value={report.completedPomodoros}
           icon={Zap}
           colorClass="text-amber-400"
         />
         <StatCard
-          title="Quizzes Attempted"
+          title={t('insights.quizzesAttempted')}
           value={report.totalQuizzes}
           icon={Target}
           colorClass="text-emerald-400"
@@ -122,10 +123,10 @@ const Insights: React.FC = () => {
         <div className="space-y-6">
           <div className="bg-slate-800/50 p-6 rounded-3xl ring-1 ring-slate-700 border border-slate-700/50">
             <h4 className="text-lg font-bold text-slate-100 mb-4 flex items-center gap-2">
-              <ShieldAlert size={18} className="text-rose-400" /> Improvement Areas
+              <ShieldAlert size={18} className="text-rose-400" /> {t('insights.improvementAreas')}
             </h4>
             {report.weaknesses.length === 0 ? (
-              <p className="text-sm text-slate-400 italic">No significant gaps detected yet. Keep quizzing!</p>
+              <p className="text-sm text-slate-400 italic">{t('insights.noGaps')}</p>
             ) : (
               <div className="space-y-4">
                 {report.weaknesses.map((w, idx) => (
@@ -140,10 +141,10 @@ const Insights: React.FC = () => {
 
           <div className="bg-slate-800/50 p-6 rounded-3xl ring-1 ring-slate-700 border border-slate-700/50">
             <h4 className="text-lg font-bold text-slate-100 mb-4 flex items-center gap-2">
-              <Brain size={18} className="text-emerald-400" /> Strengths
+              <Brain size={18} className="text-emerald-400" /> {t('insights.strengths')}
             </h4>
             {report.strengths.length === 0 ? (
-              <p className="text-sm text-slate-400 italic">Gathering data on your strengths...</p>
+              <p className="text-sm text-slate-400 italic">{t('insights.gatheringStrengths')}</p>
             ) : (
               <div className="space-y-4">
                 {report.strengths.map((s, idx) => (

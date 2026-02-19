@@ -42,7 +42,9 @@ router.get('/', async (req, res) => {
     const { branch, year, type, subject } = req.query;
     const filter = {};
 
-    if (branch) filter.branch = branch;
+    if (branch) {
+      filter.branch = { $in: [branch, 'Common', 'All'] };
+    }
     if (year) filter.year = year;
     if (type) filter.type = type;
     if (subject) {
