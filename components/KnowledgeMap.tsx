@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 
 interface TopicData {
     name: string;
     strength: number; // 0 to 1
+    details?: string[];
 }
 
 interface KnowledgeMapProps {
@@ -17,9 +18,19 @@ const KnowledgeMap: React.FC<KnowledgeMapProps> = ({ topics }) => {
     const centerX = width / 2;
     const centerY = height / 2;
     const radius = 120;
+    const containerRef = useRef<HTMLDivElement>(null);
+    const [tooltip, setTooltip] = useState<{ topic: TopicData; x: number; y: number } | null>(null);
+
+    const handleNodeHover = (event: React.MouseEvent<SVGGElement>, topic: TopicData) => {
+        const rect = containerRef.current?.getBoundingClientRect();
+        if (!rect) return;
+        const x = Math.min(Math.max(16, event.clientX - rect.left + 12), rect.width - 220);
+        const y = Math.min(Math.max(16, event.clientY - rect.top + 12), rect.height - 120);
+        setTooltip({ topic, x, y });
+    };
 
     return (
-        <div className="bg-slate-900/50 rounded-3xl p-6 ring-1 ring-slate-700 overflow-hidden relative border border-slate-700/50">
+        <div ref={containerRef} className="bg-slate-900/50 rounded-3xl p-6 ring-1 ring-slate-700 overflow-hidden relative border border-slate-700/50">
             <h4 className="text-lg font-bold text-slate-100 mb-6 flex items-center gap-2">
                 Knowledge Map
             </h4>
@@ -68,7 +79,13 @@ const KnowledgeMap: React.FC<KnowledgeMapProps> = ({ topics }) => {
                     const color = topic.strength > 0.7 ? '#10b981' : topic.strength > 0.4 ? '#f59e0b' : '#ef4444';
 
                     return (
-                        <g key={topic.name}>
+                        <g
+                            key={topic.name}
+                            onMouseEnter={(e) => handleNodeHover(e, topic)}
+                            onMouseMove={(e) => handleNodeHover(e, topic)}
+                            onMouseLeave={() => setTooltip(null)}
+                            className="cursor-help"
+                        >
                             <motion.circle
                                 initial={{ scale: 0 }}
                                 animate={{ scale: 1 }}
@@ -100,10 +117,26 @@ const KnowledgeMap: React.FC<KnowledgeMapProps> = ({ topics }) => {
                             >
                                 {Math.round(topic.strength * 100)}%
                             </text>
+                            <title>{`${topic.name}: ${Math.round(topic.strength * 100)}%`}</title>
                         </g>
                     );
                 })}
             </svg>
+
+            {tooltip && (
+                <div
+                    className="absolute z-20 w-56 rounded-xl border border-violet-500/30 bg-slate-950/95 p-3 text-[11px] text-slate-200 shadow-2xl pointer-events-none"
+                    style={{ left: tooltip.x, top: tooltip.y }}
+                >
+                    <p className="font-semibold text-violet-300 mb-1">{tooltip.topic.name}</p>
+                    <p className="text-slate-300 mb-2">Score: {Math.round(tooltip.topic.strength * 100)}%</p>
+                    {(tooltip.topic.details || ['No additional explanation available']).map((line, idx) => (
+                        <p key={`${tooltip.topic.name}-${idx}`} className="text-slate-400 leading-relaxed">
+                            {line}
+                        </p>
+                    ))}
+                </div>
+            )}
 
             <div className="absolute bottom-6 right-6 flex gap-4 text-xs">
                 <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-full bg-emerald-500"></div> Mastered</div>

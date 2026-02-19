@@ -22,6 +22,64 @@ const getGeminiModel = (modelName = 'gemini-2.0-flash', systemInstruction = null
     return genAI.getGenerativeModel(config);
 };
 
+const parseRetryAfterSec = (message = '') => {
+    const retryInMatch = message.match(/retry in ([\d.]+)s/i);
+    if (retryInMatch?.[1]) {
+        return Math.ceil(Number(retryInMatch[1]));
+    }
+
+    const retryDelayMatch = message.match(/"retryDelay":"(\d+)s"/i);
+    if (retryDelayMatch?.[1]) {
+        return Number(retryDelayMatch[1]);
+    }
+
+    return undefined;
+};
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const isGeminiQuotaError = (error) => {
+    const rawMessage = String(error?.message || '');
+    const status = Number(error?.status || error?.code || 0);
+    return status === 429 || /429|quota exceeded|too many requests|rate limit/i.test(rawMessage);
+};
+
+const isGeminiModelUnavailableError = (error) => {
+    const rawMessage = String(error?.message || '');
+    const status = Number(error?.status || error?.code || 0);
+    return status === 404
+        || /404/i.test(rawMessage)
+        || /is not found for API version/i.test(rawMessage)
+        || /not supported for generatecontent/i.test(rawMessage);
+};
+
+const handleGeminiError = (res, error, fallbackMessage) => {
+    const rawMessage = String(error?.message || fallbackMessage || 'Gemini request failed');
+    const status = Number(error?.status || error?.code || 0);
+    const retryAfterSec = parseRetryAfterSec(rawMessage);
+    const isQuotaError = status === 429 || /429|quota exceeded|too many requests|rate limit/i.test(rawMessage);
+
+    if (isQuotaError) {
+        return res.status(429).json({
+            error: 'AI quota exceeded or rate limited. Please retry shortly.',
+            code: 'AI_QUOTA_EXCEEDED',
+            retryAfterSec
+        });
+    }
+
+    return res.status(500).json({ error: rawMessage });
+};
+
+const FILE_EXTRACTION_PROMPT = `You are an expert OCR and document parser.
+Extract all textual content from the provided document. This document could be a PDF, an image (possibly handwritten notes), or a presentation (PPTX).
+
+DIRECTIONS:
+1. Extract all text.
+2. Preserve logical structure (headings, bullet points, sections, slide numbers).
+3. Represent formulas clearly in plain text or LaTeX-like notation.
+4. For presentations, keep content slide-wise when possible.
+5. Return only clean extracted text with no meta-commentary.`;
+
 // --- AI TUTOR SERVICE (Using Groq) ---
 router.post('/streamChat', async (req, res) => {
     try {
@@ -150,7 +208,7 @@ router.post('/summarizeAudioFromBase64', async (req, res) => {
         res.json({ summary: result.response.text() });
     } catch (error) {
         console.error("Error in summarizeAudioFromBase64:", error);
-        res.status(500).json({ error: error.message });
+        handleGeminiError(res, error, 'Audio summarization failed');
     }
 });
 
@@ -173,9 +231,7 @@ router.post('/extractTextFromFile', async (req, res) => {
     try {
         let { base64Data, mimeType } = req.body;
 
-        // File processing requires Gemini's multimodal capabilities
-        const model = getGeminiModel('gemini-2.0-flash');
-        if (!model) {
+        if (!genAI) {
             return res.status(503).json({ error: 'File extraction requires Gemini API. Please configure GEMINI_API_KEY or wait and try again.' });
         }
 
@@ -190,33 +246,85 @@ router.post('/extractTextFromFile', async (req, res) => {
         const filePart = {
             inlineData: {
                 data: base64Data,
-                mimeType: mimeType,
-            },
+                mimeType
+            }
         };
+        const textPart = { text: FILE_EXTRACTION_PROMPT };
 
-        const textPart = {
-            text: `You are an expert OCR and document parser. 
-            Extract all textual content from the provided document. This document could be a PDF, an image (possibly of handwritten notes), or a presentation (PPTX).
-            
-            DIRECTIONS:
-            1. Extract ALL text. For handwritten notes, be extremely thorough and use your best judgment to decipher messy handwriting.
-            2. Preserve the logical structure (headings, bullet points, sections, slide numbers).
-            3. For mathematical formulas, represent them clearly in plain text or LaTeX-like notation.
-            4. If it's a presentation, extract the content slide by slide.
-            5. Return ONLY the clean, unformatted continuous text. Do not include any meta-commentary like "Here is the text".`
-        };
+        const modelFallbackOrder = Array.from(new Set([
+            process.env.GEMINI_FILE_PRIMARY_MODEL || 'gemini-2.0-flash',
+            process.env.GEMINI_FILE_FALLBACK_MODEL || 'gemini-2.0-flash-exp'
+        ]));
+        let lastError = null;
+        let sawQuotaError = false;
+        let maxRetryAfterSec = 0;
 
-        const result = await model.generateContent([textPart, filePart]);
-        const extractedText = result.response.text();
+        for (const modelName of modelFallbackOrder) {
+            const model = getGeminiModel(modelName);
+            if (!model) continue;
 
-        if (!extractedText || extractedText.trim().length === 0) {
-            throw new Error("No text could be extracted from this file. It might be empty or in an unsupported format.");
+            const maxAttemptsPerModel = 2;
+            for (let attempt = 1; attempt <= maxAttemptsPerModel; attempt++) {
+                try {
+                    const result = await model.generateContent([textPart, filePart]);
+                    const extractedText = String(result?.response?.text?.() || '').trim();
+
+                    if (!extractedText) {
+                        throw new Error('No text could be extracted from this file. It might be empty or in an unsupported format.');
+                    }
+
+                    return res.json({ text: extractedText });
+                } catch (error) {
+                    lastError = error;
+                    if (isGeminiQuotaError(error)) {
+                        sawQuotaError = true;
+                        const retryAfterSec = parseRetryAfterSec(String(error?.message || ''));
+                        if (typeof retryAfterSec === 'number' && retryAfterSec > maxRetryAfterSec) {
+                            maxRetryAfterSec = retryAfterSec;
+                        }
+
+                        const canRetryThisModel = attempt < maxAttemptsPerModel;
+                        if (canRetryThisModel) {
+                            const waitSec = Math.min(45, Math.max(2, retryAfterSec || 6));
+                            console.warn(`[extractTextFromFile] ${modelName} rate limited. Retrying in ${waitSec}s (attempt ${attempt + 1}/${maxAttemptsPerModel})...`);
+                            await sleep(waitSec * 1000);
+                            continue;
+                        }
+
+                        console.warn(`[extractTextFromFile] ${modelName} still rate limited after retries. Trying next model...`);
+                        break;
+                    }
+
+                    if (isGeminiModelUnavailableError(error)) {
+                        console.warn(`[extractTextFromFile] ${modelName} unavailable for this API/version. Trying next model...`);
+                        break;
+                    }
+
+                    console.error(`[extractTextFromFile] ${modelName} failed:`, error?.message || error);
+                    throw error;
+                }
+            }
         }
 
-        res.json({ text: extractedText });
+        if (sawQuotaError) {
+            return res.status(429).json({
+                error: 'AI quota exceeded or rate limited. Please retry shortly.',
+                code: 'AI_QUOTA_EXCEEDED',
+                retryAfterSec: maxRetryAfterSec || undefined
+            });
+        }
+
+        if (isGeminiModelUnavailableError(lastError)) {
+            return res.status(503).json({
+                error: 'No compatible Gemini file-extraction model is currently available for this server configuration.',
+                code: 'AI_MODEL_UNAVAILABLE'
+            });
+        }
+
+        throw lastError || new Error('File text extraction failed.');
     } catch (error) {
         console.error("Error in extractTextFromFile:", error);
-        res.status(500).json({ error: error.message });
+        handleGeminiError(res, error, 'File text extraction failed');
     }
 });
 
@@ -504,6 +612,109 @@ router.post('/streamVivaChat', async (req, res) => {
         res.end();
     } catch (error) {
         console.error("Error in streamVivaChat:", error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// --- FEYNMAN TECHNIQUE SERVICE (Using multi-provider stack) ---
+router.post('/streamFeynmanChat', async (req, res) => {
+    try {
+        const { message, topic, notes, language } = req.body;
+
+        let systemInstruction = `You are a curious, non-expert student (a 10-year-old named "Nino") who wants to learn about "${topic}".
+The user is trying to teach you this concept using the Feynman Technique.
+
+Your Goal:
+1. Act like you know nothing about the technical side of ${topic}.
+2. Ask innocent but deep "Why?" and "How?" questions.
+3. If the user uses jargon or complex language, ask for simpler words suitable for a 10-year-old.
+4. Do not provide formal textbook definitions yourself. You are the learner.
+
+Notes context if available:
+---
+${notes || 'No specific notes provided.'}
+---
+
+Current behavior:
+- Be friendly and curious.
+- If explanation is too short, ask for an analogy.
+- Ask for a Mumbai/India real-world example when useful.`;
+
+        if (language === 'mr') {
+            systemInstruction += ' IMPORTANT: Respond only in MARATHI (मराठी).';
+        } else if (language === 'hi') {
+            systemInstruction += ' IMPORTANT: Respond only in HINDI (हिंदी).';
+        }
+
+        res.setHeader('Content-Type', 'text/event-stream');
+        res.setHeader('Cache-Control', 'no-cache');
+        res.setHeader('Connection', 'keep-alive');
+
+        const stream = aiProvider.stream(message, {
+            feature: 'chat',
+            systemInstruction,
+            maxTokens: 1200
+        });
+
+        for await (const chunk of stream) {
+            res.write(`data: ${JSON.stringify({ text: chunk })}\n\n`);
+        }
+        res.end();
+    } catch (error) {
+        console.error('Error in streamFeynmanChat:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+router.post('/getFeynmanFeedback', async (req, res) => {
+    try {
+        const { topic, explanation, notes, language } = req.body;
+
+        let prompt = `You are an expert pedagogy analyzer.
+Evaluate the user's explanation of "${topic}" using Feynman Technique principles.
+
+Reference notes:
+${notes || 'No notes provided.'}
+
+User explanation:
+"${explanation || ''}"
+
+Return ONLY raw JSON with this schema:
+{
+  "clarityScore": number,
+  "jargon": ["string"],
+  "gaps": ["string"],
+  "analogySuggestions": ["string"],
+  "verdict": "string",
+  "improvement": "string"
+}
+
+Scoring guidance:
+- clarityScore must be an integer from 1 to 10
+- jargon: complex words used without explanation
+- gaps: missing/incorrect concept pieces
+- analogySuggestions: 1-3 concrete analogy improvements
+- verdict: short summary
+- improvement: one highest-impact next step`;
+
+        if (language === 'mr') {
+            prompt += '\nIMPORTANT: All textual fields in JSON must be in MARATHI (मराठी).';
+        } else if (language === 'hi') {
+            prompt += '\nIMPORTANT: All textual fields in JSON must be in HINDI (हिंदी).';
+        }
+
+        const result = await aiProvider.generate(prompt, {
+            feature: 'studyBuddy',
+            json: true,
+            temperature: 0.3,
+            maxTokens: 1200
+        });
+
+        const cleaned = String(result || '').replace(/```json|```/g, '').trim();
+        const parsed = JSON.parse(cleaned);
+        res.json(parsed);
+    } catch (error) {
+        console.error('Error in getFeynmanFeedback:', error);
         res.status(500).json({ error: error.message });
     }
 });

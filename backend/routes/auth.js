@@ -21,10 +21,31 @@ const validatePassword = (password) => {
   return null;
 };
 
+const sanitizeQuickAccessTools = (tools) => {
+  if (!Array.isArray(tools)) return [];
+  return [...new Set(tools.filter((item) => typeof item === 'string'))].slice(0, 8);
+};
+
 // --- SIGNUP ENDPOINT ---
 router.post("/signup", async (req, res) => {
   try {
-    const { email, password, displayName, branch, year, college, avatar, learningGoals, learningStyle, studyTime, targetExam, minorDegree, backlogs } = req.body;
+    const {
+      email,
+      password,
+      displayName,
+      branch,
+      year,
+      college,
+      avatar,
+      learningGoals,
+      learningStyle,
+      studyTime,
+      targetExam,
+      minorDegree,
+      backlogs,
+      preferredLanguage,
+      quickAccessTools
+    } = req.body;
 
     if (!email || !password || !displayName || !branch || !year || !college) {
       return res.status(400).json({ success: false, message: "All fields are required" });
@@ -55,6 +76,8 @@ router.post("/signup", async (req, res) => {
       targetExam,
       minorDegree,
       backlogs,
+      preferredLanguage: ['en', 'mr', 'hi'].includes(preferredLanguage) ? preferredLanguage : 'en',
+      quickAccessTools: sanitizeQuickAccessTools(quickAccessTools),
       lastActive: Date.now()
     });
 
@@ -77,6 +100,14 @@ router.post("/signup", async (req, res) => {
         year: newUser.year,
         college: newUser.college,
         avatar: newUser.avatar,
+        learningGoals: newUser.learningGoals || [],
+        learningStyle: newUser.learningStyle || null,
+        studyTime: newUser.studyTime || null,
+        targetExam: newUser.targetExam || null,
+        minorDegree: newUser.minorDegree || null,
+        backlogs: newUser.backlogs || 0,
+        preferredLanguage: newUser.preferredLanguage || 'en',
+        quickAccessTools: newUser.quickAccessTools || [],
       }
     });
 
@@ -126,6 +157,14 @@ router.post('/login', async (req, res) => {
         year: user.year,
         college: user.college,
         avatar: user.avatar,
+        learningGoals: user.learningGoals || [],
+        learningStyle: user.learningStyle || null,
+        studyTime: user.studyTime || null,
+        targetExam: user.targetExam || null,
+        minorDegree: user.minorDegree || null,
+        backlogs: user.backlogs || 0,
+        preferredLanguage: user.preferredLanguage || 'en',
+        quickAccessTools: user.quickAccessTools || [],
       }
     });
 
@@ -153,7 +192,7 @@ router.get('/verify', authMiddleware, async (req, res) => {
 // --- UPDATE PROFILE ENDPOINT ---
 router.put('/profile', authMiddleware, async (req, res) => {
   try {
-    const { displayName, branch, year, college, avatar } = req.body;
+    const { displayName, branch, year, college, avatar, preferredLanguage, quickAccessTools } = req.body;
 
     const user = await User.findById(req.user.userId);
     if (!user) {
@@ -165,6 +204,8 @@ router.put('/profile', authMiddleware, async (req, res) => {
     if (year) user.year = year;
     if (college) user.college = college;
     if (avatar) user.avatar = avatar;
+    if (preferredLanguage && ['en', 'mr', 'hi'].includes(preferredLanguage)) user.preferredLanguage = preferredLanguage;
+    if (quickAccessTools) user.quickAccessTools = sanitizeQuickAccessTools(quickAccessTools);
 
     await user.save();
 
@@ -178,6 +219,8 @@ router.put('/profile', authMiddleware, async (req, res) => {
         year: user.year,
         college: user.college,
         avatar: user.avatar,
+        preferredLanguage: user.preferredLanguage || 'en',
+        quickAccessTools: user.quickAccessTools || [],
       }
     });
 

@@ -1,9 +1,8 @@
-import React, { useEffect, useState } from "react";
-import { saveGameActivity } from "@/services/gameTracker";
-import { awardBadge } from "@/services/gamificationService";
+import React, { useEffect, useState } from 'react';
+import { awardBadge } from '@/services/gamificationService';
+import { useLanguage } from '../contexts/LanguageContext';
 
-// ---------------- TYPES ----------------
-type Level = "easy" | "medium" | "hard";
+type Level = 'easy' | 'medium' | 'hard';
 
 type Question = {
   question: string;
@@ -11,49 +10,49 @@ type Question = {
   answer: number;
 };
 
-// ---------------- QUESTION GENERATOR ----------------
 const generateQuestion = (level: Level): Question => {
-  let a = 0, b = 0, answer = 0, question = "";
+  let a = 0;
+  let b = 0;
+  let answer = 0;
+  let question = '';
 
   switch (level) {
-    case "easy":
+    case 'easy':
       a = Math.floor(Math.random() * 10) + 1;
       b = Math.floor(Math.random() * 10) + 1;
       answer = a + b;
       question = `${a} + ${b}`;
       break;
-
-    case "medium":
+    case 'medium':
       a = Math.floor(Math.random() * 50) + 10;
       b = Math.floor(Math.random() * 20) + 1;
       answer = a - b;
       question = `${a} - ${b}`;
       break;
-
-    case "hard":
+    case 'hard':
       a = Math.floor(Math.random() * 12) + 1;
       b = Math.floor(Math.random() * 12) + 1;
       answer = a * b;
-      question = `${a} × ${b}`;
+      question = `${a} x ${b}`;
       break;
   }
 
-  const options = Array.from(
-    new Set([
-      answer,
-      answer + Math.floor(Math.random() * 5) + 1,
-      answer - Math.floor(Math.random() * 5) - 1,
-      answer + Math.floor(Math.random() * 10) - 5,
-    ])
-  )
+  const options = Array.from(new Set([
+    answer,
+    answer + Math.floor(Math.random() * 5) + 1,
+    answer - Math.floor(Math.random() * 5) - 1,
+    answer + Math.floor(Math.random() * 10) - 5,
+  ]))
     .slice(0, 4)
     .sort(() => Math.random() - 0.5);
 
   return { question, options, answer };
 };
 
-// ---------------- COMPONENT ----------------
+const TOTAL_QUESTIONS = 10;
+
 export default function SpeedMathGame() {
+  const { t } = useLanguage();
   const [level, setLevel] = useState<Level | null>(null);
   const [currentQ, setCurrentQ] = useState<Question | null>(null);
   const [questionNo, setQuestionNo] = useState(1);
@@ -61,7 +60,6 @@ export default function SpeedMathGame() {
   const [timeLeft, setTimeLeft] = useState(10);
   const [gameOver, setGameOver] = useState(false);
 
-  // Timer
   useEffect(() => {
     if (!level || gameOver) return;
 
@@ -70,7 +68,7 @@ export default function SpeedMathGame() {
       return;
     }
 
-    const timer = setTimeout(() => setTimeLeft(t => t - 1), 1000);
+    const timer = setTimeout(() => setTimeLeft((t0) => t0 - 1), 1000);
     return () => clearTimeout(timer);
   }, [timeLeft, level, gameOver]);
 
@@ -84,19 +82,15 @@ export default function SpeedMathGame() {
   };
 
   const nextQuestion = (finalScore?: number) => {
-    if (questionNo === 10) {
+    if (questionNo === TOTAL_QUESTIONS) {
       setGameOver(true);
       const s = finalScore !== undefined ? finalScore : score;
-      console.log(`[SpeedMath] Game Over. Final Score: ${s}`);
-      if (s === 10) {
-        console.log("[SpeedMath] Perfect Score! Awarding Math Wizard badge...");
-        awardBadge("Math Wizard").then(res => {
-          console.log("[SpeedMath] Badge Award Response:", res);
-        });
+      if (s === TOTAL_QUESTIONS) {
+        awardBadge('Math Wizard').catch(() => {});
       }
       return;
     }
-    setQuestionNo(q => q + 1);
+    setQuestionNo((q) => q + 1);
     setTimeLeft(10);
     setCurrentQ(generateQuestion(level!));
   };
@@ -109,77 +103,73 @@ export default function SpeedMathGame() {
     }
     nextQuestion(newScore);
   };
-  const [startTime, setStartTime] = useState<number>(0);
 
-  // ---------------- LEVEL SELECTION ----------------
   if (!level) {
     return (
       <div className="min-h-[70vh] flex flex-col items-center justify-center text-center">
-        <h1 className="text-3xl font-bold mb-2">⚡ Speed Math Challenge</h1>
+        <h1 className="text-3xl font-bold mb-2">{t('speedMath.title')}</h1>
         <p className="text-slate-400 mb-8">
-          Answer 10 questions as fast as you can
+          {t('speedMath.subtitle')}
         </p>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
           <button
-            onClick={() => startGame("easy")}
+            onClick={() => startGame('easy')}
             className="bg-slate-900 border border-slate-800 hover:border-green-400 p-6 rounded-xl transition"
           >
-            <h3 className="text-lg font-semibold text-green-400">Easy</h3>
-            <p className="text-sm text-slate-400 mt-2">Addition</p>
+            <h3 className="text-lg font-semibold text-green-400">{t('speedMath.easy')}</h3>
+            <p className="text-sm text-slate-400 mt-2">{t('speedMath.easyDesc')}</p>
           </button>
 
           <button
-            onClick={() => startGame("medium")}
+            onClick={() => startGame('medium')}
             className="bg-slate-900 border border-slate-800 hover:border-yellow-400 p-6 rounded-xl transition"
           >
-            <h3 className="text-lg font-semibold text-yellow-400">Medium</h3>
-            <p className="text-sm text-slate-400 mt-2">Subtraction</p>
+            <h3 className="text-lg font-semibold text-yellow-400">{t('speedMath.medium')}</h3>
+            <p className="text-sm text-slate-400 mt-2">{t('speedMath.mediumDesc')}</p>
           </button>
 
           <button
-            onClick={() => startGame("hard")}
+            onClick={() => startGame('hard')}
             className="bg-slate-900 border border-slate-800 hover:border-red-400 p-6 rounded-xl transition"
           >
-            <h3 className="text-lg font-semibold text-red-400">Hard</h3>
-            <p className="text-sm text-slate-400 mt-2">Multiplication</p>
+            <h3 className="text-lg font-semibold text-red-400">{t('speedMath.hard')}</h3>
+            <p className="text-sm text-slate-400 mt-2">{t('speedMath.hardDesc')}</p>
           </button>
         </div>
       </div>
     );
   }
 
-  // ---------------- GAME OVER ----------------
   if (gameOver) {
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center text-center">
-        <h2 className="text-3xl font-bold mb-2">🏁 Game Over</h2>
+        <h2 className="text-3xl font-bold mb-2">{t('speedMath.gameOver')}</h2>
         <p className="text-lg text-slate-400 mb-4">
-          You scored <span className="text-purple-400 font-bold">{score}</span> / 10
+          {t('speedMath.youScored')} <span className="text-purple-400 font-bold">{score}</span> / {TOTAL_QUESTIONS}
         </p>
 
         <button
           onClick={() => setLevel(null)}
           className="px-6 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg font-semibold transition"
         >
-          Back to Levels
+          {t('speedMath.backToLevels')}
         </button>
       </div>
     );
   }
 
-  // ---------------- GAME UI ----------------
   return (
     <div className="max-w-md mx-auto mt-12 bg-slate-900 border border-slate-800 rounded-2xl p-6 text-center">
       <div className="flex justify-between text-sm text-slate-400 mb-4">
-        <span>Question {questionNo} / 10</span>
-        <span>⏱ {timeLeft}s</span>
+        <span>{t('speedMath.questionProgress', { current: questionNo, total: TOTAL_QUESTIONS })}</span>
+        <span>{t('speedMath.timeLeft', { seconds: timeLeft })}</span>
       </div>
 
       <div className="w-full h-2 bg-slate-800 rounded mb-6 overflow-hidden">
         <div
           className="h-full bg-purple-500 transition-all"
-          style={{ width: `${(questionNo / 10) * 100}%` }}
+          style={{ width: `${(questionNo / TOTAL_QUESTIONS) * 100}%` }}
         />
       </div>
 

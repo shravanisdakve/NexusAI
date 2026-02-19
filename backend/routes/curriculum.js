@@ -17,27 +17,83 @@ const FALLBACK_CURRICULUM = {
     ]
 };
 
+const escapeRegex = (value = '') => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const normalizeSemesterData = (semesterData, fallbackSemester) => {
+    const subjects = Array.isArray(semesterData?.subjects) ? semesterData.subjects : [];
+    return {
+        semesterNumber: Number(semesterData?.semesterNumber) || fallbackSemester,
+        subjects: subjects.map((subject) => ({
+            subjectCode: subject?.subjectCode || '',
+            name: subject?.name || 'Untitled Subject',
+            credits: Number(subject?.credits) || 0,
+            category: subject?.category || 'General',
+            modules: Array.isArray(subject?.modules) ? subject.modules : [],
+            tutorials: Array.isArray(subject?.tutorials) ? subject.tutorials : []
+        }))
+    };
+};
+
 // Get curriculum for a specific branch and semester
 router.get('/:branch/:semester', async (req, res) => {
     try {
         const { branch, semester } = req.params;
         const decodedBranch = decodeURIComponent(branch);
-        let curriculum = await Curriculum.findOne({ branch: new RegExp(decodedBranch, 'i') });
+        const parsedSemester = Number.parseInt(semester, 10);
+        if (!Number.isInteger(parsedSemester) || parsedSemester < 1 || parsedSemester > 8) {
+            return res.status(400).json({ success: false, message: 'Invalid semester value. Use a number between 1 and 8.' });
+        }
 
-        // Use fallback if not found in DB
-        if (!curriculum && decodedBranch.toLowerCase().includes('common')) {
+        const escapedBranch = escapeRegex(decodedBranch.trim());
+        let curriculum = await Curriculum.findOne({ branch: new RegExp(`^${escapedBranch}$`, 'i') });
+
+        if (!curriculum) {
+            curriculum = await Curriculum.findOne({ branch: new RegExp(escapedBranch, 'i') });
+        }
+
+        if (!curriculum) {
+            curriculum = await Curriculum.findOne({ branch: /common/i });
+        }
+
+        // Use in-memory fallback if DB has no curriculum records.
+        if (!curriculum) {
             curriculum = FALLBACK_CURRICULUM;
         }
 
-        if (!curriculum) return res.status(404).json({ message: 'Curriculum not found' });
-
-        const semData = curriculum.semesters.find(s => s.semesterNumber === parseInt(semester));
+        const currentSemData = (curriculum.semesters || []).find((s) => Number(s.semesterNumber) === parsedSemester);
+        let semData = currentSemData;
+        let fallbackApplied = false;
 
         if (!semData) {
-            return res.status(404).json({ success: false, message: 'Semester not found' });
+            const commonCurriculum = await Curriculum.findOne({ branch: /common/i });
+            const commonSemData = (commonCurriculum?.semesters || FALLBACK_CURRICULUM.semesters || [])
+                .find((s) => Number(s.semesterNumber) === parsedSemester);
+
+            if (commonSemData) {
+                semData = commonSemData;
+                fallbackApplied = true;
+            }
         }
 
-        res.json({ success: true, curriculum: semData });
+        if (!semData) {
+            const firstAvailable = (curriculum.semesters || [])[0]
+                || (FALLBACK_CURRICULUM.semesters || [])[0];
+            if (!firstAvailable) {
+                return res.status(404).json({ success: false, message: 'Curriculum not found' });
+            }
+            semData = firstAvailable;
+            fallbackApplied = true;
+        }
+
+        res.json({
+            success: true,
+            curriculum: normalizeSemesterData(semData, parsedSemester),
+            meta: {
+                requestedBranch: decodedBranch,
+                sourceBranch: curriculum.branch || FALLBACK_CURRICULUM.branch,
+                fallbackApplied
+            }
+        });
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });
     }

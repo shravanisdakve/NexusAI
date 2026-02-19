@@ -100,6 +100,45 @@ export const leaveRoom = async (roomId: string) => {
     }
 };
 
+export const updateRoom = async (
+    roomId: string,
+    updates: { name?: string; topic?: string; maxUsers?: number }
+): Promise<StudyRoom | null> => {
+    try {
+        const response = await axios.patch(`${API_URL}/api/community/rooms/${roomId}`, updates, {
+            headers: getAuthHeaders()
+        });
+        return response.data?.success ? response.data.room : null;
+    } catch (error) {
+        console.error(`Error updating room ${roomId}:`, error);
+        throw error;
+    }
+};
+
+export const deleteRoom = async (roomId: string): Promise<boolean> => {
+    try {
+        const response = await axios.delete(`${API_URL}/api/community/rooms/${roomId}`, {
+            headers: getAuthHeaders()
+        });
+        return !!response.data?.success;
+    } catch (error) {
+        console.error(`Error deleting room ${roomId}:`, error);
+        throw error;
+    }
+};
+
+export type RoomModerationAction = 'mute_chat' | 'unmute_chat' | 'remove' | 'transfer_host';
+
+export const moderateRoomMember = async (
+    roomId: string,
+    payload: { action: RoomModerationAction; targetUserEmail?: string; targetUserId?: string }
+) => {
+    const response = await axios.post(`${API_URL}/api/community/rooms/${roomId}/members/moderate`, payload, {
+        headers: getAuthHeaders()
+    });
+    return response.data;
+};
+
 export const onRoomUpdate = (roomId: string, callback: (room: any) => void) => {
     if (!socket) return () => { };
 

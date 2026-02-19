@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { PageHeader, Button, Input } from '../components/ui';
 import { Calculator, Plus, Trash2, AlertCircle, CheckCircle, Target, Zap } from 'lucide-react';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface Subject {
     id: number;
@@ -14,6 +15,7 @@ const gradePoints: { [key: string]: number } = {
 };
 
 const GPACalculator: React.FC = () => {
+    const { t } = useLanguage();
     const [mode, setMode] = useState<'SGPA' | 'CGPA'>('SGPA');
     const [subjects, setSubjects] = useState<Subject[]>([
         { id: 1, name: '', credits: '', grade: '' },
@@ -24,7 +26,7 @@ const GPACalculator: React.FC = () => {
         { id: 1, pointer: '' },
         { id: 2, pointer: '' }
     ]);
-    const [result, setResult] = useState<{ gpa: number, percentage: string, classType: string, kts: number } | null>(null);
+    const [result, setResult] = useState<{ gpa: number, percentage: string, classType: 'pass' | 'firstDistinction' | 'firstClass' | 'higherSecond' | 'secondClass', kts: number } | null>(null);
     const [cgpaResult, setCgpaResult] = useState<{ cgpa: number, percentage: string } | null>(null);
     const [error, setError] = useState<string | null>(null);
 
@@ -68,11 +70,11 @@ const GPACalculator: React.FC = () => {
             // MU Formula: Percentage = (GPA - 0.75) * 10
             const percentageValue = (gpaValue - 0.75) * 10;
 
-            let classType = "Pass Class";
-            if (gpaValue >= 7.75) classType = "First Class with Distinction";
-            else if (gpaValue >= 6.75) classType = "First Class";
-            else if (gpaValue >= 5.75) classType = "Higher Second Class";
-            else if (gpaValue >= 5.00) classType = "Second Class";
+            let classType: 'pass' | 'firstDistinction' | 'firstClass' | 'higherSecond' | 'secondClass' = "pass";
+            if (gpaValue >= 7.75) classType = "firstDistinction";
+            else if (gpaValue >= 6.75) classType = "firstClass";
+            else if (gpaValue >= 5.75) classType = "higherSecond";
+            else if (gpaValue >= 5.00) classType = "secondClass";
 
             setResult({
                 gpa: parseFloat(gpaValue.toFixed(2)),
@@ -81,7 +83,7 @@ const GPACalculator: React.FC = () => {
                 kts
             });
         } else {
-            setError("Ensure all credits are numbers and grades are valid (O, A+, A, B+, B, C, P, F).");
+            setError(t('gpa.invalidSgpaInput'));
             setResult(null);
         }
     };
@@ -110,14 +112,14 @@ const GPACalculator: React.FC = () => {
                 percentage: percentageVal > 0 ? percentageVal.toFixed(2) : "0.00"
             });
         } else {
-            setError("Ensure all semester pointers are valid numbers between 0 and 10.");
+            setError(t('gpa.invalidCgpaInput'));
             setCgpaResult(null);
         }
     };
 
     return (
         <div className="space-y-8 max-w-4xl mx-auto pb-20">
-            <PageHeader title="GPA Calculator" subtitle="Mumbai University SGPA & Percentage Engine" />
+            <PageHeader title={t('gpa.title')} subtitle={t('gpa.subtitle')} />
 
             <div className="flex justify-center mb-8">
                 <div className="bg-slate-800/50 p-1.5 rounded-2xl ring-1 ring-white/5 flex gap-2">
@@ -125,13 +127,13 @@ const GPACalculator: React.FC = () => {
                         onClick={() => { setMode('SGPA'); setResult(null); setCgpaResult(null); setError(null); }}
                         className={`px-6 py-2 rounded-xl text-sm font-bold transition-all ${mode === 'SGPA' ? 'bg-violet-600 text-white shadow-lg shadow-violet-900/40' : 'text-slate-400 hover:text-slate-200'}`}
                     >
-                        SGPA Mode
+                        {t('gpa.sgpaMode')}
                     </button>
                     <button
                         onClick={() => { setMode('CGPA'); setResult(null); setCgpaResult(null); setError(null); }}
                         className={`px-6 py-2 rounded-xl text-sm font-bold transition-all ${mode === 'CGPA' ? 'bg-violet-600 text-white shadow-lg shadow-violet-900/40' : 'text-slate-400 hover:text-slate-200'}`}
                     >
-                        CGPA Mode
+                        {t('gpa.cgpaMode')}
                     </button>
                 </div>
             </div>
@@ -150,12 +152,12 @@ const GPACalculator: React.FC = () => {
                                                 name={`subjectName-${subject.id}`}
                                                 value={subject.name}
                                                 onChange={(e) => updateSubject(subject.id, 'name', e.target.value)}
-                                                placeholder="Subject (Optional)"
+                                                placeholder={t('gpa.subjectOptional')}
                                                 className="h-11 bg-slate-900/50 border-white/5"
                                             />
                                         </div>
                                         <div className="w-20">
-                                            <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Credits</label>
+                                            <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 ml-1">{t('gpa.credits')}</label>
                                             <Input
                                                 id={`subject-credits-${subject.id}`}
                                                 name={`subjectCredits-${subject.id}`}
@@ -167,13 +169,13 @@ const GPACalculator: React.FC = () => {
                                             />
                                         </div>
                                         <div className="w-24">
-                                            <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Grade</label>
+                                            <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 ml-1">{t('gpa.grade')}</label>
                                             <Input
                                                 id={`subject-grade-${subject.id}`}
                                                 name={`subjectGrade-${subject.id}`}
                                                 value={subject.grade}
                                                 onChange={(e) => updateSubject(subject.id, 'grade', e.target.value)}
-                                                placeholder="O-F"
+                                                placeholder={t('gpa.gradePlaceholder')}
                                                 className={`h-11 bg-slate-900/50 border-white/5 text-center font-bold ${subject.grade.toUpperCase() === 'F' ? 'text-rose-400' : 'text-violet-400'}`}
                                             />
                                         </div>
@@ -188,10 +190,10 @@ const GPACalculator: React.FC = () => {
                                 ))}
                                 <div className="mt-8 flex gap-3">
                                     <Button onClick={addSubject} variant="secondary" className="bg-slate-700/50 hover:bg-slate-700 h-11 border-white/5">
-                                        <Plus size={18} className="mr-2" /> Add Subject
+                                        <Plus size={18} className="mr-2" /> {t('gpa.addSubject')}
                                     </Button>
                                     <Button onClick={calculateGPA} className="flex-1 bg-violet-600 hover:bg-violet-500 h-11 shadow-lg shadow-violet-900/30">
-                                        <Calculator size={18} className="mr-2" /> Calculate Results
+                                        <Calculator size={18} className="mr-2" /> {t('gpa.calculateResults')}
                                     </Button>
                                 </div>
                             </div>
@@ -209,7 +211,7 @@ const GPACalculator: React.FC = () => {
                                                     step="0.01"
                                                     value={sem.pointer}
                                                     onChange={(e) => setSemesters(semesters.map(s => s.id === sem.id ? { ...s, pointer: e.target.value } : s))}
-                                                    placeholder="Pointer (e.g. 9.12)"
+                                                    placeholder={t('gpa.pointerPlaceholder')}
                                                     className="h-11 bg-slate-900/50 border-white/5"
                                                 />
                                                 {semesters.length > 1 && (
@@ -227,10 +229,10 @@ const GPACalculator: React.FC = () => {
                                 </div>
                                 <div className="mt-8 flex gap-3">
                                     <Button onClick={() => setSemesters([...semesters, { id: Date.now(), pointer: '' }])} variant="secondary" className="bg-slate-700/50 hover:bg-slate-700 h-11 border-white/5">
-                                        <Plus size={18} className="mr-2" /> Add Semester
+                                        <Plus size={18} className="mr-2" /> {t('gpa.addSemester')}
                                     </Button>
                                     <Button onClick={calculateCGPA} className="flex-1 bg-violet-600 hover:bg-violet-500 h-11 shadow-lg shadow-violet-900/30">
-                                        <Calculator size={18} className="mr-2" /> Calculate CGPA
+                                        <Calculator size={18} className="mr-2" /> {t('gpa.calculateCgpa')}
                                     </Button>
                                 </div>
                             </div>
@@ -257,37 +259,37 @@ const GPACalculator: React.FC = () => {
                                         {result.gpa}
                                     </div>
                                     <div className="inline-block px-3 py-1 bg-violet-500/20 text-violet-400 text-[10px] font-black uppercase tracking-widest rounded-full border border-violet-500/30">
-                                        {result.classType}
+                                        {t(`gpa.class.${result.classType}`)}
                                     </div>
                                 </div>
 
                                 <div className="bg-slate-800/50 rounded-3xl p-6 ring-1 ring-white/5">
                                     <div className="flex justify-between items-center mb-4">
-                                        <h4 className="text-sm font-bold text-white">Conversion</h4>
-                                        <span className="text-[10px] text-slate-500 font-medium">MU Formula used</span>
+                                        <h4 className="text-sm font-bold text-white">{t('gpa.conversion')}</h4>
+                                        <span className="text-[10px] text-slate-500 font-medium">{t('gpa.muFormula')}</span>
                                     </div>
                                     <div className="flex items-baseline gap-2">
                                         <span className="text-3xl font-bold text-white">{result.percentage}%</span>
-                                        <span className="text-xs text-slate-400">Approx. Percentage</span>
+                                        <span className="text-xs text-slate-400">{t('gpa.approxPercentage')}</span>
                                     </div>
                                 </div>
 
                                 {result.kts > 0 ? (
                                     <div className="bg-rose-500/10 rounded-3xl p-6 border border-rose-500/20">
                                         <h4 className="text-sm font-bold text-rose-400 flex items-center gap-2 mb-2">
-                                            <AlertCircle size={16} /> KT Risk Detected
+                                            <AlertCircle size={16} /> {t('gpa.ktRiskTitle')}
                                         </h4>
                                         <p className="text-xs text-slate-400 leading-relaxed">
-                                            You have {result.kts} potential KTs. Switch to the **Study Room** to prioritize these modules before the final exam.
+                                            {t('gpa.ktRiskBody', { count: result.kts })}
                                         </p>
                                     </div>
                                 ) : (
                                     <div className="bg-emerald-500/10 rounded-3xl p-6 border border-emerald-500/20">
                                         <h4 className="text-sm font-bold text-emerald-400 flex items-center gap-2 mb-2">
-                                            <CheckCircle size={16} /> Clear Status
+                                            <CheckCircle size={16} /> {t('gpa.clearStatusTitle')}
                                         </h4>
                                         <p className="text-xs text-slate-400 leading-relaxed">
-                                            Zero KTs detected. Maintain this consistency to ensure a smooth transition to the next semester.
+                                            {t('gpa.clearStatusBody')}
                                         </p>
                                     </div>
                                 )}
@@ -295,8 +297,8 @@ const GPACalculator: React.FC = () => {
                         ) : (
                             <div className="bg-slate-800/30 rounded-3xl p-8 ring-1 ring-white/5 border border-dashed border-slate-700 flex flex-col items-center justify-center text-center h-64 lg:min-h-full">
                                 <Calculator size={40} className="text-slate-700 mb-4" />
-                                <h4 className="text-slate-400 font-bold mb-1">Waiting for SGPA Data</h4>
-                                <p className="text-xs text-slate-500">Fill in your subject credits and grades to generate the SGPA report.</p>
+                                <h4 className="text-slate-400 font-bold mb-1">{t('gpa.waitingSgpaTitle')}</h4>
+                                <p className="text-xs text-slate-500">{t('gpa.waitingSgpaBody')}</p>
                             </div>
                         )
                     ) : (
@@ -311,26 +313,26 @@ const GPACalculator: React.FC = () => {
                                         {cgpaResult.cgpa}
                                     </div>
                                     <div className="inline-block px-3 py-1 bg-emerald-500/20 text-emerald-400 text-[10px] font-black uppercase tracking-widest rounded-full border border-emerald-500/30">
-                                        Overall Degree Average
+                                        {t('gpa.overallDegreeAverage')}
                                     </div>
                                 </div>
 
                                 <div className="bg-slate-800/50 rounded-3xl p-6 ring-1 ring-white/5">
                                     <div className="flex justify-between items-center mb-4">
-                                        <h4 className="text-sm font-bold text-white">Degree Percentage</h4>
-                                        <span className="text-[10px] text-slate-500 font-medium">Aggregate Formula</span>
+                                        <h4 className="text-sm font-bold text-white">{t('gpa.degreePercentage')}</h4>
+                                        <span className="text-[10px] text-slate-500 font-medium">{t('gpa.aggregateFormula')}</span>
                                     </div>
                                     <div className="flex items-baseline gap-2">
                                         <span className="text-3xl font-bold text-white">{cgpaResult.percentage}%</span>
-                                        <span className="text-xs text-slate-400">Total Calculation</span>
+                                        <span className="text-xs text-slate-400">{t('gpa.totalCalculation')}</span>
                                     </div>
                                 </div>
                             </div>
                         ) : (
                             <div className="bg-slate-800/30 rounded-3xl p-8 ring-1 ring-white/5 border border-dashed border-slate-700 flex flex-col items-center justify-center text-center h-64 lg:min-h-full">
                                 <Zap size={40} className="text-slate-700 mb-4" />
-                                <h4 className="text-slate-400 font-bold mb-1">Waiting for CGPA Data</h4>
-                                <p className="text-xs text-slate-500">Enter your pointers for all semesters to calculate your cumulative GPA.</p>
+                                <h4 className="text-slate-400 font-bold mb-1">{t('gpa.waitingCgpaTitle')}</h4>
+                                <p className="text-xs text-slate-500">{t('gpa.waitingCgpaBody')}</p>
                             </div>
                         )
                     )}

@@ -1,8 +1,6 @@
 import React from 'react';
 import { Button } from './ui';
-// --- FIX: Add UserPlus icon ---
-import { Mic, MicOff, Video, VideoOff, ScreenShare, ScreenShareOff, PhoneOff, Smile, Music, Share2, Clock, UserPlus, Palette } from 'lucide-react';
-// --- END FIX ---
+import { Mic, MicOff, Video, VideoOff, ScreenShare, ScreenShareOff, PhoneOff, Smile, Music, Share2, Clock, Palette } from 'lucide-react';
 
 
 interface RoomControlsProps {
@@ -23,12 +21,9 @@ interface RoomControlsProps {
   showWhiteboard: boolean; // NEW: Prop to control Whiteboard visibility
   children?: React.ReactNode; // NEW: To render the MusicPlayer as a child
   onToggleWhiteboard: () => void; // NEW: Callback to toggle whiteboard
-  // --- FIX: Added onAddTestUser prop ---
-  onAddTestUser: () => void;
-  // --- END FIX ---
 }
 
-const EMOJIS = ['👍', '❤️', '😂', '🎉', '🤔', '🙏'];
+const EMOJIS = ['\u{1F44D}', '\u2764\uFE0F', '\u{1F602}', '\u{1F389}', '\u{1F914}', '\u{1F64F}'];
 
 const RoomControls: React.FC<RoomControlsProps> = ({
   mediaReady,
@@ -44,142 +39,127 @@ const RoomControls: React.FC<RoomControlsProps> = ({
   onShare,
   roomId,
   formattedSessionTime,
-  onAddTestUser, // Destructure the new prop
   showMusicPlayer, // Destructure new prop
   showWhiteboard, // Destructure new prop
   onToggleWhiteboard, // Destructure new prop
   children // Destructure new prop
 }) => {
   const [showReactions, setShowReactions] = React.useState(false);
+  const roomCode = roomId ? roomId.slice(-6).toUpperCase() : '';
+
+  const baseControlButton = 'p-2.5 rounded-full border border-white/10 bg-slate-800/80 hover:bg-slate-700/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed';
 
   return (
-    <div className="bg-slate-900/80 backdrop-blur-md px-6 py-3 flex justify-between items-center ring-1 ring-slate-700">
-      {/* Left Group (Placeholder/Empty or Add Test User Button) */}
-      <div className="w-1/3">
-        {/* --- FIX: Added Add Test User Button (for development) --- */}
-        {/* Conditionally render based on environment if needed, otherwise always show */}
-        {import.meta.env.DEV && (
+    <div className="bg-slate-950/85 backdrop-blur-xl px-2 sm:px-4 py-2 border-t border-white/10">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <Button
-            onClick={onAddTestUser}
-            variant="outline"
-            size="sm"
-            className="text-xs"
-            title="Add a mock user to the room for testing"
+            onClick={onToggleMute}
+            disabled={!mediaReady}
+            className={`${baseControlButton} ${isMuted ? 'bg-red-600 hover:bg-red-700 border-red-500/60' : ''}`}
+            aria-label={isMuted ? 'Unmute' : 'Mute'}
+            title={isMuted ? 'Unmute' : 'Mute'}
           >
-            <UserPlus size={14} className="mr-1" /> Add Test User
+            {isMuted ? <MicOff size={18} /> : <Mic size={18} />}
           </Button>
-        )}
-        {/* --- END FIX --- */}
-      </div>
 
-      {/* Center Group (Main Controls) */}
-      <div className="flex justify-center items-center gap-3 w-1/3 relative">
-        {/* ... (Mute, Camera, ScreenShare, Reactions, Music, Share buttons remain the same) ... */}
-        {/* Mute/Unmute */}
-        <Button
-          onClick={onToggleMute}
-          disabled={!mediaReady}
-          className={`p-3 rounded-full ${isMuted ? 'bg-red-600 hover:bg-red-700' : 'bg-slate-700 hover:bg-slate-600'}`}
-          aria-label={isMuted ? 'Unmute' : 'Mute'}
-        >
-          {isMuted ? <MicOff size={20} /> : <Mic size={20} />}
-        </Button>
-
-        {/* Camera On/Off */}
-        <Button
-          onClick={onToggleCamera}
-          disabled={!mediaReady || isScreenSharing} // Disable camera toggle during screen share
-          className={`p-3 rounded-full ${!isCameraOn || isScreenSharing ? 'bg-red-600 hover:bg-red-700' : 'bg-slate-700 hover:bg-slate-600'}`}
-          aria-label={isCameraOn ? 'Turn off camera' : 'Turn on camera'}
-        >
-          {isCameraOn && !isScreenSharing ? <Video size={20} /> : <VideoOff size={20} />}
-        </Button>
-
-        {/* Screen Share On/Off */}
-        <Button
-          onClick={onToggleScreenShare}
-          disabled={!mediaReady && !isScreenSharing} // Allow stopping share even if media fails later
-          className={`p-3 rounded-full ${isScreenSharing ? 'bg-green-600 hover:bg-green-700' : 'bg-slate-700 hover:bg-slate-600'}`}
-          aria-label={isScreenSharing ? 'Stop sharing screen' : 'Share screen'}
-        >
-          {isScreenSharing ? <ScreenShareOff size={20} /> : <ScreenShare size={20} />}
-        </Button>
-
-        {/* Whiteboard Toggle */}
-        <Button
-          onClick={onToggleWhiteboard}
-          className={`p-3 rounded-full ${showWhiteboard ? 'bg-violet-600 hover:bg-violet-700' : 'bg-slate-700 hover:bg-slate-600'}`}
-          aria-label="Toggle Whiteboard"
-          title="Toggle Shared Whiteboard"
-        >
-          <Palette size={20} />
-        </Button>
-
-        {/* Reactions Button */}
-        <div className="relative">
           <Button
-            onClick={() => setShowReactions(prev => !prev)}
-            className="p-3 rounded-full bg-slate-700 hover:bg-slate-600"
-            aria-label="React"
+            onClick={onToggleCamera}
+            disabled={!mediaReady || isScreenSharing}
+            className={`${baseControlButton} ${!isCameraOn || isScreenSharing ? 'bg-red-600 hover:bg-red-700 border-red-500/60' : ''}`}
+            aria-label={isCameraOn ? 'Turn off camera' : 'Turn on camera'}
+            title={isCameraOn ? 'Turn off camera' : 'Turn on camera'}
           >
-            <Smile size={20} />
+            {isCameraOn && !isScreenSharing ? <Video size={18} /> : <VideoOff size={18} />}
           </Button>
-          {showReactions && (
-            <div className="absolute bottom-full mb-2 left-1/2 transform -translate-x-1/2 bg-slate-800 p-2 rounded-lg shadow-lg flex gap-2">
-              {EMOJIS.map(emoji => (
-                <button
-                  key={emoji}
-                  onClick={() => {
-                    onReact(emoji);
-                    setShowReactions(false);
-                  }}
-                  className="text-2xl p-1 hover:bg-slate-700 rounded transition-transform duration-100 hover:scale-125"
-                >
-                  {emoji}
-                </button>
-              ))}
-            </div>
-          )}
+
+          <Button
+            onClick={onToggleScreenShare}
+            disabled={!mediaReady && !isScreenSharing}
+            className={`${baseControlButton} ${isScreenSharing ? 'bg-emerald-600 hover:bg-emerald-700 border-emerald-500/70' : ''}`}
+            aria-label={isScreenSharing ? 'Stop sharing screen' : 'Share screen'}
+            title={isScreenSharing ? 'Stop sharing screen' : 'Share screen'}
+          >
+            {isScreenSharing ? <ScreenShareOff size={18} /> : <ScreenShare size={18} />}
+          </Button>
+
+          <Button
+            onClick={onToggleWhiteboard}
+            className={`${baseControlButton} ${showWhiteboard ? 'bg-violet-600 hover:bg-violet-700 border-violet-500/70' : ''}`}
+            aria-label="Toggle whiteboard"
+            title="Toggle whiteboard"
+          >
+            <Palette size={18} />
+          </Button>
+
+          <div className="relative">
+            <Button
+              onClick={() => setShowReactions(prev => !prev)}
+              className={baseControlButton}
+              aria-label="React"
+              title="React"
+            >
+              <Smile size={18} />
+            </Button>
+            {showReactions && (
+              <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-slate-800 border border-slate-700 p-2 rounded-lg shadow-lg flex gap-1.5 z-30">
+                {EMOJIS.map(emoji => (
+                  <button
+                    key={emoji}
+                    onClick={() => {
+                      onReact(emoji);
+                      setShowReactions(false);
+                    }}
+                    className="text-xl p-1 hover:bg-slate-700 rounded transition-transform duration-100 hover:scale-110"
+                  >
+                    {emoji}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="relative">
+            <Button
+              onClick={onToggleMusic}
+              className={`${baseControlButton} ${showMusicPlayer ? 'bg-indigo-600 hover:bg-indigo-700 border-indigo-500/70' : ''}`}
+              aria-label="Toggle music player"
+              title="Toggle music player"
+            >
+              <Music size={18} />
+            </Button>
+            {children}
+          </div>
+
+          <Button
+            onClick={onShare}
+            className={baseControlButton}
+            aria-label="Share room"
+            title="Share room"
+          >
+            <Share2 size={18} />
+          </Button>
         </div>
 
-        {/* Music Player Toggle */}
-        <div className="relative">
+        <div className="flex items-center justify-between sm:justify-end gap-2">
+          <div className="hidden lg:flex items-center gap-1.5 text-[10px] text-slate-500 uppercase tracking-widest">
+            <span>Room</span>
+            <span className="font-mono text-slate-400">{roomCode || '--'}</span>
+          </div>
+          <div className="flex items-center gap-2 text-sm font-mono text-slate-300 bg-slate-800/70 border border-slate-700/60 px-3 py-1 rounded-full">
+            <Clock size={14} className="text-violet-400" />
+            <span>{formattedSessionTime}</span>
+          </div>
           <Button
-            onClick={onToggleMusic}
-            className="p-3 rounded-full bg-slate-700 hover:bg-slate-600"
-            aria-label="Toggle Music Player"
+            onClick={onHangUp}
+            className="bg-red-600 hover:bg-red-700 px-3 sm:px-4 py-2"
+            aria-label="Leave room"
           >
-            <Music size={20} />
+            <PhoneOff size={18} className="mr-1.5" />
+            <span className="hidden sm:inline">Leave Room</span>
+            <span className="sm:hidden">Leave</span>
           </Button>
-          {children} {/* Children (like MusicPlayer) will now stay mounted to support background features */}
         </div>
-
-        {/* Share Room Button */}
-        <Button
-          onClick={onShare}
-          className="p-3 rounded-full bg-slate-700 hover:bg-slate-600"
-          aria-label="Share Room"
-        >
-          <Share2 size={20} />
-        </Button>
-      </div>
-
-      {/* Right Group (Timer & Leave) */}
-      <div className="flex justify-end items-center gap-4 w-1/3">
-        {/* Session Timer */}
-        <div className="flex items-center gap-2 text-sm font-mono text-slate-300 bg-slate-700/50 px-3 py-1 rounded-full">
-          <Clock size={14} className="text-violet-400" />
-          <span>{formattedSessionTime}</span>
-        </div>
-
-        {/* Leave Room Button */}
-        <Button
-          onClick={onHangUp}
-          className="bg-red-600 hover:bg-red-700 px-4 py-2"
-          aria-label="Leave room"
-        >
-          <PhoneOff size={20} className="mr-2" /> Leave Room
-        </Button>
       </div>
     </div>
   );

@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "typecheck": "npx tsc --noEmit",
+    "test:backend": "npm --prefix backend test"
   },
   "dependencies": {
     "@fontsource/inter": "^5.2.8",

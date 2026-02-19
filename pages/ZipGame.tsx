@@ -2,11 +2,13 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PageHeader } from '../components/ui';
 import { saveGameActivity } from '@/services/gameTracker';
+import { useLanguage } from '../contexts/LanguageContext';
 
 const LETTERS = ['A', 'S', 'D', 'F', 'J', 'K', 'L'];
 
 const ZipGame: React.FC = () => {
   const navigate = useNavigate();
+  const { t } = useLanguage();
 
   const [currentKey, setCurrentKey] = useState('A');
   const [position, setPosition] = useState(0);
@@ -79,8 +81,8 @@ const ZipGame: React.FC = () => {
   return (
     <div className="flex flex-col items-center text-center space-y-6">
       <PageHeader
-        title="Zip Game"
-        subtitle="Press the correct key before the bar reaches the bottom"
+        title={t('zip.title')}
+        subtitle={t('zip.subtitle')}
       />
 
       <div className="w-24 h-80 bg-slate-800 rounded-xl relative overflow-hidden border border-slate-700">
@@ -93,18 +95,18 @@ const ZipGame: React.FC = () => {
       </div>
 
       <div className="text-lg">
-        Score:{' '}
+        {t('zip.score')}:{' '}
         <span className="text-purple-400 font-bold">{score}</span>
       </div>
 
       {gameOver && (
         <div>
-          <p className="text-red-400 mb-3">Game Over!</p>
+          <p className="text-red-400 mb-3">{t('zip.gameOver')}</p>
           <button
             onClick={resetGame}
             className="px-6 py-2 bg-purple-600 rounded-lg hover:bg-purple-700"
           >
-            Restart
+            {t('zip.restart')}
           </button>
         </div>
       )}
@@ -113,7 +115,7 @@ const ZipGame: React.FC = () => {
         onClick={() => navigate('/')}
         className="text-sm text-slate-400 hover:text-white"
       >
-        Back to Home
+        {t('zip.backToHome')}
       </button>
     </div>
   );

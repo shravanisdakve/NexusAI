@@ -24,13 +24,14 @@ import {
     onTyping,
     onTechniqueUpdate,
     updateTechniqueState,
-    advanceTechniquePhase
+    advanceTechniquePhase,
+    moderateRoomMember
 } from '../services/communityService';
-import { streamStudyBuddyChat, generateQuizQuestion, extractTextFromFile } from '../services/geminiService';
+import { streamStudyBuddyChat, generateQuizQuestion, extractTextFromFile, summarizeText } from '../services/geminiService';
 import { startSession, endSession, recordQuizResult } from '../services/analyticsService';
 // --- REMOVED Clock import here ---
 import { Bot, User, Send, MessageSquare, Users, Brain, UploadCloud, Lightbulb, FileText, Paperclip, FolderOpen, AlertTriangle, Info, Palette, Briefcase, X, Play, Pause, SkipForward, RotateCcw } from 'lucide-react';
-import { Input, Button, Textarea, Spinner, Select } from '../components/ui';
+import { Input, Button, Textarea, Spinner } from '../components/ui';
 import RoomControls from '../components/RoomControls'; //
 import VideoTile from '../components/VideoTile';
 import Reactions, { type Reaction } from '../components/Reactions';
@@ -82,17 +83,19 @@ const StudyRoom: React.FC = () => {
     const { user: currentUser } = useAuth();
     const { language } = useLanguage();
     const [room, setRoom] = useState<StudyRoomType | null>(null);
-    const [participants, setParticipants] = useState<{ email: string; displayName: string }[]>([]);
+    const [participants, setParticipants] = useState<{ id?: string; email: string; displayName: string }[]>([]);
     const [localStream, setLocalStream] = useState<MediaStream | null>(null);
     const [mediaError, setMediaError] = useState<{ message: string; type: 'error' | 'info' } | null>(null);
     const [isMuted, setIsMuted] = useState(false);
     const [isCameraOn, setIsCameraOn] = useState(true);
     const [isScreenSharing, setIsScreenSharing] = useState(false);
     const [activeTab, setActiveTab] = useState<ActiveTab>('chat');
+    const [isMobilePanelOpen, setIsMobilePanelOpen] = useState(false);
     const [isSavingSharedNote, setIsSavingSharedNote] = useState(false); // NEW: Loading state for saving shared note
     const [resources, setResources] = useState<any[]>([]);
     const [isUploading, setIsUploading] = useState(false);
     const [reactions, setReactions] = useState<Reaction[]>([]);
+    const [memberActionState, setMemberActionState] = useState<{ email: string; action: string } | null>(null);
     const [showMusicPlayer, setShowMusicPlayer] = useState(false);
     const [showWhiteboard, setShowWhiteboard] = useState(false);
     const [showShareModal, setShowShareModal] = useState(false);
@@ -134,6 +137,16 @@ const StudyRoom: React.FC = () => {
         }
     }, [language]);
 
+    useEffect(() => {
+        const handleResize = () => {
+            if (window.innerWidth >= 1280) {
+                setIsMobilePanelOpen(false);
+            }
+        };
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
+
 
     const [notes, setNotes] = useState('');
     const [isAiLoading, setIsAiLoading] = useState(false);
@@ -154,25 +167,14 @@ const StudyRoom: React.FC = () => {
     const aiChatEndRef = useRef<HTMLDivElement>(null);
     const prevParticipantsRef = useRef<StudyRoomType['users']>([]);
     const welcomeMessageSent = useRef(false);
+    const autoModeratorTriggered = useRef(false);
+    const autoModeratorTimerRef = useRef<NodeJS.Timeout | null>(null);
     const isAdvancingTechniqueRef = useRef(false);
 
     // --- FIX 1: Add a ref for the session ID ---
     const sessionIdRef = useRef<string | null>(null);
+    const [initialMessagesLoaded, setInitialMessagesLoaded] = useState(false);
     // --- END FIX ---
-
-    // --- NEW: Handler to add a test user ---
-    const handleAddTestUser = () => {
-        if (!roomId) return;
-        const testUser = {
-            // Create a slightly unique email/name each time to avoid potential key issues if clicked rapidly
-            email: `testuser_${Date.now()}@example.com`,
-            displayName: `Test User ${Math.floor(Math.random() * 100)}`
-        };
-        console.log("Attempting to add test user:", testUser);
-        joinRoom(roomId, testUser); // Call the existing joinRoom service function
-        // Note: The participant list will update automatically via the onRoomUpdate listener
-    };
-    // --- END NEW HANDLER ---
 
     const participantChatMessages = useMemo(() => {
         const filtered = allMessages.filter(msg => {
@@ -187,6 +189,29 @@ const StudyRoom: React.FC = () => {
     const isTechniqueRunning = !!techniqueState?.isRunning;
     const effectiveTechniqueLabel = room?.technique || techniqueName || 'Pomodoro Technique';
     const techniqueCycleLabel = techniqueState ? `Cycle ${Math.max(1, techniqueState.cycleCount || 1)}` : 'Not started';
+    const activeTabLabel = useMemo(() => {
+        const labels: Record<ActiveTab, string> = {
+            chat: 'Chat',
+            participants: 'Members',
+            ai: 'AI Assistant',
+            notes: 'Shared Notes',
+            tools: 'Study Tools'
+        };
+        return labels[activeTab];
+    }, [activeTab]);
+    const isCurrentUserHost = useMemo(() => {
+        if (!room || !currentUser) return false;
+        if (room.createdById && currentUser.id) {
+            return room.createdById === currentUser.id;
+        }
+        if (room.createdByEmail && currentUser.email) {
+            return room.createdByEmail.toLowerCase() === currentUser.email.toLowerCase();
+        }
+        return room.createdBy === currentUser.displayName;
+    }, [room, currentUser]);
+    const mutedEmailSet = useMemo(() => {
+        return new Set((room?.mutedUserEmails || []).map((email) => email.toLowerCase()));
+    }, [room?.mutedUserEmails]);
 
     // --- Chat Handlers ---
     const handleSendChatMessage = async (messageText: string) => {
@@ -208,12 +233,6 @@ const StudyRoom: React.FC = () => {
             timestamp: Date.now()
         };
         console.log("handleSendChatMessage: Sending message:", newMessage);
-        // Optimistically add message to UI immediately
-        const optimisticMessage: ChatMessage = {
-            ...newMessage,
-            id: 'temp-' + Date.now(), // Temporary ID
-        };
-        setAllMessages(prev => [...prev, optimisticMessage]);
 
         try {
             await sendChatMessage(roomId, {
@@ -306,6 +325,12 @@ const StudyRoom: React.FC = () => {
 
     useEffect(() => {
         if (!roomId || !currentUser) return;
+        setInitialMessagesLoaded(false);
+        autoModeratorTriggered.current = false;
+        if (autoModeratorTimerRef.current) {
+            clearTimeout(autoModeratorTimerRef.current);
+            autoModeratorTimerRef.current = null;
+        }
 
         // --- REMOVED: let sessionId: string | null = null; ---
 
@@ -355,6 +380,8 @@ const StudyRoom: React.FC = () => {
         // Initialize messages from history
         getRoomMessages(roomId).then(msgs => {
             setAllMessages(msgs);
+        }).finally(() => {
+            setInitialMessagesLoaded(true);
         });
 
         const unsubTyping = onTyping((data: any) => {
@@ -431,9 +458,44 @@ const StudyRoom: React.FC = () => {
                 endSession(sessionIdRef.current);
                 sessionIdRef.current = null;
             }
+            if (autoModeratorTimerRef.current) {
+                clearTimeout(autoModeratorTimerRef.current);
+                autoModeratorTimerRef.current = null;
+            }
             // --- END FIX ---
         };
     }, [roomId, currentUser, navigate]);
+
+    useEffect(() => {
+        if (!roomId || !currentUser || !initialMessagesLoaded || autoModeratorTriggered.current) {
+            return;
+        }
+
+        const hasParticipantMessages = allMessages.some(msg => {
+            const email = msg.user?.email;
+            const displayName = msg.user?.displayName || '';
+            const isSystem = email === SYSTEM_EMAIL;
+            const isModerator = email === 'system-moderator' || displayName.includes('Moderator');
+            return !isSystem && !isModerator;
+        });
+
+        if (hasParticipantMessages) {
+            return;
+        }
+
+        autoModeratorTriggered.current = true;
+        autoModeratorTimerRef.current = setTimeout(() => {
+            requestModeration(roomId);
+            autoModeratorTimerRef.current = null;
+        }, 700);
+
+        return () => {
+            if (autoModeratorTimerRef.current) {
+                clearTimeout(autoModeratorTimerRef.current);
+                autoModeratorTimerRef.current = null;
+            }
+        };
+    }, [roomId, currentUser, initialMessagesLoaded, allMessages]);
 
     useEffect(() => {
         if (!techniqueState) {
@@ -544,20 +606,6 @@ const StudyRoom: React.FC = () => {
         }
     };
 
-    const handleTechniqueChange = async (nextKey: 'pomodoro' | 'feynman' | 'spaced_repetition') => {
-        if (!roomId) return;
-        setIsTechniqueSyncing(true);
-        try {
-            const response = await updateTechniqueState(roomId, 'set_technique', techniqueState?.version, nextKey);
-            setTechniqueName(response.technique);
-            setTechniqueState(response.techniqueState);
-        } catch (error) {
-            console.error('Failed to change study technique:', error);
-        } finally {
-            setIsTechniqueSyncing(false);
-        }
-    };
-
     // --- Control Handlers ---
     const handleToggleMute = () => {
         localStream?.getAudioTracks().forEach(track => track.enabled = !track.enabled);
@@ -662,6 +710,89 @@ const StudyRoom: React.FC = () => {
 
     const handleReaction = (emoji: string) => {
         setReactions(prev => [...prev, { id: Date.now(), emoji }]);
+    };
+
+    const handleMentionMember = (member: { email: string; displayName: string }) => {
+        setActiveTab('chat');
+        setIsMobilePanelOpen(false);
+        setChatInput(`@${member.displayName} `);
+    };
+
+    const handleAskMember = (member: { email: string; displayName: string }) => {
+        setActiveTab('chat');
+        setIsMobilePanelOpen(false);
+        setChatInput(`@${member.displayName} can you explain your approach for this section?`);
+    };
+
+    const handleWaveMember = (member: { email: string; displayName: string }) => {
+        const waveEmoji = '\u{1F44B}';
+        handleReaction(waveEmoji);
+        setActiveTab('chat');
+        setIsMobilePanelOpen(false);
+        void handleSendChatMessage(`${waveEmoji} @${member.displayName}`);
+    };
+
+    const handleFocusPromptToGroup = () => {
+        setActiveTab('chat');
+        setIsMobilePanelOpen(false);
+        setChatInput('Team check-in: share one concept you understand and one part you want help with.');
+    };
+
+    const handleInviteFromMembers = () => {
+        setIsMobilePanelOpen(false);
+        setShowShareModal(true);
+    };
+
+    const handleModerateMember = async (
+        member: { email: string; displayName: string },
+        action: 'mute_chat' | 'unmute_chat' | 'remove' | 'transfer_host'
+    ) => {
+        if (!roomId || !isCurrentUserHost) return;
+
+        const actionLabel: Record<typeof action, string> = {
+            mute_chat: 'Mute',
+            unmute_chat: 'Unmute',
+            remove: 'Remove',
+            transfer_host: 'Transfer Host'
+        };
+
+        setMemberActionState({ email: member.email, action });
+        try {
+            const result = await moderateRoomMember(roomId, {
+                action,
+                targetUserEmail: member.email
+            });
+            const message = result?.message || `${actionLabel[action]} action completed for ${member.displayName}.`;
+            await postSystemMessage(message);
+        } catch (error: any) {
+            const details = error?.response?.data?.message || error?.message || 'Action failed';
+            setAiMessages(prev => [...prev, {
+                role: 'model',
+                parts: [{ text: `Member action failed: ${details}` }]
+            }]);
+        } finally {
+            setMemberActionState(null);
+        }
+    };
+
+    const handleMuteMember = async (member: { email: string; displayName: string }) => {
+        await handleModerateMember(member, 'mute_chat');
+    };
+
+    const handleUnmuteMember = async (member: { email: string; displayName: string }) => {
+        await handleModerateMember(member, 'unmute_chat');
+    };
+
+    const handleRemoveMember = async (member: { email: string; displayName: string }) => {
+        const confirmed = window.confirm(`Remove ${member.displayName} from this room?`);
+        if (!confirmed) return;
+        await handleModerateMember(member, 'remove');
+    };
+
+    const handleTransferHost = async (member: { email: string; displayName: string }) => {
+        const confirmed = window.confirm(`Transfer room host privileges to ${member.displayName}?`);
+        if (!confirmed) return;
+        await handleModerateMember(member, 'transfer_host');
     };
 
     const handleSaveSharedNote = async (content: string) => {
@@ -786,6 +917,31 @@ const StudyRoom: React.FC = () => {
         }
     };
 
+    const handleSummarizeNotes = async () => {
+        if (!notes || notes.trim() === '' || notes.startsWith("Extracting text from")) {
+            setAiMessages(prev => [...prev, { role: 'model', parts: [{ text: "Please upload notes first so I can summarize them." }] }]);
+            return;
+        }
+
+        if (isAiLoading) return;
+        setIsAiLoading(true);
+
+        try {
+            const summary = await summarizeText(notes);
+            const cleanedSummary = String(summary || '').trim();
+            if (!cleanedSummary) {
+                throw new Error("Summary came back empty. Please try again.");
+            }
+
+            setAiMessages(prev => [...prev, { role: 'model', parts: [{ text: cleanedSummary }] }]);
+        } catch (err) {
+            const errorText = err instanceof Error ? err.message : "Sorry, I couldn't summarize these notes right now.";
+            setAiMessages(prev => [...prev, { role: 'model', parts: [{ text: `Error: ${errorText}` }] }]);
+        } finally {
+            setIsAiLoading(false);
+        }
+    };
+
     const handleAnswerQuiz = async (selectedIndex: number) => {
         if (!sharedQuiz || !roomId || !currentUser?.email || !currentUser.displayName) return;
         await saveQuizAnswer(roomId, currentUser.email, currentUser.displayName, selectedIndex);
@@ -801,6 +957,7 @@ const StudyRoom: React.FC = () => {
     const handleNotesFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
         if (!file || !roomId) return;
+        const previousNotesSnapshot = notes;
 
         event.target.value = '';
 
@@ -845,7 +1002,18 @@ const StudyRoom: React.FC = () => {
                 mimeType = mimeMap[extension || ''] || 'application/octet-stream';
             }
 
-            const extracted = await extractTextFromFile(base64Data, mimeType);
+            let extracted = '';
+            if (mimeType.startsWith('text/')) {
+                const binary = atob(base64Data);
+                const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
+                extracted = new TextDecoder().decode(bytes);
+            } else {
+                extracted = await extractTextFromFile(base64Data, mimeType);
+            }
+
+            if (!extracted.trim()) {
+                throw new Error("No readable text found in the uploaded file.");
+            }
 
             await saveRoomAINotes(roomId, extracted);
 
@@ -854,41 +1022,88 @@ const StudyRoom: React.FC = () => {
             await postSystemMessage(`${currentUser?.displayName} updated the study notes with the file: ${file.name}`);
 
         } catch (err: any) {
-            console.error("File upload and processing failed:", err);
-            await saveRoomAINotes(roomId, '');
-            const errorMessage = err.message || "Sorry, I couldn't read that file.";
-            setAiMessages([{ role: 'model', parts: [{ text: `${errorMessage} Please ensure the file is a supported format (PDF, PPTX, Image, or Text) and not corrupted.` }] }]);
+            const errorMessage = String(err?.message || "Sorry, I couldn't read that file.");
+            const retryAfterSec = typeof err?.retryAfterSec === 'number' ? err.retryAfterSec : undefined;
+            const isQuotaError = err?.code === 'AI_QUOTA_EXCEEDED'
+                || err?.status === 429
+                || /quota|too many requests|rate limit|429/i.test(errorMessage);
+            if (isQuotaError) {
+                console.warn('File extraction rate limited; preserving previous notes.');
+            } else {
+                console.error("File upload and processing failed:", err);
+            }
+            setNotes(previousNotesSnapshot);
+
+            if (isQuotaError) {
+                const retryHint = retryAfterSec ? ` Please retry in about ${retryAfterSec}s.` : ' Please retry in a short while.';
+                setAiMessages([{
+                    role: 'model',
+                    parts: [{
+                        text: `AI extraction is temporarily rate limited.${retryHint} Your previous shared notes were kept unchanged.`
+                    }]
+                }]);
+            } else {
+                setAiMessages([{
+                    role: 'model',
+                    parts: [{
+                        text: `${errorMessage} Please ensure the file is a supported format (PDF, PPTX, Image, or Text) and not corrupted.`
+                    }]
+                }]);
+            }
         } finally {
             setIsExtracting(false);
         }
     };
 
-    const handleModerationRequest = () => {
-        if (!roomId) return;
-        requestModeration(roomId);
-    };
-
     // --- Component Return ---
     return (
-        <div className="h-full flex flex-col bg-[url('https://images.unsplash.com/photo-1534796636912-3b95b3ab5986?q=80&w=2072&auto=format&fit=crop')] bg-cover bg-center text-slate-200 p-0 m-[-2rem] relative">
-            <div className="absolute inset-0 bg-slate-900/90 backdrop-blur-sm z-0" />
-            <div className="relative z-10 flex flex-col h-full">
+        <div className="h-full flex flex-col text-slate-200 p-0 m-[-2rem] relative overflow-hidden bg-slate-950">
+            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_8%_10%,rgba(99,102,241,0.22),transparent_40%),radial-gradient(circle_at_92%_12%,rgba(16,185,129,0.18),transparent_35%),radial-gradient(circle_at_50%_100%,rgba(56,189,248,0.18),transparent_45%)]" />
+            <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(148,163,184,0.06)_1px,transparent_1px),linear-gradient(90deg,rgba(148,163,184,0.06)_1px,transparent_1px)] bg-[size:36px_36px] opacity-20" />
+            <div className="absolute inset-0 bg-slate-950/70 backdrop-blur-sm z-0" />
+            <div className="relative z-10 flex flex-col h-full min-h-0">
                 <Reactions reactions={reactions} />
                 {showShareModal && <ShareModal roomId={roomId || ''} onClose={() => setShowShareModal(false)} />}
-
-                {sharedQuiz && (
-                    <div className="absolute inset-0 bg-slate-900/90 z-20 flex items-center justify-center p-8 backdrop-blur-sm">
-                        {showLeaderboard ?
-                            <Leaderboard quiz={sharedQuiz} participants={participants} onClear={handleClearQuiz} /> :
-                            <QuizDisplay quiz={sharedQuiz} onAnswer={handleAnswerQuiz} currentUser={currentUser} />
-                        }
-                    </div>
+                {isMobilePanelOpen && (
+                    <button
+                        type="button"
+                        onClick={() => setIsMobilePanelOpen(false)}
+                        aria-label="Close study panel"
+                        className="xl:hidden fixed inset-0 z-40 bg-slate-950/65 backdrop-blur-sm"
+                    />
                 )}
 
+                <header className="px-3 md:px-4 py-3 border-b border-white/10 bg-slate-950/55 backdrop-blur-xl">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div className="min-w-0">
+                            <p className="text-[10px] uppercase tracking-[0.25em] text-cyan-300/80 font-semibold">Focus Room</p>
+                            <h2 className="text-sm md:text-base font-semibold text-slate-100 truncate">{room?.name || 'Study Room'}</h2>
+                            <p className="text-[11px] text-slate-400 truncate">Topic: {room?.topic || 'General study'}</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/35 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-medium text-emerald-200">
+                                <Users size={12} />
+                                {participants.length} online
+                            </span>
+                            <span className="hidden sm:inline-flex items-center rounded-full border border-violet-400/30 bg-violet-500/10 px-2.5 py-1 text-[11px] font-medium text-violet-200">
+                                {activeTabLabel}
+                            </span>
+                            <Button
+                                type="button"
+                                size="sm"
+                                variant="secondary"
+                                onClick={() => setIsMobilePanelOpen(prev => !prev)}
+                                className="xl:hidden h-8 px-3 text-xs bg-violet-600/80 hover:bg-violet-500 text-white border-violet-400/30"
+                            >
+                                {isMobilePanelOpen ? 'Close Panel' : 'Study Panel'}
+                            </Button>
+                        </div>
+                    </div>
+                </header>
 
-                <div className="flex-1 flex overflow-hidden">
+                <div className="flex-1 flex overflow-hidden flex-col xl:flex-row relative min-h-0">
                     {/* Main Video Grid */}
-                    <main className="flex-1 flex flex-col p-4 relative">
+                    <main className="flex-1 flex flex-col p-3 md:p-4 relative min-h-0">
                         {/* Technique Orchestrator */}
                         <div className="mb-4 rounded-xl border border-violet-500/20 bg-slate-900/70 backdrop-blur-md p-3">
                             <div className="flex flex-wrap items-center justify-between gap-3">
@@ -917,16 +1132,6 @@ const StudyRoom: React.FC = () => {
                                     </p>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                    <Select
-                                        value={techniqueState?.techniqueKey || 'pomodoro'}
-                                        onChange={(e) => handleTechniqueChange(e.target.value as 'pomodoro' | 'feynman' | 'spaced_repetition')}
-                                        disabled={isTechniqueSyncing}
-                                        className="h-8 text-xs px-2 py-1 min-w-[165px] bg-slate-800/80 border-slate-700"
-                                    >
-                                        <option value="pomodoro">Pomodoro</option>
-                                        <option value="feynman">Feynman</option>
-                                        <option value="spaced_repetition">Spaced Repetition</option>
-                                    </Select>
                                     <Button
                                         size="sm"
                                         variant="secondary"
@@ -1014,13 +1219,13 @@ const StudyRoom: React.FC = () => {
                     {/* Side Panel */}
                     {/* ... (Side Panel Tabs and Content remain the same) ... */}
                     {/* Side Panel */}
-                    <aside className="w-96 bg-slate-900/40 backdrop-blur-md border-l border-white/5 flex flex-col h-full shadow-2xl z-20">
-                        <div className="flex border-b border-white/5 p-2 gap-1 bg-black/20">
+                    <aside className={`fixed inset-x-3 top-[5.5rem] bottom-24 z-50 rounded-2xl bg-slate-900/90 backdrop-blur-xl border border-white/10 flex flex-col min-h-0 shadow-2xl transition-all duration-300 xl:relative xl:inset-auto xl:top-auto xl:bottom-auto xl:z-20 xl:w-[24rem] 2xl:w-[26rem] xl:h-full xl:rounded-none xl:bg-slate-900/40 xl:border-l xl:border-t-0 xl:border-r-0 xl:border-b-0 xl:border-white/5 ${isMobilePanelOpen ? 'opacity-100 translate-y-0 pointer-events-auto' : 'opacity-0 translate-y-[105%] pointer-events-none xl:opacity-100 xl:translate-y-0 xl:pointer-events-auto'}`}>
+                        <div className="flex border-b border-white/5 p-2 gap-1 bg-black/20 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                             <TabButton id="chat" activeTab={activeTab} setActiveTab={setActiveTab} icon={MessageSquare} label="Chat" />
                             <TabButton id="ai" activeTab={activeTab} setActiveTab={setActiveTab} icon={Brain} label="AI" />
                             <TabButton id="notes" activeTab={activeTab} setActiveTab={setActiveTab} icon={FileText} label="Notes" />
                             <TabButton id="tools" activeTab={activeTab} setActiveTab={setActiveTab} icon={Briefcase} label="Tools" />
-                            <TabButton id="participants" activeTab={activeTab} setActiveTab={setActiveTab} icon={Users} label="" count={participants.length} />
+                            <TabButton id="participants" activeTab={activeTab} setActiveTab={setActiveTab} icon={Users} label="Members" count={participants.length} />
                         </div>
 
                         {activeTab === 'chat' && (
@@ -1031,12 +1236,32 @@ const StudyRoom: React.FC = () => {
                                 onSend={handleSendChatMessage}
                                 currentUser={currentUser}
                                 chatEndRef={chatEndRef}
-                                onModerationRequest={handleModerationRequest}
                                 typingUsers={typingUsers}
                                 roomId={roomId}
                             />
                         )}
-                        {activeTab === 'participants' && <ParticipantsPanel participants={participants} />}
+                        {activeTab === 'participants' && (
+                            <ParticipantsPanel
+                                participants={participants}
+                                currentUserId={currentUser?.id}
+                                currentUserEmail={currentUser?.email}
+                                roomOwnerId={room?.createdById}
+                                roomOwnerEmail={room?.createdByEmail}
+                                maxUsers={room?.maxUsers}
+                                isCurrentUserHost={isCurrentUserHost}
+                                mutedEmailSet={mutedEmailSet}
+                                memberActionState={memberActionState}
+                                onMentionMember={handleMentionMember}
+                                onAskMember={handleAskMember}
+                                onWaveMember={handleWaveMember}
+                                onFocusPrompt={handleFocusPromptToGroup}
+                                onInvitePeople={handleInviteFromMembers}
+                                onMuteMember={handleMuteMember}
+                                onUnmuteMember={handleUnmuteMember}
+                                onRemoveMember={handleRemoveMember}
+                                onTransferHost={handleTransferHost}
+                            />
+                        )}
                         {activeTab === 'ai' && (
                             <AiPanel
                                 messages={aiMessages}
@@ -1047,6 +1272,7 @@ const StudyRoom: React.FC = () => {
                                 isExtracting={isExtracting}
                                 onUploadClick={() => notesFileInputRef.current?.click()}
                                 onQuizMe={handleGenerateQuiz}
+                                onSummarize={handleSummarizeNotes}
                                 sharedQuiz={sharedQuiz}
                                 chatEndRef={aiChatEndRef}
                                 isLoading={isAiLoading}
@@ -1075,6 +1301,15 @@ const StudyRoom: React.FC = () => {
 
                 </div>
 
+                {sharedQuiz && (
+                    <div className="fixed inset-0 z-[70] bg-slate-950/85 flex items-center justify-center p-4 md:p-8 backdrop-blur-sm">
+                        {showLeaderboard ?
+                            <Leaderboard quiz={sharedQuiz} participants={participants} onClear={handleClearQuiz} /> :
+                            <QuizDisplay quiz={sharedQuiz} onAnswer={handleAnswerQuiz} currentUser={currentUser} />
+                        }
+                    </div>
+                )}
+
                 <input
                     type="file"
                     ref={notesFileInputRef}
@@ -1098,7 +1333,6 @@ const StudyRoom: React.FC = () => {
                     onShare={() => setShowShareModal(true)}
                     roomId={roomId || ''}
                     formattedSessionTime={formatElapsedTime(elapsedTime)} // Pass formatted time
-                    onAddTestUser={handleAddTestUser}
                     showMusicPlayer={showMusicPlayer} // Pass showMusicPlayer state
                     showWhiteboard={showWhiteboard} // Pass showWhiteboard state
                 >
@@ -1181,17 +1415,19 @@ const Leaderboard: React.FC<{ quiz: SharedQuiz, participants: { email: string; d
 const TabButton: React.FC<{ id: ActiveTab, activeTab: ActiveTab, setActiveTab: (tab: ActiveTab) => void, icon: React.ElementType, label: string, count?: number }> = ({ id, activeTab, setActiveTab, icon: Icon, label, count }) => (
     <button
         onClick={() => setActiveTab(id)}
-        className={`flex-1 flex justify-center items-center gap-2 py-2 text-xs font-medium rounded-lg transition-all duration-200 ${activeTab === id
+        className={`flex items-center justify-center gap-1.5 px-2.5 py-2 min-w-[84px] md:min-w-0 md:flex-1 text-xs font-medium rounded-lg whitespace-nowrap transition-all duration-200 ${activeTab === id
             ? 'bg-violet-600/20 text-violet-300 shadow-[0_0_10px_rgba(124,58,237,0.2)]'
             : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
             }`}
-        title={label || 'Participants'}
+        title={label || 'Members'}
     >
-        <Icon size={16} /> {label} {count !== undefined && count > 0 && <span className="text-[10px] bg-slate-800 text-slate-300 rounded-full px-1.5 min-w-[1.2em]">{count}</span>}
+        <Icon size={15} />
+        {label && <span>{label}</span>}
+        {count !== undefined && count > 0 && <span className="text-[10px] bg-slate-800 text-slate-300 rounded-full px-1.5 min-w-[1.2em]">{count}</span>}
     </button>
 );
 
-const ChatPanel: React.FC<any> = ({ messages, input, setInput, onSend, currentUser, chatEndRef, onModerationRequest, typingUsers, roomId }) => {
+const ChatPanel: React.FC<any> = ({ messages, input, setInput, onSend, currentUser, chatEndRef, typingUsers, roomId }) => {
 
     const handleSend = () => {
         if (!input.trim()) return;
@@ -1252,16 +1488,6 @@ const ChatPanel: React.FC<any> = ({ messages, input, setInput, onSend, currentUs
                 <div ref={chatEndRef}></div>
             </div>
             <div className="mt-auto flex gap-2 relative">
-                {/* AI Moderator Button */}
-                <Button
-                    onClick={onModerationRequest}
-                    className="px-3 bg-indigo-600/80 hover:bg-indigo-600 text-white"
-                    title="Summon AI Moderator"
-                >
-                    <Bot size={16} />
-                </Button>
-
-
                 <Input
                     name="chat-message"
                     value={input}
@@ -1286,25 +1512,274 @@ const ChatPanel: React.FC<any> = ({ messages, input, setInput, onSend, currentUs
     );
 }
 
-const ParticipantsPanel: React.FC<{ participants: { email: string; displayName: string }[] }> = ({ participants }) => (
-    <div className="p-4 space-y-3 overflow-y-auto">
-        <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">In this room ({participants.length})</h3>
-        {participants.map(p => (
-            <div key={p.email} className="flex items-center gap-3 bg-white/5 hover:bg-white/10 p-3 rounded-xl transition-colors border border-white/5">
-                <div className="relative">
-                    <img src={`https://ui-avatars.com/api/?name=${p.displayName}&background=random`} alt="avatar" className="w-9 h-9 rounded-full ring-2 ring-violet-500/30" />
-                    <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 border-2 border-slate-800 rounded-full"></span>
+const ParticipantsPanel: React.FC<{
+    participants: { id?: string; email: string; displayName: string }[];
+    currentUserId?: string;
+    currentUserEmail?: string;
+    roomOwnerId?: string;
+    roomOwnerEmail?: string;
+    maxUsers?: number;
+    isCurrentUserHost: boolean;
+    mutedEmailSet: Set<string>;
+    memberActionState: { email: string; action: string } | null;
+    onMentionMember: (member: { email: string; displayName: string }) => void;
+    onAskMember: (member: { email: string; displayName: string }) => void;
+    onWaveMember: (member: { email: string; displayName: string }) => void;
+    onFocusPrompt: () => void;
+    onInvitePeople: () => void;
+    onMuteMember: (member: { email: string; displayName: string }) => void;
+    onUnmuteMember: (member: { email: string; displayName: string }) => void;
+    onRemoveMember: (member: { email: string; displayName: string }) => void;
+    onTransferHost: (member: { email: string; displayName: string }) => void;
+}> = ({
+    participants,
+    currentUserId,
+    currentUserEmail,
+    roomOwnerId,
+    roomOwnerEmail,
+    maxUsers,
+    isCurrentUserHost,
+    mutedEmailSet,
+    memberActionState,
+    onMentionMember,
+    onAskMember,
+    onWaveMember,
+    onFocusPrompt,
+    onInvitePeople,
+    onMuteMember,
+    onUnmuteMember,
+    onRemoveMember,
+    onTransferHost
+}) => {
+        const [search, setSearch] = useState('');
+        const [copiedEmail, setCopiedEmail] = useState<string | null>(null);
+
+        const visibleParticipants = useMemo(() => {
+            const query = search.trim().toLowerCase();
+            const sorted = [...participants].sort((a, b) => {
+                const aEmail = (a.email || '').toLowerCase();
+                const bEmail = (b.email || '').toLowerCase();
+                const meEmail = (currentUserEmail || '').toLowerCase();
+                const aIsMe = aEmail === meEmail ? 1 : 0;
+                const bIsMe = bEmail === meEmail ? 1 : 0;
+                if (aIsMe !== bIsMe) return bIsMe - aIsMe;
+
+                const aIsOwnerById = roomOwnerId && a.id && a.id === roomOwnerId ? 1 : 0;
+                const bIsOwnerById = roomOwnerId && b.id && b.id === roomOwnerId ? 1 : 0;
+                const aIsOwnerByEmail = roomOwnerEmail && aEmail === roomOwnerEmail.toLowerCase() ? 1 : 0;
+                const bIsOwnerByEmail = roomOwnerEmail && bEmail === roomOwnerEmail.toLowerCase() ? 1 : 0;
+                const aIsOwner = Math.max(aIsOwnerById, aIsOwnerByEmail);
+                const bIsOwner = Math.max(bIsOwnerById, bIsOwnerByEmail);
+                if (aIsOwner !== bIsOwner) return bIsOwner - aIsOwner;
+
+                return a.displayName.localeCompare(b.displayName);
+            });
+
+            if (!query) return sorted;
+
+            return sorted.filter(member => (
+                member.displayName.toLowerCase().includes(query)
+                || member.email.toLowerCase().includes(query)
+            ));
+        }, [participants, search, currentUserEmail, roomOwnerEmail]);
+
+        const openSeats = Math.max(0, (maxUsers || participants.length) - participants.length);
+        const isRoomFull = openSeats === 0;
+
+        const handleCopyEmail = async (email: string) => {
+            try {
+                if (!navigator.clipboard?.writeText) return;
+                await navigator.clipboard.writeText(email);
+                setCopiedEmail(email);
+                setTimeout(() => {
+                    setCopiedEmail(prev => prev === email ? null : prev);
+                }, 1400);
+            } catch (error) {
+                console.error('Failed to copy member email', error);
+            }
+        };
+
+        return (
+            <div className="p-4 space-y-4 overflow-y-auto">
+                <div className="grid grid-cols-3 gap-2">
+                    <div className="rounded-xl border border-white/10 bg-slate-800/60 p-2.5">
+                        <p className="text-[10px] uppercase tracking-wider text-slate-400">Members</p>
+                        <p className="text-base font-semibold text-slate-100">{participants.length}</p>
+                    </div>
+                    <div className="rounded-xl border border-white/10 bg-slate-800/60 p-2.5">
+                        <p className="text-[10px] uppercase tracking-wider text-slate-400">Capacity</p>
+                        <p className="text-base font-semibold text-slate-100">{maxUsers || participants.length}</p>
+                    </div>
+                    <div className="rounded-xl border border-white/10 bg-slate-800/60 p-2.5">
+                        <p className="text-[10px] uppercase tracking-wider text-slate-400">Open Seats</p>
+                        <p className={`text-base font-semibold ${isRoomFull ? 'text-rose-300' : 'text-emerald-300'}`}>{openSeats}</p>
+                    </div>
                 </div>
-                <div className="flex flex-col">
-                    <span className="font-medium text-slate-200 text-sm">{p.displayName}</span>
-                    <span className="text-[10px] text-slate-500">Student</span>
+
+                <div className="flex gap-2">
+                    <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={onFocusPrompt}
+                        className="flex-1 h-8 text-[11px] bg-violet-600/20 text-violet-200 border border-violet-500/30 hover:bg-violet-600/30"
+                    >
+                        Focus Prompt
+                    </Button>
+                    <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={onInvitePeople}
+                        className="flex-1 h-8 text-[11px] bg-cyan-600/20 text-cyan-200 border border-cyan-500/30 hover:bg-cyan-600/30"
+                    >
+                        Invite
+                    </Button>
+                </div>
+
+                {isCurrentUserHost ? (
+                    <div className="rounded-xl border border-emerald-400/20 bg-emerald-500/5 px-3 py-2 text-[11px] text-emerald-200">
+                        Host controls enabled: you can mute chat, remove members, and transfer host.
+                    </div>
+                ) : (
+                    <div className="rounded-xl border border-white/10 bg-slate-800/50 px-3 py-2 text-[11px] text-slate-400">
+                        Host controls are available only to the room host.
+                    </div>
+                )}
+
+                <Input
+                    name="member-search"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Search members by name or email..."
+                    className="h-9 text-xs"
+                />
+
+                <div className="space-y-2">
+                    {visibleParticipants.length === 0 && (
+                        <div className="text-center text-xs text-slate-500 py-6 border border-dashed border-slate-700 rounded-xl">
+                            No members match your search.
+                        </div>
+                    )}
+
+                    {visibleParticipants.map(member => {
+                        const emailLower = (member.email || '').toLowerCase();
+                        const meEmail = (currentUserEmail || '').toLowerCase();
+                        const isMeById = !!(currentUserId && member.id && currentUserId === member.id);
+                        const isMe = isMeById || emailLower === meEmail;
+                        const isOwnerById = !!(roomOwnerId && member.id && roomOwnerId === member.id);
+                        const isOwnerByEmail = !!(roomOwnerEmail && emailLower === roomOwnerEmail.toLowerCase());
+                        const isOwner = isOwnerById || isOwnerByEmail;
+                        const isMuted = mutedEmailSet.has(emailLower);
+                        const actionOnThisMember = !!(memberActionState && memberActionState.email.toLowerCase() === emailLower);
+                        const memberDescriptor = { email: member.email, displayName: member.displayName };
+
+                        return (
+                            <div
+                                key={member.email}
+                                className="bg-white/5 hover:bg-white/10 p-3 rounded-xl transition-colors border border-white/10"
+                            >
+                                <div className="flex items-start gap-3">
+                                    <div className="relative">
+                                        <img
+                                            src={`https://ui-avatars.com/api/?name=${member.displayName}&background=random`}
+                                            alt="avatar"
+                                            className="w-10 h-10 rounded-full ring-2 ring-violet-500/25"
+                                        />
+                                        <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 border-2 border-slate-900 rounded-full" />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                            <span className="font-medium text-slate-100 text-sm truncate">{member.displayName}</span>
+                                            {isMe && (
+                                                <span className="text-[10px] px-2 py-0.5 rounded-full border border-violet-400/30 bg-violet-500/10 text-violet-200">You</span>
+                                            )}
+                                            {isOwner && (
+                                                <span className="text-[10px] px-2 py-0.5 rounded-full border border-amber-400/30 bg-amber-500/10 text-amber-200">Host</span>
+                                            )}
+                                        </div>
+                                        <p className="text-[11px] text-slate-400 truncate">{member.email}</p>
+                                    </div>
+                                </div>
+
+                                <div className="mt-3 flex flex-wrap gap-2">
+                                    <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        onClick={() => onMentionMember(memberDescriptor)}
+                                        disabled={isMe}
+                                        className="h-7 px-2 text-[10px] border border-white/10"
+                                    >
+                                        Mention
+                                    </Button>
+                                    <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        onClick={() => onAskMember(memberDescriptor)}
+                                        disabled={isMe}
+                                        className="h-7 px-2 text-[10px] border border-white/10"
+                                    >
+                                        Ask
+                                    </Button>
+                                    <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        onClick={() => onWaveMember(memberDescriptor)}
+                                        disabled={isMe}
+                                        className="h-7 px-2 text-[10px] border border-white/10"
+                                    >
+                                        Wave
+                                    </Button>
+                                    <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        onClick={() => handleCopyEmail(member.email)}
+                                        className="h-7 px-2 text-[10px] border border-white/10"
+                                    >
+                                        {copiedEmail === member.email ? 'Copied' : 'Copy Email'}
+                                    </Button>
+                                </div>
+
+                                {isCurrentUserHost && !isMe && (
+                                    <div className="mt-2 flex flex-wrap gap-2 border-t border-white/10 pt-2">
+                                        <Button
+                                            size="sm"
+                                            variant="secondary"
+                                            onClick={() => (isMuted ? onUnmuteMember(memberDescriptor) : onMuteMember(memberDescriptor))}
+                                            disabled={actionOnThisMember}
+                                            className={`h-7 px-2 text-[10px] ${isMuted ? 'bg-emerald-600/20 text-emerald-200 border border-emerald-500/30' : 'bg-amber-600/20 text-amber-200 border border-amber-500/30'}`}
+                                        >
+                                            {actionOnThisMember && (memberActionState?.action === 'mute_chat' || memberActionState?.action === 'unmute_chat')
+                                                ? 'Updating...'
+                                                : (isMuted ? 'Unmute Chat' : 'Mute Chat')}
+                                        </Button>
+                                        <Button
+                                            size="sm"
+                                            variant="secondary"
+                                            onClick={() => onRemoveMember(memberDescriptor)}
+                                            disabled={actionOnThisMember || isOwner}
+                                            className="h-7 px-2 text-[10px] bg-rose-600/20 text-rose-200 border border-rose-500/30"
+                                        >
+                                            {actionOnThisMember && memberActionState?.action === 'remove' ? 'Removing...' : 'Remove'}
+                                        </Button>
+                                        <Button
+                                            size="sm"
+                                            variant="secondary"
+                                            onClick={() => onTransferHost(memberDescriptor)}
+                                            disabled={actionOnThisMember || isOwner}
+                                            className="h-7 px-2 text-[10px] bg-cyan-600/20 text-cyan-200 border border-cyan-500/30"
+                                        >
+                                            {actionOnThisMember && memberActionState?.action === 'transfer_host' ? 'Transferring...' : 'Make Host'}
+                                        </Button>
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })}
                 </div>
             </div>
-        ))}
-    </div>
-);
+        );
+    };
 
-const AiPanel: React.FC<any> = ({ messages, input, setInput, onSend, notes, isExtracting, onUploadClick, onQuizMe, chatEndRef, isLoading, sharedQuiz }) => (
+const AiPanel: React.FC<any> = ({ messages, input, setInput, onSend, notes, isExtracting, onUploadClick, onQuizMe, onSummarize, chatEndRef, isLoading, sharedQuiz }) => (
     <div className="flex flex-col flex-1 overflow-hidden relative">
         <div className="flex-1 overflow-y-auto p-4 space-y-4 pb-20 scrollbar-thin scrollbar-thumb-slate-700">
             {!notes && (
@@ -1363,7 +1838,7 @@ const AiPanel: React.FC<any> = ({ messages, input, setInput, onSend, notes, isEx
             <div className="flex gap-2 mt-3 overflow-x-auto pb-1 scrollbar-none">
                 <Button onClick={onUploadClick} size="sm" variant="secondary" className="text-xs whitespace-nowrap bg-slate-800/50 border border-slate-700/50 hover:bg-slate-700"><Paperclip size={12} className="mr-1.5" /> Context</Button>
                 <Button onClick={onQuizMe} size="sm" variant="secondary" className="text-xs whitespace-nowrap bg-slate-800/50 border border-slate-700/50 hover:bg-slate-700"><Lightbulb size={12} className="mr-1.5" /> Generate Quiz</Button>
-                <Button size="sm" variant="secondary" className="text-xs whitespace-nowrap bg-slate-800/50 border border-slate-700/50 hover:bg-slate-700"><Info size={12} className="mr-1.5" /> Summarize</Button>
+                <Button onClick={onSummarize} disabled={isExtracting || !!sharedQuiz || isLoading || !notes?.trim()} size="sm" variant="secondary" className="text-xs whitespace-nowrap bg-slate-800/50 border border-slate-700/50 hover:bg-slate-700 disabled:opacity-60"><Info size={12} className="mr-1.5" /> Summarize</Button>
             </div>
             <p className="text-[10px] text-center text-slate-500 mt-2">AI can make mistakes. Double check important info.</p>
         </div>

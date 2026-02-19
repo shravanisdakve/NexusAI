@@ -33,6 +33,9 @@ export interface User {
     targetExam?: string;
     minorDegree?: string;
     backlogs?: number;
+    preferredLanguage?: 'en' | 'mr' | 'hi';
+    quickAccessTools?: string[];
+    toolUsageCounters?: Record<string, number>;
 }
 
 export interface Flashcard {
@@ -89,8 +92,12 @@ export interface StudyRoom {
     maxUsers: number;
     university?: string; // Can be linked to a university
     // In a real app, this would be a list of user IDs
-    users: { email: string; displayName: string }[];
-    createdBy: string; // user email
+    users: { id?: string; email: string; displayName: string }[];
+    createdBy: string; // host display name (legacy field)
+    createdById?: string;
+    createdByEmail?: string;
+    mutedUserIds?: string[];
+    mutedUserEmails?: string[];
 
     technique?: string;
     topic?: string;

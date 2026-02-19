@@ -4,6 +4,62 @@ const StudyPlan = require('../models/StudyPlan');
 const auth = require('../middleware/auth');
 const aiProvider = require('../services/aiProvider');
 
+const stripCodeFences = (value = '') =>
+    String(value)
+        .replace(/^\s*```(?:json)?\s*/i, '')
+        .replace(/\s*```\s*$/i, '')
+        .trim();
+
+const extractJsonPayload = (value = '') => {
+    const text = stripCodeFences(value);
+    const firstObject = text.indexOf('{');
+    const firstArray = text.indexOf('[');
+    const hasObject = firstObject !== -1;
+    const hasArray = firstArray !== -1;
+
+    if (!hasObject && !hasArray) return text;
+
+    const start =
+        hasObject && hasArray
+            ? Math.min(firstObject, firstArray)
+            : hasObject
+                ? firstObject
+                : firstArray;
+
+    const startChar = text[start];
+    const end = startChar === '{' ? text.lastIndexOf('}') : text.lastIndexOf(']');
+    if (end === -1 || end <= start) return text.slice(start).trim();
+    return text.slice(start, end + 1).trim();
+};
+
+const repairJsonText = (value = '') =>
+    String(value)
+        .replace(/[\u201C\u201D]/g, '"')
+        .replace(/[\u2018\u2019]/g, "'")
+        .replace(/,\s*([}\]])/g, '$1')
+        .trim();
+
+const parseStudyPlanJson = (raw) => {
+    const base = typeof raw === 'string' ? raw : JSON.stringify(raw ?? {});
+    const extracted = extractJsonPayload(base);
+    const attempts = [
+        extracted,
+        repairJsonText(extracted),
+        repairJsonText(stripCodeFences(base)),
+    ];
+
+    for (const attempt of attempts) {
+        if (!attempt) continue;
+        try {
+            return JSON.parse(attempt);
+        } catch {
+            // Try next repaired variant.
+        }
+    }
+
+    throw new Error('AI returned invalid study plan JSON');
+};
+
 // Test route to verify router is loaded
 router.get('/test', (req, res) => {
     res.json({ message: "Study Plan router is working" });
@@ -123,7 +179,7 @@ router.post('/generate', auth, async (req, res) => {
             json: true
         });
 
-        // Some providers might return an object already if they are configured with json: true
+        // Some providers might return an object already if they are configured with json: true.
         let responseText = result;
         if (typeof result !== 'string') {
             responseText = JSON.stringify(result);
@@ -131,8 +187,11 @@ router.post('/generate', auth, async (req, res) => {
             responseText = result.replace(/```json|```/g, '').trim();
         }
 
-        console.log(`[StudyPlan] AI generated plan successfully. Length: ${responseText.length}`);
-        res.json({ planJson: responseText });
+        const parsedPlan = parseStudyPlanJson(responseText);
+        const normalizedPlanJson = JSON.stringify(parsedPlan);
+
+        console.log(`[StudyPlan] AI generated plan successfully. Length: ${normalizedPlanJson.length}`);
+        res.json({ planJson: normalizedPlanJson });
     } catch (error) {
         console.error("[StudyPlan] GENERATE Error:", error);
         res.status(500).json({ error: error.message });

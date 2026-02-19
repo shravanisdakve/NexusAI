@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { PageHeader, Input, Button } from '../components/ui';
 import CourseSelector from '../components/CourseSelector';
 import { type ChatMessage } from '../types';
-import { streamChat, generateQuizQuestion } from '../services/geminiService';
+import { streamChat, streamStudyBuddyChat, extractTextFromFile, generateQuizQuestion } from '../services/geminiService';
 import { trackToolUsage } from '../services/personalizationService';
 import { startSession, endSession, recordQuizResult, getProductivityReport } from '../services/analyticsService';
 import { createChatSession, addMessageToSession } from '../services/aiChatService'; // Added import
@@ -18,6 +18,15 @@ interface Quiz {
     correctOptionIndex: number;
     userAnswerIndex?: number;
 }
+
+const parsePositiveInt = (value: unknown, fallback: number): number => {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : fallback;
+};
+
+const UPLOADED_CONTEXT_MAX_CHARS = parsePositiveInt(import.meta.env.VITE_AI_DOC_CONTEXT_MAX_CHARS, 24000);
+const UPLOADED_QUIZ_CONTEXT_MAX_CHARS = parsePositiveInt(import.meta.env.VITE_AI_DOC_QUIZ_CONTEXT_MAX_CHARS, 12000);
+const UPLOAD_MAX_FILE_MB = parsePositiveInt(import.meta.env.VITE_AI_DOC_MAX_FILE_MB, 10);
 
 const ChatItem: React.FC<{ message: ChatMessage; onSpeak: (text: string) => void }> = ({ message, onSpeak }) => {
     const isModel = message.role === 'model';
@@ -134,7 +143,10 @@ const AiTutor: React.FC = () => {
     });
 
     const [sessionId, setSessionId] = useState<string | null>(null);
-    const [selectedImage, setSelectedImage] = useState<{ base64: string, type: string, name: string } | null>(null);
+    const [selectedDocument, setSelectedDocument] = useState<{ name: string; type: string; size: number } | null>(null);
+    const [uploadedContext, setUploadedContext] = useState('');
+    const [uploadedContextMeta, setUploadedContextMeta] = useState<{ name: string; truncated: boolean } | null>(null);
+    const [isExtracting, setIsExtracting] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const recognitionRef = useRef<any | null>(null);
@@ -278,37 +290,99 @@ const AiTutor: React.FC = () => {
         speechSynthesis.speak(utterance);
     };
 
-    const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const clearUploadedContext = () => {
+        setSelectedDocument(null);
+        setUploadedContext('');
+        setUploadedContextMeta(null);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+    };
+
+    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
 
-        const reader = new FileReader();
-        reader.onloadend = () => {
-            setSelectedImage({
-                base64: reader.result as string,
-                type: file.type,
-                name: file.name
+        if (file.size > UPLOAD_MAX_FILE_MB * 1024 * 1024) {
+            setError(`File is too large. Max allowed is ${UPLOAD_MAX_FILE_MB}MB.`);
+            if (e.target) e.target.value = '';
+            return;
+        }
+
+        setError(null);
+        setSelectedDocument({
+            name: file.name,
+            type: file.type,
+            size: file.size
+        });
+        setUploadedContext('');
+        setUploadedContextMeta(null);
+        setIsExtracting(true);
+
+        try {
+            const dataUrl = await new Promise<string>((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(String(reader.result || ''));
+                reader.onerror = () => reject(new Error('Failed to read selected file.'));
+                reader.readAsDataURL(file);
             });
-        };
-        reader.readAsDataURL(file);
+
+            const base64 = dataUrl.includes(',') ? dataUrl.split(',')[1] : dataUrl;
+            const extracted = await extractTextFromFile(base64, file.type || 'application/octet-stream');
+            const cleanText = String(extracted || '').trim();
+
+            if (!cleanText) {
+                throw new Error('No readable text found in the uploaded file.');
+            }
+
+            const truncated = cleanText.length > UPLOADED_CONTEXT_MAX_CHARS;
+            const finalContext = truncated ? cleanText.slice(0, UPLOADED_CONTEXT_MAX_CHARS) : cleanText;
+            setUploadedContext(finalContext);
+            setUploadedContextMeta({ name: file.name, truncated });
+
+            const readyMessage = truncated
+                ? `Loaded "${file.name}". I can answer based only on this file. For stability, I am using the first ${UPLOADED_CONTEXT_MAX_CHARS} characters.`
+                : `Loaded "${file.name}". Ask me anything from this file, and I will answer strictly from it.`;
+
+            const modelMessage: ChatMessage = { role: 'model', parts: [{ text: readyMessage }] };
+            setMessages(prev => [...prev, modelMessage]);
+            if (sessionId) {
+                addMessageToSession(sessionId, [modelMessage]).catch(err => console.error("Failed to save file-ready message", err));
+            }
+        } catch (err: any) {
+            console.error("File extraction failed:", err);
+            let userFriendlyMsg = 'Could not read this file. Please try another image/document.';
+            if (err?.status === 429) {
+                userFriendlyMsg = 'File reading is rate-limited right now. Please retry shortly.';
+            } else if (err?.status === 503) {
+                userFriendlyMsg = 'File-reading model is currently unavailable. Please retry in a minute.';
+            } else if (typeof err?.message === 'string' && err.message.trim()) {
+                userFriendlyMsg = err.message;
+            }
+
+            setError(userFriendlyMsg);
+            setSelectedDocument(null);
+            setUploadedContext('');
+            setUploadedContextMeta(null);
+        } finally {
+            setIsExtracting(false);
+            if (e.target) e.target.value = '';
+        }
     };
 
     const handleSend = useCallback(async (messageToSend?: string, isVoiceInput = false) => {
         const currentMessage = messageToSend || input;
-        if (!currentMessage.trim() || isLoading) return;
+        if (!currentMessage.trim() || isLoading || isExtracting) return;
 
         speechSynthesis.cancel();
 
         const newUserMessage: ChatMessage = {
             role: 'user',
             parts: [{ text: currentMessage }],
-            attachment: selectedImage ? { name: selectedImage.name, type: selectedImage.type, size: 0 } : undefined
+            attachment: selectedDocument
+                ? { name: selectedDocument.name, type: selectedDocument.type, size: selectedDocument.size }
+                : undefined
         };
         const newModelMessage: ChatMessage = { role: 'model', parts: [{ text: '' }] };
         setMessages(prev => [...prev, newUserMessage, newModelMessage]);
-
-        const imgData = selectedImage;
-        setSelectedImage(null); // Clear after sending
 
         setInput('');
         setIsLoading(true);
@@ -323,13 +397,6 @@ const AiTutor: React.FC = () => {
         try {
             let contextPrompt = currentMessage;
 
-            // Inject User Context for better personalization
-            const userContext = getUserContext();
-            if (userContext) {
-                // We prepend it so the model knows who it is talking to
-                contextPrompt = `${userContext}\n\n${contextPrompt}`;
-            }
-
             if (studyMode === 'Feynman Technique') {
                 contextPrompt = `[MODE: FEYNMAN TECHNIQUE - Explain like I'm 10. Identify gaps.] User says: ${currentMessage}`;
             } else if (studyMode === 'Spaced Repetition') {
@@ -338,12 +405,17 @@ const AiTutor: React.FC = () => {
                 contextPrompt = `[MODE: ACTIVE RECALL - Ask tough questions to probe understanding.] User says: ${currentMessage}`;
             }
 
-            const stream = await streamChat(
-                contextPrompt,
-                imgData?.base64.split(',')[1], // Just the base64 part
-                imgData?.type,
-                language
-            );
+            const hasUploadedContext = Boolean(uploadedContext.trim());
+            if (!hasUploadedContext) {
+                const userContext = getUserContext();
+                if (userContext) {
+                    contextPrompt = `${userContext}\n\n${contextPrompt}`;
+                }
+            }
+
+            const stream = hasUploadedContext
+                ? await streamStudyBuddyChat(contextPrompt, uploadedContext, language)
+                : await streamChat(contextPrompt, undefined, undefined, language);
 
             if (!stream) throw new Error("Failed to start stream");
 
@@ -413,7 +485,7 @@ const AiTutor: React.FC = () => {
         } finally {
             setIsLoading(false);
         }
-    }, [input, isLoading, isAutoSpeaking, studyMode, sessionId, language]);
+    }, [input, isLoading, isAutoSpeaking, studyMode, sessionId, language, selectedDocument, uploadedContext, isExtracting]);
 
     const handleQuizMe = async () => {
         if (isLoading) return;
@@ -421,7 +493,9 @@ const AiTutor: React.FC = () => {
         setIsLoading(true);
         setQuiz(null);
 
-        const context = messages.map(m => `${m.role}: ${m.parts.map(p => p.text).join('')}`).join('\n');
+        const context = uploadedContext.trim()
+            ? uploadedContext.slice(0, UPLOADED_QUIZ_CONTEXT_MAX_CHARS)
+            : messages.map(m => `${m.role}: ${m.parts.map(p => p.text).join('')}`).join('\n');
         setMessages(prev => [...prev, { role: 'model', parts: [{ text: "Of course! Here's a question for you..." }] }]);
 
         try {
@@ -591,11 +665,17 @@ const AiTutor: React.FC = () => {
                 </div>
                 {error && <p className="text-red-400 text-sm text-center my-2">{error}</p>}
                 <div className="mt-4 flex flex-col gap-2">
-                    {selectedImage && (
+                    {(selectedDocument || isExtracting || uploadedContextMeta) && (
                         <div className="flex items-center gap-2 p-2 bg-slate-900/80 rounded-lg border border-slate-700 w-fit animate-in slide-in-from-bottom-2">
                             <ImageIcon size={16} className="text-sky-400" />
-                            <span className="text-xs text-slate-300 max-w-[200px] truncate">{selectedImage.name}</span>
-                            <button onClick={() => setSelectedImage(null)} className="text-slate-500 hover:text-rose-400">
+                            <span className="text-xs text-slate-300 max-w-[260px] truncate">
+                                {isExtracting
+                                    ? `Reading ${selectedDocument?.name || 'file'}...`
+                                    : uploadedContextMeta
+                                        ? `${uploadedContextMeta.name}${uploadedContextMeta.truncated ? ' (trimmed for AI context)' : ''}`
+                                        : selectedDocument?.name}
+                            </span>
+                            <button onClick={clearUploadedContext} className="text-slate-500 hover:text-rose-400" disabled={isExtracting}>
                                 <X size={14} />
                             </button>
                         </div>
@@ -605,14 +685,14 @@ const AiTutor: React.FC = () => {
                             type="file"
                             ref={fileInputRef}
                             onChange={handleImageUpload}
-                            accept="image/*"
+                            accept="image/*,.pdf,.txt,.md,.ppt,.pptx"
                             className="hidden"
                         />
                         <Button
                             onClick={() => fileInputRef.current?.click()}
-                            disabled={isLoading || !!quiz}
+                            disabled={isLoading || !!quiz || isExtracting}
                             className="px-4 py-3 bg-slate-700 hover:bg-slate-600"
-                            aria-label="Upload image"
+                            aria-label="Upload file"
                         >
                             <Paperclip className="w-5 h-5" />
                         </Button>
@@ -623,14 +703,14 @@ const AiTutor: React.FC = () => {
                             value={input}
                             onChange={(e) => setInput(e.target.value)}
                             onKeyPress={(e) => e.key === 'Enter' && !isLoading && handleSend()}
-                            placeholder="Ask a question or share a diagram..."
-                            disabled={isLoading || !!quiz}
+                            placeholder={uploadedContextMeta ? "Ask anything from your uploaded file..." : "Ask a question or upload notes/image..."}
+                            disabled={isLoading || !!quiz || isExtracting}
                             className="flex-1"
                             autoComplete="off"
                         />
                         <Button
                             onClick={handleQuizMe}
-                            disabled={isLoading || !!quiz}
+                            disabled={isLoading || !!quiz || isExtracting}
                             className="px-4 py-3 bg-slate-700 hover:bg-slate-600"
                             aria-label="Quiz me"
                         >
@@ -638,7 +718,7 @@ const AiTutor: React.FC = () => {
                         </Button>
                         <Button
                             onClick={handleListen}
-                            disabled={isLoading || !!quiz}
+                            disabled={isLoading || !!quiz || isExtracting}
                             className={`px-4 py-3 ${isListening ? 'bg-red-600 hover:bg-red-700' : 'bg-slate-700 hover:bg-slate-600'}`}
                             aria-label={isListening ? 'Stop listening' : 'Start listening'}
                         >
@@ -654,7 +734,7 @@ const AiTutor: React.FC = () => {
                         >
                             {isAutoSpeaking ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
                         </Button>
-                        <Button onClick={() => handleSend()} isLoading={isLoading} disabled={!input.trim() || !!quiz} className="px-4 py-3">
+                        <Button onClick={() => handleSend()} isLoading={isLoading} disabled={!input.trim() || !!quiz || isExtracting} className="px-4 py-3">
                             {!isLoading && <Send className="w-5 h-5" />}
                         </Button>
                     </div>

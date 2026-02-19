@@ -3,16 +3,18 @@ import { PageHeader } from '../components/ui';
 import { Brain, Grid3X3, Zap } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Calculator } from 'lucide-react';
+import { useLanguage } from '../contexts/LanguageContext';
 
 
 const QuizPractice: React.FC = () => {
   const navigate = useNavigate();
+  const { t } = useLanguage();
 
   return (
     <div className="max-w-5xl mx-auto p-6">
       <PageHeader
-        title="Quizzes & Practice"
-        subtitle="Practice logic, play games, and prepare for interviews"
+        title={t('quiz.title')}
+        subtitle={t('quiz.subtitle')}
       />
 
       <div className="grid md:grid-cols-3 gap-6 mt-8">
@@ -23,9 +25,9 @@ const QuizPractice: React.FC = () => {
           className="cursor-pointer bg-slate-900 p-6 rounded-xl hover:border-purple-500 border border-slate-800 transition"
         >
           <Brain className="text-rose-400 mb-4" size={36} />
-          <h3 className="text-lg font-semibold">Interview Logic Quiz</h3>
+          <h3 className="text-lg font-semibold">{t('quiz.interviewTitle')}</h3>
           <p className="text-sm text-slate-400 mt-2">
-            Pattern printing, arrays, loops & conditions
+            {t('quiz.interviewSubtitle')}
           </p>
         </div>
 
@@ -35,9 +37,9 @@ const QuizPractice: React.FC = () => {
           className="cursor-pointer bg-slate-900 p-6 rounded-xl hover:border-purple-500 border border-slate-800 transition"
         >
           <Grid3X3 className="text-emerald-400 mb-4" size={36} />
-          <h3 className="text-lg font-semibold">Sudoku Game</h3>
+          <h3 className="text-lg font-semibold">{t('quiz.sudokuTitle')}</h3>
           <p className="text-sm text-slate-400 mt-2">
-            Solve puzzles using logical constraints
+            {t('quiz.sudokuSubtitle')}
           </p>
         </div>
 
@@ -47,9 +49,9 @@ const QuizPractice: React.FC = () => {
           className="cursor-pointer bg-slate-900 p-6 rounded-xl hover:border-purple-500 border border-slate-800 transition"
         >
           <Zap className="text-yellow-400 mb-4" size={36} />
-          <h3 className="text-lg font-semibold">Zip Challenge</h3>
+          <h3 className="text-lg font-semibold">{t('quiz.zipTitle')}</h3>
           <p className="text-sm text-slate-400 mt-2">
-            Fast-paced logic matching game
+            {t('quiz.zipSubtitle')}
           </p>
         </div>
         {/* {Card 4} */}
@@ -59,9 +61,9 @@ const QuizPractice: React.FC = () => {
   className="cursor-pointer bg-slate-900 p-6 rounded-xl hover:border-purple-500 border border-slate-800 transition"
 >
   <Calculator className="text-green-400 mb-4" size={36} />
-  <h3 className="text-lg font-semibold">Speed Math</h3>
+  <h3 className="text-lg font-semibold">{t('quiz.speedMathTitle')}</h3>
   <p className="text-sm text-slate-400 mt-2">
-    10 fast math questions with difficulty levels
+    {t('quiz.speedMathSubtitle')}
   </p>
 </div>
 

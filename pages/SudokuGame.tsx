@@ -4,6 +4,7 @@ import { saveGameActivity } from '../services/gameTracker';
 import { PageHeader, Button } from '../components/ui';
 import { ArrowLeft, RefreshCw, Trophy, Timer, CheckCircle, RotateCcw } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { useLanguage } from '../contexts/LanguageContext';
 
 // --- Sudoku Logic ---
 
@@ -95,6 +96,7 @@ const removeDigits = (board: number[][], count: number): number[][] => {
 const SudokuGame: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { t } = useLanguage();
 
   // Game State
   const [solution, setSolution] = useState<number[][]>([]);
@@ -176,7 +178,7 @@ const SudokuGame: React.FC = () => {
     for (let i = 0; i < 9; i++) {
       for (let j = 0; j < 9; j++) {
         if (board[i][j] === BLANK) {
-          alert('Please fill the whole board first!');
+          alert(t('sudoku.fillBoardFirst'));
           return;
         }
       }
@@ -212,7 +214,7 @@ const SudokuGame: React.FC = () => {
         level: difficulty === 'Easy' ? 1 : difficulty === 'Medium' ? 2 : 3
       });
     } else {
-      alert("Incorrect Solution! Keep trying.");
+      alert(t('sudoku.incorrectSolution'));
     }
   };
 
@@ -229,7 +231,7 @@ const SudokuGame: React.FC = () => {
           <Button variant="ghost" onClick={() => navigate('/')} className="mr-4 text-slate-400">
             <ArrowLeft size={20} />
           </Button>
-          <PageHeader title="Sudoku Challenge" subtitle="Focus your mind with the classic numbers game." />
+          <PageHeader title={t('sudoku.title')} subtitle={t('sudoku.subtitle')} />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -242,14 +244,14 @@ const SudokuGame: React.FC = () => {
                   <span className="text-2xl font-mono font-bold">{formatTime(timer)}</span>
                 </div>
                 <div className="flex items-center gap-2 text-rose-400">
-                  <span className="text-sm font-bold uppercase tracking-wider">Mistakes</span>
+                  <span className="text-sm font-bold uppercase tracking-wider">{t('sudoku.mistakes')}</span>
                   <span className="font-mono font-bold bg-rose-500/10 px-2 py-1 rounded">{mistakes}</span>
                 </div>
               </div>
 
               <div className="space-y-4">
                 <div>
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 block">Difficulty</label>
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 block">{t('sudoku.difficulty')}</label>
                   <div className="flex bg-slate-900/50 p-1 rounded-lg">
                     {(['Easy', 'Medium', 'Hard'] as const).map(d => (
                       <button
@@ -257,14 +259,14 @@ const SudokuGame: React.FC = () => {
                         onClick={() => { setDifficulty(d); }}
                         className={`flex-1 py-2 text-sm font-medium rounded-md transition-all ${difficulty === d ? 'bg-violet-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
                       >
-                        {d}
+                        {d === 'Easy' ? t('sudoku.easy') : d === 'Medium' ? t('sudoku.medium') : t('sudoku.hard')}
                       </button>
                     ))}
                   </div>
                 </div>
 
                 <Button onClick={startNewGame} variant="outline" className="w-full border-slate-600 hover:bg-slate-700">
-                  <RotateCcw size={16} className="mr-2" /> New Game
+                  <RotateCcw size={16} className="mr-2" /> {t('sudoku.newGame')}
                 </Button>
               </div>
             </div>
@@ -272,10 +274,10 @@ const SudokuGame: React.FC = () => {
             {isWon && (
               <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-2xl p-6 text-center animate-in zoom-in duration-300">
                 <Trophy size={48} className="text-emerald-400 mx-auto mb-4" />
-                <h3 className="text-2xl font-bold text-white mb-2">Puzzle Solved!</h3>
-                <p className="text-emerald-200 mb-4">Great mental exercise. Your progress has been saved.</p>
+                <h3 className="text-2xl font-bold text-white mb-2">{t('sudoku.puzzleSolved')}</h3>
+                <p className="text-emerald-200 mb-4">{t('sudoku.progressSaved')}</p>
                 <Button onClick={startNewGame} className="bg-emerald-600 hover:bg-emerald-500">
-                  Play Again
+                  {t('sudoku.playAgain')}
                 </Button>
               </div>
             )}
@@ -325,7 +327,7 @@ const SudokuGame: React.FC = () => {
         {!isWon && (
           <div className="mt-8 flex justify-center">
             <Button onClick={checkSolution} className="px-12 py-4 text-lg bg-gradient-to-r from-violet-600 to-indigo-600 shadow-xl shadow-violet-900/20 hover:scale-105 transition-transform">
-              <CheckCircle size={24} className="mr-2" /> Submit Solution
+              <CheckCircle size={24} className="mr-2" /> {t('sudoku.submitSolution')}
             </Button>
           </div>
         )}

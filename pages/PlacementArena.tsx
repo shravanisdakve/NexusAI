@@ -1,63 +1,88 @@
-import React from 'react';
-import { PageHeader, Button, Card } from '@/components/ui';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { PageHeader, Button, Card, Spinner } from '@/components/ui';
 import {
     Briefcase,
-    Trophy,
     Target,
-    Users,
-    ArrowRight,
-    Zap,
     Globe,
-    Rocket,
+    ArrowRight,
     BarChart3,
-    Terminal
+    Terminal,
+    Clock3,
+    CheckCircle2,
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { useLanguage } from '../contexts/LanguageContext';
+import { getPlacementDashboard, getRecentPlacementAttempts, PlacementDashboardPayload } from '../services/placementService';
+import { trackToolUsage } from '../services/personalizationService';
 
 const PlacementArena: React.FC = () => {
-    const simulators = [
-        {
-            id: 'tcs-nqt',
-            name: 'TCS NQT 2025 Simulator',
-            description: 'Adaptive 75-minute Foundation Round and 90-minute Advanced Round with AI proctoring mimicry.',
-            icon: <Terminal className="w-6 h-6" />,
-            color: 'text-rose-400',
-            bg: 'bg-rose-500/10',
-            border: 'border-rose-500/30',
-            href: '/placement/tcs-nqt'
-        },
-        {
-            id: 'capgemini',
-            name: 'Capgemini Exceller Drive',
-            description: 'Game-based aptitude challenges and technical MCQs optimized for the 2025 recruitment pattern.',
-            icon: <Zap className="w-6 h-6" />,
-            color: 'text-blue-400',
-            bg: 'bg-blue-500/10',
-            border: 'border-blue-500/30',
-            href: '/placement/capgemini'
-        }
-    ];
+    const { t } = useLanguage();
+    const [dashboard, setDashboard] = useState<PlacementDashboardPayload | null>(null);
+    const [attempts, setAttempts] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
-    const stats = [
-        { label: 'Highest Package', value: '₹1.68 CPA', college: 'IIT Bombay' },
-        { label: 'VJTI Avg', value: '₹8.5 LPA', color: 'text-emerald-400' },
-        { label: 'SPIT Avg', value: '₹10.2 LPA', color: 'text-blue-400' },
-        { label: 'Mass Recruiters', value: '₹3.6 - 7 LPA' }
-    ];
+    useEffect(() => {
+        trackToolUsage('placement');
+    }, []);
+
+    useEffect(() => {
+        const load = async () => {
+            setLoading(true);
+            setError(null);
+            try {
+                const [dashboardData, recentAttempts] = await Promise.all([
+                    getPlacementDashboard(),
+                    getRecentPlacementAttempts(),
+                ]);
+
+                setDashboard(dashboardData);
+                setAttempts(recentAttempts || []);
+                if (!dashboardData) {
+                    setError(t('placement.loadError'));
+                }
+            } catch (loadError) {
+                console.error('Failed loading placement arena:', loadError);
+                setError(t('placement.loadError'));
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        load();
+    }, [t]);
+
+    const averageTrend = useMemo(() => {
+        if (!dashboard?.trends?.length) return 0;
+        const sum = dashboard.trends.reduce((acc, item) => acc + Number(item.avgPackage || 0), 0);
+        return Number((sum / dashboard.trends.length).toFixed(1));
+    }, [dashboard]);
+
+    if (loading) {
+        return (
+            <div className="h-[60vh] flex items-center justify-center">
+                <Spinner size="xl" />
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-8 max-w-7xl mx-auto pb-12">
             <PageHeader
-                title="Placement Arena"
-                subtitle="The high-stakes simulator for Mumbai's engineering recruitment ecosystem."
+                title={t('placement.title')}
+                subtitle={t('placement.subtitle')}
                 icon={<Briefcase className="w-8 h-8 text-amber-400" />}
             />
 
-            {/* Placement Quick Stats */}
+            {error && (
+                <Card className="p-4 border-rose-500/30 bg-rose-500/10 text-rose-300 text-sm">
+                    {error}
+                </Card>
+            )}
+
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                {stats.map((stat, i) => (
-                    <Card key={i} className="p-6 text-center group hover:scale-105 transition-transform">
+                {(dashboard?.stats || []).map((stat, index) => (
+                    <Card key={`${stat.label}-${index}`} className="p-6 text-center group hover:scale-[1.02] transition-transform">
                         <p className="text-xs text-slate-500 uppercase font-bold tracking-widest mb-1">{stat.label}</p>
                         <h4 className={`text-2xl font-black ${stat.color || 'text-white'}`}>{stat.value}</h4>
                         {stat.college && <p className="text-[10px] text-slate-500 mt-1">{stat.college}</p>}
@@ -66,89 +91,111 @@ const PlacementArena: React.FC = () => {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Simulator Section */}
                 <div className="lg:col-span-2 space-y-6">
                     <h3 className="text-xl font-bold flex items-center gap-2 px-2">
                         <Target className="text-rose-500" />
-                        Active Assessment Simulators
+                        {t('placement.activeSimulators')}
                     </h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {simulators.map((sim) => (
-                            <Card key={sim.id} className={`p-6 border-2 ${sim.border} ${sim.bg} flex flex-col h-full`}>
-                                <div className={`w-12 h-12 rounded-2xl ${sim.bg} border ${sim.border} flex items-center justify-center ${sim.color} mb-6 shadow-xl`}>
-                                    {sim.icon}
+                        {(dashboard?.simulators || []).map((simulator) => (
+                            <Card key={simulator.slug} className="p-6 border border-slate-700/50 bg-slate-800/40 flex flex-col h-full">
+                                <div className="w-12 h-12 rounded-2xl bg-rose-500/10 border border-rose-500/30 flex items-center justify-center text-rose-400 mb-6 shadow-xl">
+                                    <Terminal className="w-6 h-6" />
                                 </div>
-                                <h4 className="text-xl font-bold text-white mb-2">{sim.name}</h4>
-                                <p className="text-sm text-slate-400 mb-8 flex-1">{sim.description}</p>
-                                <Button className="w-full gap-2">
-                                    Launch Simulator <ArrowRight className="w-4 h-4" />
-                                </Button>
+                                <h4 className="text-xl font-bold text-white mb-2">{simulator.name}</h4>
+                                <p className="text-sm text-slate-400 mb-4 flex-1">{simulator.description}</p>
+                                <div className="text-xs text-slate-500 mb-4 flex items-center gap-3">
+                                    <span className="flex items-center gap-1">
+                                        <Clock3 size={12} />
+                                        {t('placement.minutesShort', { minutes: simulator.durationMin })}
+                                    </span>
+                                    <span>{t('placement.questionsShort', { count: simulator.questionCount })}</span>
+                                </div>
+                                <Link to={simulator.href}>
+                                    <Button className="w-full gap-2">
+                                        {t('placement.launchSimulator')} <ArrowRight className="w-4 h-4" />
+                                    </Button>
+                                </Link>
                             </Card>
                         ))}
                     </div>
 
-                    <Card className="p-8 bg-gradient-to-br from-indigo-900/40 to-slate-900 border-indigo-500/30 overflow-hidden relative">
-                        <div className="absolute right-0 top-0 p-12 opacity-5 scale-150">
-                            <Rocket className="w-32 h-32 text-indigo-400" />
-                        </div>
-                        <div className="relative z-10 max-w-lg">
-                            <h3 className="text-2xl font-bold text-white mb-4">AI-Driven Resume Engineering</h3>
-                            <p className="text-slate-400 mb-6 text-sm">
-                                Optimize your profile for Indian HR tech stacks. Ensure your skills match the standardized taxonomy used by TCS, Capgemini, and local tech startups.
-                            </p>
-                            <Button variant="outline" className="gap-2 border-indigo-500 text-indigo-400 hover:bg-indigo-500/10">
-                                Open Resume Builder <ArrowRight className="w-4 h-4" />
+                    <Card className="p-8 bg-gradient-to-br from-indigo-900/40 to-slate-900 border-indigo-500/30">
+                        <h3 className="text-2xl font-bold text-white mb-4">{t('placement.resumeTitle')}</h3>
+                        <p className="text-slate-400 mb-6 text-sm">
+                            {t('placement.resumeDescription')}
+                        </p>
+                        <Link to="/resume-builder">
+                            <Button type="button" variant="outline" className="gap-2 border-indigo-500 text-indigo-400 hover:bg-indigo-500/10">
+                                {t('placement.resumeAction')} <ArrowRight className="w-4 h-4" />
                             </Button>
-                        </div>
+                        </Link>
+                    </Card>
+
+                    <Card className="p-6 border-emerald-500/20 bg-emerald-500/5">
+                        <h4 className="font-bold text-emerald-300 mb-4 flex items-center gap-2">
+                            <CheckCircle2 size={16} />
+                            {t('placement.recentAttempts')}
+                        </h4>
+                        {attempts.length === 0 ? (
+                            <p className="text-sm text-slate-400">{t('placement.noAttempts')}</p>
+                        ) : (
+                            <div className="space-y-3">
+                                {attempts.map((attempt) => (
+                                    <div key={attempt._id} className="flex items-center justify-between bg-slate-900/50 border border-slate-700 rounded-xl px-4 py-3">
+                                        <div>
+                                            <p className="text-sm font-semibold text-white">{attempt.simulatorName}</p>
+                                            <p className="text-xs text-slate-500">
+                                                {t('placement.readinessLabel', { band: attempt.readinessBand })}
+                                            </p>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="text-sm font-bold text-emerald-400">{attempt.accuracy}%</p>
+                                            <p className="text-[10px] text-slate-500">{attempt.pace}</p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </Card>
                 </div>
 
-                {/* Ecosystem Section */}
                 <div className="space-y-6">
                     <h3 className="text-xl font-bold flex items-center gap-2 px-2">
                         <Globe className="text-blue-400" />
-                        Mumbai Startup Hub
+                        {t('placement.startupHub')}
                     </h3>
-                    <Card className="p-6 space-y-6">
-                        <div className="space-y-4">
-                            {[
-                                { name: 'Jupiter', sector: 'FinTech', stack: 'Java, security' },
-                                { name: 'Truemeds', sector: 'HealthTech', stack: 'Backend, Mobile' },
-                                { name: 'Haptik', sector: 'AI/NLP', stack: 'ML, Data Eng' }
-                            ].map((s, i) => (
-                                <div key={i} className="flex items-center justify-between p-3 rounded-xl bg-slate-900/50 border border-slate-700/50 group hover:border-blue-500/50 transition-colors">
-                                    <div>
-                                        <h5 className="font-bold text-white">{s.name}</h5>
-                                        <p className="text-[10px] text-slate-400 uppercase tracking-wider">{s.sector}</p>
-                                    </div>
-                                    <div className="text-right">
-                                        <span className="text-[10px] font-mono text-blue-400">{s.stack}</span>
-                                    </div>
+                    <Card className="p-6 space-y-4">
+                        {(dashboard?.startups || []).map((startup, index) => (
+                            <div key={`${startup.name}-${index}`} className="flex items-center justify-between p-3 rounded-xl bg-slate-900/50 border border-slate-700/50">
+                                <div>
+                                    <h5 className="font-bold text-white">{startup.name}</h5>
+                                    <p className="text-[10px] text-slate-400 uppercase tracking-wider">{startup.sector}</p>
                                 </div>
-                            ))}
-                        </div>
+                                <span className="text-[10px] font-mono text-blue-400 text-right">{startup.stack}</span>
+                            </div>
+                        ))}
                         <Button variant="ghost" className="w-full text-xs text-slate-500 hover:text-white">
-                            View 50+ More Local Startups
+                            {t('placement.viewMore')}
                         </Button>
                     </Card>
 
                     <Card className="p-6 bg-amber-500/5 border-amber-500/20">
                         <h4 className="font-bold text-amber-400 mb-4 flex items-center gap-2">
                             <BarChart3 className="w-4 h-4" />
-                            College Placement Trends
+                            {t('placement.collegeTrends')}
                         </h4>
-                        <div className="space-y-4">
-                            <div className="flex justify-between items-center">
-                                <span className="text-sm text-slate-400">DJ Sanghvi</span>
-                                <span className="text-sm font-bold text-white">~₹8-9 LPA</span>
-                            </div>
-                            <div className="flex justify-between items-center">
-                                <span className="text-sm text-slate-400">Thadomal Shahani</span>
-                                <span className="text-sm font-bold text-white">~₹7.5 LPA</span>
-                            </div>
-                            <div className="w-full h-1 bg-slate-800 rounded-full mt-2">
-                                <div className="w-3/4 h-full bg-amber-500 rounded-full"></div>
-                            </div>
+                        <div className="space-y-3">
+                            {(dashboard?.trends || []).slice(0, 4).map((trend) => (
+                                <div key={trend.collegeName} className="flex justify-between items-center">
+                                    <span className="text-sm text-slate-400">{trend.collegeName}</span>
+                                    <span className="text-sm font-bold text-white">Rs {Number(trend.avgPackage || 0).toFixed(1)} LPA</span>
+                                </div>
+                            ))}
+                        </div>
+                        <div className="mt-4 pt-3 border-t border-slate-700/40 flex justify-between items-center">
+                            <span className="text-xs text-slate-500">{t('placement.averageShown')}</span>
+                            <span className="text-sm text-amber-300 font-semibold">Rs {averageTrend.toFixed(1)} LPA</span>
                         </div>
                     </Card>
                 </div>
