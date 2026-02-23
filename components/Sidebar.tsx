@@ -3,6 +3,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { Modal, Input, Button } from './ui';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useMode } from '../contexts/ModeContext';
 import {
     LayoutDashboard,
     MessageSquare,
@@ -85,19 +86,25 @@ const ProfileEditModal: React.FC<ProfileEditModalProps> = ({ isOpen, onClose, cu
     );
 };
 
-const navigation = [
+const studyNavigation = [
     { key: 'sidebar.nav.studyHub', href: '/', icon: LayoutDashboard },
     { key: 'sidebar.nav.curriculum', href: '/curriculum', icon: GraduationCap },
-    { key: 'sidebar.nav.placement', href: '/placement', icon: Briefcase },
     { key: 'sidebar.nav.university', href: '/university-status', icon: Bell },
     { key: 'sidebar.nav.notes', href: '/notes', icon: FileText },
     { key: 'sidebar.nav.tutor', href: '/tutor', icon: MessageSquare },
     { key: 'sidebar.nav.studyRoom', href: '/study-lobby', icon: Users },
 ];
 
+const placementNavigation = [
+    { key: 'sidebar.nav.placement', href: '/placement', icon: Briefcase },
+    { key: 'Resume Builder', href: '/resume-builder', icon: FileText, directTranslation: true },
+    { key: 'Interview Practice', href: '/interview', icon: Users, directTranslation: true },
+];
+
 const Sidebar: React.FC = () => {
     const { user, logout, updateUserProfile } = useAuth();
     const { language, setLanguage, t } = useLanguage();
+    const { mode } = useMode();
     const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
     const navigate = useNavigate();
 
@@ -130,7 +137,7 @@ const Sidebar: React.FC = () => {
                 </div>
 
                 <nav className="flex-1 space-y-2">
-                    {navigation.map((item) => (
+                    {(mode === 'study' ? studyNavigation : placementNavigation).map((item) => (
                         <NavLink
                             key={item.key}
                             to={item.href}
@@ -143,7 +150,7 @@ const Sidebar: React.FC = () => {
                             }
                         >
                             <item.icon className="mr-3 h-5 w-5" aria-hidden="true" />
-                            {t(item.key)}
+                            {(item as any).directTranslation ? item.key : t(item.key)}
                         </NavLink>
                     ))}
                 </nav>
