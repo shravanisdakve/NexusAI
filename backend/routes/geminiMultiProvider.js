@@ -79,13 +79,12 @@ DIRECTIONS:
 3. Represent formulas clearly in plain text or LaTeX-like notation.
 4. For presentations, keep content slide-wise when possible.
 5. Return only clean extracted text with no meta-commentary.`;
-
 // --- AI TUTOR SERVICE (Using Groq) ---
 router.post('/streamChat', async (req, res) => {
     try {
         const { message, language } = req.body;
         console.log(`[StreamChat] Message received. Language: ${language}`);
-        let systemInstruction = 'You are an expert AI Tutor. Your goal is to help users understand complex topics by providing clear explanations, step-by-step examples, and asking probing questions to test their knowledge. Be patient, encouraging, and adapt your teaching style to the user\'s needs.';
+        let systemInstruction = 'You are an expert AI Tutor. Provide very precise, concise, and easy-to-understand answers. Avoid long, verbose explanations; instead, use short sentences and bullet points. Get straight to the point while remaining encouraging.';
 
         if (language === 'mr') {
             systemInstruction += ' IMPORTANT: Respond to the user ONLY in MARATHI (मराठी). Translated technical terms are okay, but the main conversation must be in Marathi.';
@@ -125,7 +124,8 @@ ${notes || 'No notes provided yet.'}
 Your knowledge is strictly limited to the text provided above. You CANNOT use any external information. When responding to the user:
 1. First, determine if the user's question can be answered using ONLY the provided notes.
 2. If the answer is in the notes, provide a comprehensive answer based exclusively on that text.
-3. If the answer is NOT in the notes, you MUST begin your response with the exact phrase: "Based on the provided notes, I can't find information on that topic." After this phrase, you may optionally and briefly mention what the notes DO cover. Do not try to answer the original question.`;
+3. If the answer is NOT in the notes, you MUST begin your response with the exact phrase: "Based on the provided notes, I can't find information on that topic." After this phrase, you may optionally and briefly mention what the notes DO cover. Do not try to answer the original question.
+4. Keep your answers very concise, precise, and easy-to-understand. Avoid long, verbose explanations, and use bullet points where appropriate.`;
 
         if (language === 'mr') {
             systemInstruction += ' IMPORTANT: Respond to the user ONLY in MARATHI (मराठी).';
@@ -579,6 +579,7 @@ router.post('/streamVivaChat', async (req, res) => {
         1. Ask One Question at a Time: Never stack questions. Wait for the student's response.
         2. Context: Stick strictly to the MU syllabus for ${subject}.
         3. Evaluation: After the student answers, evaluate their technical accuracy.
+        4. Keep your responses short, concise, and straight to the point. Do not give long explanations.
 
         Persona Guidelines (Mode: ${persona}):
         - IF Mode = "The Griller": Strict but fair. Be skeptical and relentless. If the answer is correct but shallow, ask "Why?" or "How would this fail in a real scenario?". If wrong, bluntly state "Incorrect" and ask a harder follow-up. Do not offer hints. Use a formal, high-pressure tone equivalent to an external examiner at a top-tier Mumbai college.
@@ -637,6 +638,7 @@ ${notes || 'No specific notes provided.'}
 
 Current behavior:
 - Be friendly and curious.
+- Keep your questions and responses very short and concise. Do not write long paragraphs.
 - If explanation is too short, ask for an analogy.
 - Ask for a Mumbai/India real-world example when useful.`;
 
