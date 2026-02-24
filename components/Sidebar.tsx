@@ -15,6 +15,11 @@ import {
     Briefcase,
     Bell,
     BrainCircuit,
+    Calculator,
+    MessageCircle,
+    UserCheck,
+    Building2,
+    ClipboardList,
 } from 'lucide-react';
 
 interface ProfileEditModalProps {
@@ -97,8 +102,9 @@ const studyNavigation = [
 
 const placementNavigation = [
     { key: 'sidebar.nav.placement', href: '/placement', icon: Briefcase },
+    { key: 'Practice Hub', href: '/practice-hub', icon: Calculator, directTranslation: true },
     { key: 'Resume Builder', href: '/resume-builder', icon: FileText, directTranslation: true },
-    { key: 'Interview Practice', href: '/interview', icon: Users, directTranslation: true },
+    { key: 'Companies & Tracking', href: '/company-hub', icon: Building2, directTranslation: true },
 ];
 
 const Sidebar: React.FC = () => {

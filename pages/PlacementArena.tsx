@@ -10,6 +10,11 @@ import {
     Terminal,
     Clock3,
     CheckCircle2,
+    Calculator,
+    MessageCircle,
+    UserCheck,
+    Building2,
+    ClipboardList,
 } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { getPlacementDashboard, getRecentPlacementAttempts, PlacementDashboardPayload } from '../services/placementService';
@@ -117,6 +122,31 @@ const PlacementArena: React.FC = () => {
                                     </Button>
                                 </Link>
                             </Card>
+                        ))}
+                    </div>
+
+                    {/* NEW: Placement Prep Tools */}
+                    <h3 className="text-xl font-bold flex items-center gap-2 px-2 mt-4">
+                        <Target className="text-violet-500" />
+                        Placement Prep Tools
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {[
+                            { name: 'Aptitude Trainer', desc: 'Practice Quant, Logical, Verbal & DI', href: '/practice-hub?tab=aptitude', icon: <Calculator className="w-5 h-5" />, color: 'text-blue-400', border: 'border-blue-500/30', bg: 'bg-blue-500/10' },
+                            { name: 'GD Simulator', desc: 'Practice Group Discussions with AI', href: '/practice-hub?tab=gd', icon: <MessageCircle className="w-5 h-5" />, color: 'text-cyan-400', border: 'border-cyan-500/30', bg: 'bg-cyan-500/10' },
+                            { name: 'HR Interview', desc: 'Crack the HR round with practice', href: '/practice-hub?tab=hr', icon: <UserCheck className="w-5 h-5" />, color: 'text-emerald-400', border: 'border-emerald-500/30', bg: 'bg-emerald-500/10' },
+                            { name: 'Company Profiles', desc: 'Test patterns for TCS, Infosys & more', href: '/company-hub?tab=companies', icon: <Building2 className="w-5 h-5" />, color: 'text-amber-400', border: 'border-amber-500/30', bg: 'bg-amber-500/10' },
+                            { name: 'Placement Tracker', desc: 'Track your application journey', href: '/company-hub?tab=tracker', icon: <ClipboardList className="w-5 h-5" />, color: 'text-rose-400', border: 'border-rose-500/30', bg: 'bg-rose-500/10' },
+                        ].map(tool => (
+                            <Link key={tool.href} to={tool.href}>
+                                <Card className={`p-5 border ${tool.border} hover:scale-[1.02] transition-all cursor-pointer group`}>
+                                    <div className={`w-10 h-10 rounded-xl ${tool.bg} border ${tool.border} flex items-center justify-center ${tool.color} mb-3 group-hover:scale-110 transition-transform`}>
+                                        {tool.icon}
+                                    </div>
+                                    <h4 className="font-bold text-white text-sm mb-1">{tool.name}</h4>
+                                    <p className="text-[11px] text-slate-400">{tool.desc}</p>
+                                </Card>
+                            </Link>
                         ))}
                     </div>
 
