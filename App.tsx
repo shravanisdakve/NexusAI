@@ -35,6 +35,13 @@ import TCSNQTSimulator from './pages/TCSNQTSimulator';
 import UniversityStatus from './pages/UniversityStatus';
 import VivaSimulator from './pages/VivaSimulator';
 import StudyPlan from './pages/StudyPlan';
+import AptitudeTrainer from './pages/AptitudeTrainer';
+import GDSimulator from './pages/GDSimulator';
+import HRInterviewSimulator from './pages/HRInterviewSimulator';
+import CompanyProfiles from './pages/CompanyProfiles';
+import PlacementTracker from './pages/PlacementTracker';
+import PracticeHub from './pages/PracticeHub';
+import CompanyHub from './pages/CompanyHub';
 import { useAuth } from './contexts/AuthContext';
 import { Spinner } from '@/components/ui';
 import { ModeProvider } from './contexts/ModeContext';
@@ -90,6 +97,14 @@ const App: React.FC = () => {
           <Route path="/placement/tcs-nqt" element={<ProtectedRoute><TCSNQTSimulator /></ProtectedRoute>} />
           <Route path="/placement/:simulatorSlug" element={<ProtectedRoute><TCSNQTSimulator /></ProtectedRoute>} />
           <Route path="/university-status" element={<ProtectedRoute><UniversityStatus /></ProtectedRoute>} />
+          <Route path="/practice-hub" element={<ProtectedRoute><PracticeHub /></ProtectedRoute>} />
+          <Route path="/company-hub" element={<ProtectedRoute><CompanyHub /></ProtectedRoute>} />
+          {/* Keep direct routes as fallbacks */}
+          <Route path="/aptitude-trainer" element={<ProtectedRoute><PracticeHub /></ProtectedRoute>} />
+          <Route path="/gd-simulator" element={<ProtectedRoute><PracticeHub /></ProtectedRoute>} />
+          <Route path="/hr-interview" element={<ProtectedRoute><PracticeHub /></ProtectedRoute>} />
+          <Route path="/company-profiles" element={<ProtectedRoute><CompanyHub /></ProtectedRoute>} />
+          <Route path="/placement-tracker" element={<ProtectedRoute><CompanyHub /></ProtectedRoute>} />
           <Route path="/gpa-calculator" element={<ProtectedRoute><GPACalculator /></ProtectedRoute>} />
           <Route path="/project-generator" element={<ProtectedRoute><ProjectGenerator /></ProtectedRoute>} />
           <Route path="/kt-calculator" element={<ProtectedRoute><ATKTCalculator /></ProtectedRoute>} />
