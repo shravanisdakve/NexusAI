@@ -13,6 +13,7 @@ const PROVIDERS = {
     GROQ: 'groq',
     OPENROUTER: 'openrouter',
     GEMINI: 'gemini',
+    OLLAMA: 'ollama', // Local fallback
     // Virtual providers (routed via OpenRouter)
     MISTRAL: 'mistral',
     TOGETHER: 'together'
@@ -57,6 +58,12 @@ const MODEL_CONFIG = {
         default: 'togethercomputer/llama-2-70b-chat',
         fast: 'togethercomputer/llama-2-7b-chat',
         json: 'togethercomputer/llama-2-70b-chat',
+    },
+    // Local configuration
+    [PROVIDERS.OLLAMA]: {
+        default: 'phi3',
+        fast: 'phi3',
+        json: 'phi3',
     }
 };
 
@@ -347,6 +354,99 @@ async function* streamWithGemini(prompt, options = {}) {
 }
 
 /**
+ * Generate text using local Ollama API
+ */
+async function generateWithOllama(prompt, options = {}) {
+    const model = options.model || MODEL_CONFIG[PROVIDERS.OLLAMA].default;
+
+    const messages = [];
+    if (options.systemInstruction) {
+        messages.push({ role: 'system', content: options.systemInstruction });
+    }
+    messages.push({ role: 'user', content: prompt });
+
+    const response = await fetch('http://localhost:11434/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            model: model,
+            messages: messages,
+            stream: false
+        })
+    });
+
+    if (!response.ok) {
+        throw new Error(`Ollama error: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    let text = data.message?.content || '';
+
+    // Remove thinking tags if present
+    text = text.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+
+    if (options.json) {
+        text = text.replace(/```json|```/g, '').trim();
+    }
+    return text;
+}
+
+/**
+ * Stream text using local Ollama API
+ */
+async function* streamWithOllama(prompt, options = {}) {
+    const model = options.model || MODEL_CONFIG[PROVIDERS.OLLAMA].default;
+
+    const messages = [];
+    if (options.systemInstruction) {
+        messages.push({ role: 'system', content: options.systemInstruction });
+    }
+    messages.push({ role: 'user', content: prompt });
+
+    const response = await fetch('http://localhost:11434/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            model: model,
+            messages: messages,
+            stream: true
+        })
+    });
+
+    if (!response.ok) {
+        throw new Error(`Ollama error: ${response.statusText}`);
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder('utf-8');
+    let buffer = '';
+
+    while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+
+        let boundary = buffer.indexOf('\n');
+        while (boundary !== -1) {
+            const line = buffer.slice(0, boundary).trim();
+            buffer = buffer.slice(boundary + 1);
+            if (line) {
+                try {
+                    const parsed = JSON.parse(line);
+                    if (parsed.message?.content) {
+                        yield parsed.message.content;
+                    }
+                } catch (e) {
+                    // Ignore parse errors from partial JSON
+                }
+            }
+            boundary = buffer.indexOf('\n');
+        }
+    }
+}
+
+/**
  * Main unified generation function
  */
 async function generate(prompt, options = {}) {
@@ -368,18 +468,31 @@ async function generate(prompt, options = {}) {
                 return await generateWithOpenRouter(prompt, options);
             case PROVIDERS.GEMINI:
                 return await generateWithGemini(prompt, options);
+            case PROVIDERS.OLLAMA:
+                return await generateWithOllama(prompt, options);
             default:
                 throw new Error(`Provider ${provider} not supported.`);
         }
     } catch (error) {
         console.error(`[AIProvider] Error with ${provider}:`, error.message);
 
-        // Fallback to Gemini if not already using it
+        // Fallback chain: Gemini -> Ollama
         if (provider !== PROVIDERS.GEMINI && process.env.GEMINI_API_KEY) {
             console.log(`[AIProvider] Falling back to Gemini...`);
-            return await generateWithGemini(prompt, options);
+            try {
+                return await generateWithGemini(prompt, options);
+            } catch (geminiError) {
+                console.error(`[AIProvider] Gemini fallback failed:`, geminiError.message);
+            }
         }
-        throw error;
+
+        console.log(`[AIProvider] Final fallback to local Ollama...`);
+        try {
+            return await generateWithOllama(prompt, options);
+        } catch (ollamaError) {
+            console.error(`[AIProvider] Ollama fallback failed:`, ollamaError.message);
+            throw new Error(`All AI providers failed. Last error: ${error.message}`);
+        }
     }
 }
 
@@ -395,7 +508,7 @@ async function* stream(prompt, options = {}) {
         switch (provider) {
             case PROVIDERS.GROQ:
                 yield* streamWithGroq(prompt, options);
-                break;
+                return;
             case PROVIDERS.OPENROUTER:
             case PROVIDERS.MISTRAL:
             case PROVIDERS.TOGETHER:
@@ -404,21 +517,42 @@ async function* stream(prompt, options = {}) {
                     options.model = options.json ? modelConfig.json : (options.fast ? modelConfig.fast : modelConfig.default);
                 }
                 yield* streamWithOpenRouter(prompt, options);
-                break;
+                return;
             case PROVIDERS.GEMINI:
                 yield* streamWithGemini(prompt, options);
-                break;
+                return;
+            case PROVIDERS.OLLAMA:
+                yield* streamWithOllama(prompt, options);
+                return;
             default:
                 throw new Error(`Streaming with ${provider} not supported.`);
         }
     } catch (error) {
         console.error(`[AIProvider] Stream error with ${provider}:`, error.message);
-        // We can't easily fallback mid-stream, but we can try starting a new stream
+
+        // Fallback chain: Gemini -> Ollama
         if (provider !== PROVIDERS.GEMINI && process.env.GEMINI_API_KEY) {
             console.log(`[AIProvider] Falling back to Gemini for stream...`);
-            yield* streamWithGemini(prompt, options);
-        } else {
-            throw error;
+            try {
+                const geminiStream = streamWithGemini(prompt, options);
+                for await (const chunk of geminiStream) {
+                    yield chunk;
+                }
+                return;
+            } catch (geminiError) {
+                console.error(`[AIProvider] Gemini stream fallback failed:`, geminiError.message);
+            }
+        }
+
+        console.log(`[AIProvider] Final fallback to local Ollama for stream...`);
+        try {
+            const ollamaStream = streamWithOllama(prompt, options);
+            for await (const chunk of ollamaStream) {
+                yield chunk;
+            }
+        } catch (ollamaError) {
+            console.error(`[AIProvider] Ollama stream fallback failed:`, ollamaError.message);
+            throw new Error(`All AI streaming providers failed. Last error: ${error.message}`);
         }
     }
 }
@@ -431,6 +565,7 @@ function getAvailableProviders() {
     if (process.env.GROQ_API_KEY) available.push(PROVIDERS.GROQ);
     if (process.env.OPENROUTER_API_KEY) available.push(PROVIDERS.OPENROUTER);
     if (process.env.GEMINI_API_KEY) available.push(PROVIDERS.GEMINI);
+    available.push(PROVIDERS.OLLAMA); // Ollama is always local/available
     return available;
 }
 
@@ -444,4 +579,6 @@ module.exports = {
     streamWithGroq,
     generateWithOpenRouter,
     streamWithOpenRouter,
+    generateWithOllama,
+    streamWithOllama,
 };
