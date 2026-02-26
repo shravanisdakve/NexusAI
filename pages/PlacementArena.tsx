@@ -15,6 +15,8 @@ import {
     UserCheck,
     Building2,
     ClipboardList,
+    Play,
+    Code2,
 } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { getPlacementDashboard, getRecentPlacementAttempts, PlacementDashboardPayload } from '../services/placementService';
@@ -137,6 +139,8 @@ const PlacementArena: React.FC = () => {
                             { name: 'HR Interview', desc: 'Crack the HR round with practice', href: '/practice-hub?tab=hr', icon: <UserCheck className="w-5 h-5" />, color: 'text-emerald-400', border: 'border-emerald-500/30', bg: 'bg-emerald-500/10' },
                             { name: 'Company Profiles', desc: 'Test patterns for TCS, Infosys & more', href: '/company-hub?tab=companies', icon: <Building2 className="w-5 h-5" />, color: 'text-amber-400', border: 'border-amber-500/30', bg: 'bg-amber-500/10' },
                             { name: 'Placement Tracker', desc: 'Track your application journey', href: '/company-hub?tab=tracker', icon: <ClipboardList className="w-5 h-5" />, color: 'text-rose-400', border: 'border-rose-500/30', bg: 'bg-rose-500/10' },
+                            { name: 'DSA & Coding', desc: 'Practice coding for placement rounds', href: '/practice-hub?tab=dsa', icon: <Code2 className="w-5 h-5" />, color: 'text-violet-400', border: 'border-violet-500/30', bg: 'bg-violet-500/10' },
+                            { name: 'Learning Resources', desc: 'Curated YouTube tutorials & guides', href: '/learning-resources', icon: <Play className="w-5 h-5" />, color: 'text-pink-400', border: 'border-pink-500/30', bg: 'bg-pink-500/10' },
                         ].map(tool => (
                             <Link key={tool.href} to={tool.href}>
                                 <Card className={`p-5 border ${tool.border} hover:scale-[1.02] transition-all cursor-pointer group`}>

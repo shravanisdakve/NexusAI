@@ -42,6 +42,7 @@ import CompanyProfiles from './pages/CompanyProfiles';
 import PlacementTracker from './pages/PlacementTracker';
 import PracticeHub from './pages/PracticeHub';
 import CompanyHub from './pages/CompanyHub';
+import LearningResources from './pages/LearningResources';
 import { useAuth } from './contexts/AuthContext';
 import { Spinner } from '@/components/ui';
 import { ModeProvider } from './contexts/ModeContext';
@@ -99,6 +100,7 @@ const App: React.FC = () => {
           <Route path="/university-status" element={<ProtectedRoute><UniversityStatus /></ProtectedRoute>} />
           <Route path="/practice-hub" element={<ProtectedRoute><PracticeHub /></ProtectedRoute>} />
           <Route path="/company-hub" element={<ProtectedRoute><CompanyHub /></ProtectedRoute>} />
+          <Route path="/learning-resources" element={<ProtectedRoute><LearningResources /></ProtectedRoute>} />
           {/* Keep direct routes as fallbacks */}
           <Route path="/aptitude-trainer" element={<ProtectedRoute><PracticeHub /></ProtectedRoute>} />
           <Route path="/gd-simulator" element={<ProtectedRoute><PracticeHub /></ProtectedRoute>} />
