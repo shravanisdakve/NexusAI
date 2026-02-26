@@ -84,7 +84,7 @@ router.post('/streamChat', async (req, res) => {
     try {
         const { message, language } = req.body;
         console.log(`[StreamChat] Message received. Language: ${language}`);
-        let systemInstruction = 'You are an expert AI Tutor. Provide very precise, concise, and easy-to-understand answers. Avoid long, verbose explanations; instead, use short sentences and bullet points. Get straight to the point while remaining encouraging.';
+        let systemInstruction = 'You are an expert AI Tutor. Provide extremely precise, concise, and easy-to-understand answers. You must absolutely avoid long, verbose explanations. Use short, punchy sentences and bullet points. If an explanation can be 2 sentences, do not make it 3. Get straight to the point while remaining encouraging.';
 
         if (language === 'mr') {
             systemInstruction += ' IMPORTANT: Respond to the user ONLY in MARATHI (मराठी). Translated technical terms are okay, but the main conversation must be in Marathi.';
@@ -125,7 +125,7 @@ Your knowledge is strictly limited to the text provided above. You CANNOT use an
 1. First, determine if the user's question can be answered using ONLY the provided notes.
 2. If the answer is in the notes, provide a comprehensive answer based exclusively on that text.
 3. If the answer is NOT in the notes, you MUST begin your response with the exact phrase: "Based on the provided notes, I can't find information on that topic." After this phrase, you may optionally and briefly mention what the notes DO cover. Do not try to answer the original question.
-4. Keep your answers very concise, precise, and easy-to-understand. Avoid long, verbose explanations, and use bullet points where appropriate.`;
+4. Keep your answers incredibly concise, precise, and easy-to-understand. You are forbidden from giving long, verbose explanations. Always use short sentences and bullet points where appropriate.`;
 
         if (language === 'mr') {
             systemInstruction += ' IMPORTANT: Respond to the user ONLY in MARATHI (मराठी).';
@@ -579,7 +579,7 @@ router.post('/streamVivaChat', async (req, res) => {
         1. Ask One Question at a Time: Never stack questions. Wait for the student's response.
         2. Context: Stick strictly to the MU syllabus for ${subject}.
         3. Evaluation: After the student answers, evaluate their technical accuracy.
-        4. Keep your responses short, concise, and straight to the point. Do not give long explanations.
+        4. Your responses MUST be extremely short, concise, and straight to the point. Do not give long explanations under any circumstances. Limit your responses to 1-3 sentences maximum.
 
         Persona Guidelines (Mode: ${persona}):
         - IF Mode = "The Griller": Strict but fair. Be skeptical and relentless. If the answer is correct but shallow, ask "Why?" or "How would this fail in a real scenario?". If wrong, bluntly state "Incorrect" and ask a harder follow-up. Do not offer hints. Use a formal, high-pressure tone equivalent to an external examiner at a top-tier Mumbai college.
@@ -638,7 +638,7 @@ ${notes || 'No specific notes provided.'}
 
 Current behavior:
 - Be friendly and curious.
-- Keep your questions and responses very short and concise. Do not write long paragraphs.
+- Keep your questions and responses extremely short and concise (1-2 sentences max). Do not write long paragraphs under any circumstances.
 - If explanation is too short, ask for an analogy.
 - Ask for a Mumbai/India real-world example when useful.`;
 
