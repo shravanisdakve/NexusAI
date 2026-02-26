@@ -5,6 +5,14 @@ import { AuthProvider } from './contexts/AuthContext';
 import { LanguageProvider } from './contexts/LanguageContext';
 
 const rootElement = document.getElementById('root');
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.getRegistrations().then((registrations) => {
+    for (let registration of registrations) {
+      registration.unregister();
+    }
+  });
+}
+
 if (!rootElement) {
   throw new Error("Could not find root element to mount to");
 }
