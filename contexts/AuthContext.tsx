@@ -71,7 +71,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
     } catch (error: any) {
       // Re-throw the error with the message from the backend
-      throw new Error(error.response?.data?.message || 'Login failed due to a server error.');
+      throw new Error(error.response?.data?.message || 'Email is not registered.');
     }
   };
 
