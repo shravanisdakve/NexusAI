@@ -145,6 +145,7 @@ export const getProductivityReport = async (courseId: string | null = null) => {
 
 const getEmptyReport = () => ({
     totalStudyTime: 0, quizAccuracy: 0, totalQuizzes: 0, correctQuizzes: 0,
+    goalProgress: 0,
     strengths: [], weaknesses: [], completedPomodoros: 0, sessions: []
 });
 

@@ -5,7 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { ArrowRight, PlusCircle, RefreshCw, Settings2, Trash2, Users } from 'lucide-react';
 import CreateRoomModal from '../components/CreateRoomModal';
-import { deleteRoom, getRooms, updateRoom } from '../services/communityService';
+import { checkRoomExists, deleteRoom, getRooms, updateRoom } from '../services/communityService';
 import { getCourses } from '../services/courseService';
 import { type Course, type StudyRoom } from '../types';
 
@@ -124,10 +124,25 @@ const StudyLobby: React.FC = () => {
         return visibleRooms.slice(start, start + ROOMS_PER_PAGE);
     }, [visibleRooms, currentPage]);
 
-    const handleJoinRoom = (e: React.FormEvent) => {
+    const handleJoinRoom = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!joinId.trim()) return;
-        navigate(`/study-room/${joinId.trim()}`);
+        const id = joinId.trim();
+        if (!id) return;
+
+        setIsLoading(true);
+        setError('');
+        try {
+            const exists = await checkRoomExists(id);
+            if (!exists) {
+                setError('Room not found. Check the Room ID.');
+                return;
+            }
+            navigate(`/study-room/${id}`);
+        } catch (err: any) {
+            setError('Failed to join room. Please try again.');
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     const handleOpenManageRoom = (room: StudyRoom) => {

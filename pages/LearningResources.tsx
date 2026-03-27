@@ -14,7 +14,7 @@ interface VideoResource {
     title: string;
     channel: string;
     description: string;
-    youtubeId: string;
+    youtubeUrl: string;
     duration: string;
     tags: string[];
     difficulty?: 'Beginner' | 'Intermediate' | 'Advanced';
@@ -47,52 +47,52 @@ const RESOURCE_CATEGORIES: ResourceCategory[] = [
             {
                 id: 'dsa-1', title: 'Complete DSA Roadmap for Beginners', channel: 'Striver (takeUforward)',
                 description: 'The ultimate DSA roadmap covering what to study, in which order, and how to practice effectively for placements.',
-                youtubeId: 'rZ41y93P2Qo', duration: '22 min', tags: ['Roadmap', 'Beginner'], difficulty: 'Beginner', recommended: true,
+                youtubeUrl: 'rZ41y93P2Qo', duration: '22 min', tags: ['Roadmap', 'Beginner'], difficulty: 'Beginner', recommended: true,
             },
             {
                 id: 'dsa-2', title: 'Arrays - Complete Tutorial', channel: 'Apna College',
                 description: 'Everything about arrays — declaration, traversal, common patterns like two pointers, sliding window, and Kadane\'s algorithm.',
-                youtubeId: 'NTHVTY6w2Co', duration: '1 hr 45 min', tags: ['Arrays', 'Two Pointer'], difficulty: 'Beginner',
+                youtubeUrl: 'NTHVTY6w2Co', duration: '1 hr 45 min', tags: ['Arrays', 'Two Pointer'], difficulty: 'Beginner',
             },
             {
                 id: 'dsa-3', title: 'Linked List Explained Simply', channel: 'Abdul Bari',
                 description: 'Visual explanation of Linked Lists — singly, doubly, circular. Includes reversal, cycle detection, and merge operations.',
-                youtubeId: 'dmb1i4oN5oE', duration: '30 min', tags: ['Linked List', 'Pointers'], difficulty: 'Beginner',
+                youtubeUrl: 'dmb1i4oN5oE', duration: '30 min', tags: ['Linked List', 'Pointers'], difficulty: 'Beginner',
             },
             {
                 id: 'dsa-4', title: 'Recursion & Backtracking - Full Course', channel: 'Striver (takeUforward)',
                 description: 'Deep dive into recursion patterns, backtracking problems like N-Queens, subset generation, and permutations.',
-                youtubeId: 'yVdKa8dnKiE', duration: '1 hr 20 min', tags: ['Recursion', 'Backtracking'], difficulty: 'Intermediate',
+                youtubeUrl: 'yVdKa8dnKiE', duration: '1 hr 20 min', tags: ['Recursion', 'Backtracking'], difficulty: 'Intermediate',
             },
             {
                 id: 'dsa-5', title: 'Dynamic Programming for Beginners', channel: 'Neetcode',
                 description: 'Clear explanation of DP concepts — memoization vs tabulation, Fibonacci, Knapsack, LCS, and coin change problems.',
-                youtubeId: 'oBt53YbR9Kk', duration: '45 min', tags: ['DP', 'Optimization'], difficulty: 'Intermediate', recommended: true,
+                youtubeUrl: 'oBt53YbR9Kk', duration: '45 min', tags: ['DP', 'Optimization'], difficulty: 'Intermediate', recommended: true,
             },
             {
                 id: 'dsa-6', title: 'Graph Algorithms - BFS, DFS, Dijkstra', channel: 'Abdul Bari',
                 description: 'Complete guide to graph traversals, shortest path algorithms, and when to use BFS vs DFS in placement coding rounds.',
-                youtubeId: 'tWVWeAqZ0WU', duration: '50 min', tags: ['Graphs', 'BFS', 'DFS'], difficulty: 'Intermediate',
+                youtubeUrl: 'tWVWeAqZ0WU', duration: '50 min', tags: ['Graphs', 'BFS', 'DFS'], difficulty: 'Intermediate',
             },
             {
                 id: 'dsa-7', title: 'Binary Tree & BST - All You Need', channel: 'Love Babbar',
                 description: 'Comprehensive coverage of tree traversals, BST operations, height, diameter, LCA, and common interview questions.',
-                youtubeId: '_ANrF3FJm7I', duration: '1 hr 10 min', tags: ['Trees', 'BST'], difficulty: 'Intermediate',
+                youtubeUrl: '_ANrF3FJm7I', duration: '1 hr 10 min', tags: ['Trees', 'BST'], difficulty: 'Intermediate',
             },
             {
                 id: 'dsa-8', title: 'Sorting Algorithms Visualized', channel: 'Striver (takeUforward)',
                 description: 'Visual explanation of Bubble, Selection, Insertion, Merge, Quick, and Counting sort with time complexity analysis.',
-                youtubeId: 'HGk_ypEuS24', duration: '55 min', tags: ['Sorting', 'Algorithms'], difficulty: 'Beginner',
+                youtubeUrl: 'HGk_ypEuS24', duration: '55 min', tags: ['Sorting', 'Algorithms'], difficulty: 'Beginner',
             },
             {
                 id: 'dsa-9', title: 'Stack & Queue Problems for Interviews', channel: 'Apna College',
                 description: 'Important stack and queue problems — valid parentheses, next greater element, min stack, and sliding window maximum.',
-                youtubeId: 'GYptUgnIM_I', duration: '40 min', tags: ['Stack', 'Queue'], difficulty: 'Intermediate',
+                youtubeUrl: 'GYptUgnIM_I', duration: '40 min', tags: ['Stack', 'Queue'], difficulty: 'Intermediate',
             },
             {
                 id: 'dsa-10', title: 'Top 20 Coding Patterns for Interviews', channel: 'Neetcode',
                 description: 'Master the 20 most common coding patterns that cover 90% of interview problems — a must-watch before placement season.',
-                youtubeId: 'DjYZk8nrXVY', duration: '35 min', tags: ['Patterns', 'Strategy'], difficulty: 'Advanced', recommended: true,
+                youtubeUrl: 'DjYZk8nrXVY', duration: '35 min', tags: ['Patterns', 'Strategy'], difficulty: 'Advanced', recommended: true,
             },
         ],
     },
@@ -109,17 +109,17 @@ const RESOURCE_CATEGORIES: ResourceCategory[] = [
             {
                 id: 'elec-1', title: 'Digital Electronics Full Course', channel: 'Neso Academy',
                 description: 'Complete series on number systems, logic gates, K-maps, combinational & sequential circuits — fundamental for all ECE exams.',
-                youtubeId: 'vR40S8nU9c0', duration: '12 hr', tags: ['Digital', 'Gates'], difficulty: 'Beginner', recommended: true,
+                youtubeUrl: 'vR40S8nU9c0', duration: '12 hr', tags: ['Digital', 'Gates'], difficulty: 'Beginner', recommended: true,
             },
             {
                 id: 'elec-2', title: 'Signals & Systems for Beginners', channel: 'Anis Sir',
                 description: 'Master Fourier transforms, Z-transforms, and LTI systems with exam-oriented shortcuts and visualization.',
-                youtubeId: '3uFzH8fL-28', duration: '1 hr 15 min', tags: ['Signals', 'Shortcuts'], difficulty: 'Intermediate',
+                youtubeUrl: '3uFzH8fL-28', duration: '1 hr 15 min', tags: ['Signals', 'Shortcuts'], difficulty: 'Intermediate',
             },
             {
                 id: 'elec-3', title: 'Microprocessors (8085/8086) Explained', channel: 'Knowledge Gate',
                 description: 'Complete architecture and instruction set explanation for core electronics and CS students.',
-                youtubeId: 'ii7V_QG6Plo', duration: '55 min', tags: ['Microprocessor', 'Arch'], difficulty: 'Intermediate',
+                youtubeUrl: 'ii7V_QG6Plo', duration: '55 min', tags: ['Microprocessor', 'Arch'], difficulty: 'Intermediate',
             },
         ],
     },
@@ -136,17 +136,17 @@ const RESOURCE_CATEGORIES: ResourceCategory[] = [
             {
                 id: 'mech-1', title: 'Thermodynamics - Laws & Concepts', channel: 'Magic Marks',
                 description: 'Visual explanation of First and Second law of thermodynamics, entropy, and heat engines for core mechanical preparation.',
-                youtubeId: 'z0_fIPN4q_o', duration: '40 min', tags: ['Thermodynamics', 'Laws'], difficulty: 'Beginner', recommended: true,
+                youtubeUrl: 'z0_fIPN4q_o', duration: '40 min', tags: ['Thermodynamics', 'Laws'], difficulty: 'Beginner', recommended: true,
             },
             {
                 id: 'mech-2', title: 'Engineering Mechanics - Truss & Frames', channel: 'The Engineering Mindset',
                 description: 'In-depth guide to solving trusses and frames using method of joints and sections — critical for Civil and Mech students.',
-                youtubeId: 'y-mXnO1W-gU', duration: '35 min', tags: ['Mechanics', 'Truss'], difficulty: 'Intermediate',
+                youtubeUrl: 'y-mXnO1W-gU', duration: '35 min', tags: ['Mechanics', 'Truss'], difficulty: 'Intermediate',
             },
             {
                 id: 'mech-3', title: 'Fluid Mechanics - Properties & Equations', channel: 'GATE Academy',
                 description: 'Viscosity, surface tension, and Bernoulli’s equation — placement specific questions and core concepts.',
-                youtubeId: 'wR9E0V9XoV8', duration: '1 hr', tags: ['Fluid', 'Bernoulli'], difficulty: 'Intermediate',
+                youtubeUrl: 'wR9E0V9XoV8', duration: '1 hr', tags: ['Fluid', 'Bernoulli'], difficulty: 'Intermediate',
             },
         ],
     },
@@ -163,32 +163,32 @@ const RESOURCE_CATEGORIES: ResourceCategory[] = [
             {
                 id: 'apt-1', title: 'Quantitative Aptitude - Complete Course', channel: 'CareerRide',
                 description: 'Full aptitude course covering percentages, ratio, time & work, speed-distance, probability — everything for TCS/Infosys tests.',
-                youtubeId: 'zX38n2W8y8s', duration: '2 hr', tags: ['Quant', 'Percentages'], difficulty: 'Beginner', recommended: true,
+                youtubeUrl: 'zX38n2W8y8s', duration: '2 hr', tags: ['Quant', 'Percentages'], difficulty: 'Beginner', recommended: true,
             },
             {
                 id: 'apt-2', title: 'Logical Reasoning - Tricks & Shortcuts', channel: 'Placement Season',
                 description: 'Quick tricks for solving logical reasoning problems — coding-decoding, blood relations, seating arrangements, and series.',
-                youtubeId: 'yV-37C_J8E0', duration: '45 min', tags: ['Logical', 'Shortcuts'], difficulty: 'Beginner',
+                youtubeUrl: 'yV-37C_J8E0', duration: '45 min', tags: ['Logical', 'Shortcuts'], difficulty: 'Beginner',
             },
             {
                 id: 'apt-3', title: 'Verbal Ability for Placement Exams', channel: 'Unacademy',
                 description: 'Master reading comprehension, para jumbles, sentence correction, and vocabulary for placement verbal sections.',
-                youtubeId: 'v7L6_v911pU', duration: '1 hr', tags: ['Verbal', 'English'], difficulty: 'Beginner',
+                youtubeUrl: 'v7L6_v911pU', duration: '1 hr', tags: ['Verbal', 'English'], difficulty: 'Beginner',
             },
             {
                 id: 'apt-4', title: 'Data Interpretation Made Easy', channel: 'CareerRide',
                 description: 'Learn to quickly solve DI problems — tables, bar charts, pie charts, and line graphs with speed techniques.',
-                youtubeId: 'f_A8iF-J_gU', duration: '50 min', tags: ['DI', 'Charts'], difficulty: 'Intermediate',
+                youtubeUrl: 'f_A8iF-J_gU', duration: '50 min', tags: ['DI', 'Charts'], difficulty: 'Intermediate',
             },
             {
                 id: 'apt-5', title: 'Time & Work - All Types Solved', channel: 'Adda247',
                 description: 'Every type of Time & Work problem with shortcuts — pipes & cisterns, efficiency, alternate days work patterns.',
-                youtubeId: 'XmE7pS_X0uY', duration: '35 min', tags: ['Time & Work', 'Quant'], difficulty: 'Intermediate',
+                youtubeUrl: 'XmE7pS_X0uY', duration: '35 min', tags: ['Time & Work', 'Quant'], difficulty: 'Intermediate',
             },
             {
                 id: 'apt-6', title: 'Probability & Permutation Combo', channel: 'Wifistudy',
                 description: 'Clear concepts of probability, permutations and combinations with placement-level practice problems.',
-                youtubeId: 'fD3Zq8mC87Y', duration: '55 min', tags: ['Probability', 'P&C'], difficulty: 'Intermediate', recommended: true,
+                youtubeUrl: 'fD3Zq8mC87Y', duration: '55 min', tags: ['Probability', 'P&C'], difficulty: 'Intermediate', recommended: true,
             },
         ],
     },
@@ -205,32 +205,32 @@ const RESOURCE_CATEGORIES: ResourceCategory[] = [
             {
                 id: 'int-1', title: 'Top 10 HR Interview Questions & Answers', channel: 'Interview Tips',
                 description: 'The most asked HR questions — Tell me about yourself, strengths/weaknesses, why this company, salary expectations, and more.',
-                youtubeId: '1mHjMNZZvFo', duration: '20 min', tags: ['HR', 'Common Questions'], difficulty: 'Beginner', recommended: true,
+                youtubeUrl: '1mHjMNZZvFo', duration: '20 min', tags: ['HR', 'Common Questions'], difficulty: 'Beginner', recommended: true,
             },
             {
                 id: 'int-2', title: 'STAR Method for Behavioral Interviews', channel: 'Career Vidz',
                 description: 'Master the STAR technique (Situation, Task, Action, Result) to structure your behavioral interview answers perfectly.',
-                youtubeId: 'Z190u8v_p7k', duration: '15 min', tags: ['STAR Method', 'Behavioral'], difficulty: 'Beginner',
+                youtubeUrl: 'Z190u8v_p7k', duration: '15 min', tags: ['STAR Method', 'Behavioral'], difficulty: 'Beginner',
             },
             {
                 id: 'int-3', title: 'Technical Interview Tips for Freshers', channel: 'TechLead Show',
                 description: 'What to expect in technical rounds — how to approach problems, communicate your thought process, and handle pressure.',
-                youtubeId: 'p7-9Uf-l5b4', duration: '25 min', tags: ['Technical', 'Tips'], difficulty: 'Intermediate',
+                youtubeUrl: 'p7-9Uf-l5b4', duration: '25 min', tags: ['Technical', 'Tips'], difficulty: 'Intermediate',
             },
             {
                 id: 'int-4', title: 'Body Language in Interviews', channel: 'Placement Season',
                 description: 'Non-verbal communication matters! Learn about posture, eye contact, hand gestures, and confidence projection.',
-                youtubeId: 'PCWVi5pAa30', duration: '12 min', tags: ['Body Language', 'Soft Skills'], difficulty: 'Beginner',
+                youtubeUrl: 'PCWVi5pAa30', duration: '12 min', tags: ['Body Language', 'Soft Skills'], difficulty: 'Beginner',
             },
             {
                 id: 'int-5', title: 'Stress Interview - How to Handle It', channel: 'Interview Tips',
                 description: 'How to stay calm and respond professionally during stress rounds — handling trick questions, pressure, and rapid-fire.',
-                youtubeId: 'G1p0m7B9m8A', duration: '18 min', tags: ['Stress Round', 'Pressure'], difficulty: 'Advanced',
+                youtubeUrl: 'G1p0m7B9m8A', duration: '18 min', tags: ['Stress Round', 'Pressure'], difficulty: 'Advanced',
             },
             {
                 id: 'int-6', title: 'Self Introduction That Impresses', channel: 'Leverage Edu',
                 description: 'Craft the perfect self-introduction for interviews — structure, what to include, what to avoid, and real examples.',
-                youtubeId: 'K0Z2X_a2tqU', duration: '10 min', tags: ['Introduction', 'First Impression'], difficulty: 'Beginner', recommended: true,
+                youtubeUrl: 'K0Z2X_a2tqU', duration: '10 min', tags: ['Introduction', 'First Impression'], difficulty: 'Beginner', recommended: true,
             },
         ],
     },
@@ -247,22 +247,22 @@ const RESOURCE_CATEGORIES: ResourceCategory[] = [
             {
                 id: 'gd-1', title: 'How to Win a Group Discussion', channel: 'TalentSprint',
                 description: 'Complete strategy for GDs — how to initiate, when to intervene, body language, and how to summarize effectively.',
-                youtubeId: 'HGdbuvNjm-U', duration: '22 min', tags: ['Strategy', 'Tips'], difficulty: 'Beginner', recommended: true,
+                youtubeUrl: 'HGdbuvNjm-U', duration: '22 min', tags: ['Strategy', 'Tips'], difficulty: 'Beginner', recommended: true,
             },
             {
                 id: 'gd-2', title: 'Top 20 GD Topics for 2025-26', channel: 'Unacademy',
                 description: 'Most frequently asked GD topics in campus placements — AI, WFH, startups vs MNCs, cryptocurrency, and more with sample arguments.',
-                youtubeId: 'Tr5tSaFrVoU', duration: '30 min', tags: ['Topics', 'Current Affairs'], difficulty: 'Beginner',
+                youtubeUrl: 'Tr5tSaFrVoU', duration: '30 min', tags: ['Topics', 'Current Affairs'], difficulty: 'Beginner',
             },
             {
                 id: 'gd-3', title: 'GD Dos and Don\'ts', channel: 'Leverage Edu',
                 description: 'Common mistakes students make in GDs and how to avoid them — interrupting, staying silent, going off-topic, and more.',
-                youtubeId: 'vTWZ07G5e5s', duration: '15 min', tags: ['Mistakes', 'Etiquette'], difficulty: 'Beginner',
+                youtubeUrl: 'vTWZ07G5e5s', duration: '15 min', tags: ['Mistakes', 'Etiquette'], difficulty: 'Beginner',
             },
             {
                 id: 'gd-4', title: 'How to Structure GD Arguments', channel: 'CareerRide',
                 description: 'Learn to build structured arguments using frameworks — pros/cons, stakeholder analysis, and data-driven points.',
-                youtubeId: 'HGdbuvNjm-U', duration: '18 min', tags: ['Arguments', 'Structure'], difficulty: 'Intermediate',
+                youtubeUrl: 'HGdbuvNjm-U', duration: '18 min', tags: ['Arguments', 'Structure'], difficulty: 'Intermediate',
             },
         ],
     },
@@ -279,22 +279,22 @@ const RESOURCE_CATEGORIES: ResourceCategory[] = [
             {
                 id: 'res-1', title: 'How to Write a Perfect Resume for Freshers', channel: 'Placement Season',
                 description: 'Step-by-step guide to creating a fresher resume — what to include, formatting, action verbs, and ATS-friendly tips.',
-                youtubeId: 'y8YH0Qbu5h4', duration: '20 min', tags: ['Resume', 'Fresher'], difficulty: 'Beginner', recommended: true,
+                youtubeUrl: 'y8YH0Qbu5h4', duration: '20 min', tags: ['Resume', 'Fresher'], difficulty: 'Beginner', recommended: true,
             },
             {
                 id: 'res-2', title: 'LinkedIn Profile Optimization', channel: 'Career Vidz',
                 description: 'Optimize your LinkedIn profile to attract recruiters — headline, summary, skills, recommendations, and networking tips.',
-                youtubeId: 'BcPkz2ZNHKA', duration: '15 min', tags: ['LinkedIn', 'Profile'], difficulty: 'Beginner',
+                youtubeUrl: 'BcPkz2ZNHKA', duration: '15 min', tags: ['LinkedIn', 'Profile'], difficulty: 'Beginner',
             },
             {
                 id: 'res-3', title: 'GitHub Profile That Stands Out', channel: 'Fireship',
                 description: 'Make your GitHub profile impress recruiters — README profile, pinned repos, contribution graph, and project showcasing.',
-                youtubeId: 'dkE4mVhwMB4', duration: '10 min', tags: ['GitHub', 'Portfolio'], difficulty: 'Intermediate', recommended: true,
+                youtubeUrl: 'dkE4mVhwMB4', duration: '10 min', tags: ['GitHub', 'Portfolio'], difficulty: 'Intermediate', recommended: true,
             },
             {
                 id: 'res-4', title: 'Projects to Add in Your Resume', channel: 'Love Babbar',
                 description: 'What kind of projects look good on a fresher resume — full-stack, ML, mobile apps — with real examples.',
-                youtubeId: 'oC483DTjRXU', duration: '25 min', tags: ['Projects', 'Portfolio'], difficulty: 'Intermediate',
+                youtubeUrl: 'oC483DTjRXU', duration: '25 min', tags: ['Projects', 'Portfolio'], difficulty: 'Intermediate',
             },
         ],
     },
@@ -311,41 +311,61 @@ const RESOURCE_CATEGORIES: ResourceCategory[] = [
             {
                 id: 'comp-1', title: 'TCS NQT 2025 - Complete Preparation', channel: 'Placement Season',
                 description: 'Everything about TCS NQT — exam pattern, syllabus, important topics, practice questions, and scoring strategy.',
-                youtubeId: 'eP08W29jGGo', duration: '45 min', tags: ['TCS', 'NQT'], difficulty: 'Beginner', recommended: true,
+                youtubeUrl: 'eP08W29jGGo', duration: '45 min', tags: ['TCS', 'NQT'], difficulty: 'Beginner', recommended: true,
             },
             {
                 id: 'comp-2', title: 'Infosys Placement Preparation Guide', channel: 'Adda247',
                 description: 'Complete guide for Infosys — certification, exam pattern, pseudocode section, and interview preparation.',
-                youtubeId: '0W6H3l9Uf50', duration: '35 min', tags: ['Infosys', 'Placement'], difficulty: 'Beginner',
+                youtubeUrl: '0W6H3l9Uf50', duration: '35 min', tags: ['Infosys', 'Placement'], difficulty: 'Beginner',
             },
             {
                 id: 'comp-3', title: 'Wipro Elite NTH Exam Strategy', channel: 'CareerRide',
                 description: 'Wipro ELITE (National Level Talent Hunt) — pattern, essay writing tips, coding practice, and time management.',
-                youtubeId: 'I9l_v1X_oZk', duration: '30 min', tags: ['Wipro', 'ELITE'], difficulty: 'Beginner',
+                youtubeUrl: 'I9l_v1X_oZk', duration: '30 min', tags: ['Wipro', 'ELITE'], difficulty: 'Beginner',
             },
             {
                 id: 'comp-4', title: 'Accenture Assessment Preparation', channel: 'Placement Season',
                 description: 'Accenture cognitive, technical, and coding assessment — what to expect, game-based rounds, and communication test tips.',
-                youtubeId: 'S_G_f_V_V_I', duration: '28 min', tags: ['Accenture', 'Cognitive'], difficulty: 'Intermediate',
+                youtubeUrl: 'S_G_f_V_V_I', duration: '28 min', tags: ['Accenture', 'Cognitive'], difficulty: 'Intermediate',
             },
             {
                 id: 'comp-5', title: 'Cognizant GenC Preparation', channel: 'Unacademy',
                 description: 'Cognizant GenC, GenC Next, and GenC Elevate — understand tiers, AMCAT-based test, Automata Fix section prep.',
-                youtubeId: 'M9n7U2d906A', duration: '40 min', tags: ['Cognizant', 'GenC'], difficulty: 'Intermediate',
+                youtubeUrl: 'M9n7U2d906A', duration: '40 min', tags: ['Cognizant', 'GenC'], difficulty: 'Intermediate',
             },
             {
                 id: 'comp-6', title: 'Capgemini Exceller Drive Prep', channel: 'CareerRide',
                 description: 'Capgemini game-based aptitude, pseudocode, essay writing, and coding round — what makes it unique and how to crack each section.',
-                youtubeId: '9mR9_n4yKjg', duration: '25 min', tags: ['Capgemini', 'Exceller'], difficulty: 'Intermediate',
+                youtubeUrl: '9mR9_n4yKjg', duration: '25 min', tags: ['Capgemini', 'Exceller'], difficulty: 'Intermediate',
             },
         ],
     },
 ];
 
-const VideoThumbnail: React.FC<{ youtubeId: string, title: string, duration?: string }> = ({ youtubeId, title, duration }) => {
+// Helper to get safe YouTube embed URL from various formats
+const getEmbedUrl = (url: string) => {
+    if (!url) return null;
+    // Extract ID (handling watch URLs, youtu.be, embed URLs, and IDs)
+    const match = url.match(/(?:v=|youtu\.be\/|embed\/)([^&\s?]+)/);
+    const id = match ? match[1] : (url.includes('://') ? null : url);
+    return id ? `https://www.youtube.com/embed/${id}` : null;
+};
+
+const VideoThumbnail: React.FC<{ youtubeUrl: string, title: string, duration?: string }> = ({ youtubeUrl, title, duration }) => {
     const [error, setError] = React.useState(false);
+
+    // Extract ID for thumbnail
+    const match = youtubeUrl.match(/(?:v=|youtu\.be\/|embed\/)([^&\s?]+)/);
+    const youtubeId = match ? match[1] : (youtubeUrl.includes('://') ? null : youtubeUrl);
+
     // Use hqdefault as primary because it's higher quality and more reliable for newer videos
     const [thumbUrl, setThumbUrl] = React.useState(`https://img.youtube.com/vi/${youtubeId}/hqdefault.jpg`);
+
+    if (!youtubeId) return (
+        <div className="relative aspect-video bg-slate-900 overflow-hidden flex items-center justify-center border-b border-slate-700">
+            <div className="text-[10px] text-slate-500 font-bold uppercase tracking-widest px-4 text-center line-clamp-2">{title}</div>
+        </div>
+    );
 
     return (
         <div className="relative aspect-video bg-slate-900 overflow-hidden">
@@ -358,7 +378,7 @@ const VideoThumbnail: React.FC<{ youtubeId: string, title: string, duration?: st
                         if (thumbUrl.includes('hqdefault')) {
                             setThumbUrl(`https://img.youtube.com/vi/${youtubeId}/mqdefault.jpg`);
                         } else if (thumbUrl.includes('mqdefault')) {
-                             setThumbUrl(`https://img.youtube.com/vi/${youtubeId}/0.jpg`);
+                            setThumbUrl(`https://img.youtube.com/vi/${youtubeId}/0.jpg`);
                         } else {
                             setError(true);
                         }
@@ -470,21 +490,41 @@ const LearningResources: React.FC = () => {
                             </button>
                         </div>
                         <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
-                            <iframe
-                                className="absolute inset-0 w-full h-full rounded-2xl"
-                                src={`https://www.youtube.com/embed/${playingVideo.youtubeId}?autoplay=1&rel=0`}
-                                title={playingVideo.title}
-                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                allowFullScreen
-                            />
+                            {getEmbedUrl(playingVideo.youtubeUrl) ? (
+                                <iframe
+                                    className="absolute inset-0 w-full h-full rounded-2xl"
+                                    src={`${getEmbedUrl(playingVideo.youtubeUrl)}?autoplay=1&rel=0`}
+                                    title={playingVideo.title}
+                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                    allowFullScreen
+                                />
+                            ) : (
+                                <div className="absolute inset-0 w-full h-full rounded-2xl bg-slate-900 flex flex-col items-center justify-center p-8 text-center border border-slate-700">
+                                    <Globe className="w-12 h-12 text-slate-500 mb-4" />
+                                    <h4 className="text-white font-bold mb-2">Direct Embed Unavailable</h4>
+                                    <p className="text-sm text-slate-400 max-w-md">This resource is hosted on an external site and cannot be previewed directly here.</p>
+                                </div>
+                            )}
                         </div>
-                        <div className="mt-4 p-4 rounded-xl bg-slate-800/80 border border-slate-700">
-                            <p className="text-sm text-slate-300 leading-relaxed">{playingVideo.description}</p>
-                            <div className="flex flex-wrap gap-2 mt-3">
-                                {playingVideo.tags.map(tag => (
-                                    <span key={tag} className="text-[10px] px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-300 border border-violet-500/20">{tag}</span>
-                                ))}
+                        <div className="mt-4 flex flex-col md:flex-row gap-4 items-center justify-between">
+                            <div className="flex-1 p-4 rounded-xl bg-slate-800/80 border border-slate-700 w-full">
+                                <p className="text-sm text-slate-300 leading-relaxed">{playingVideo.description}</p>
+                                <div className="flex flex-wrap gap-2 mt-3">
+                                    {playingVideo.tags.map(tag => (
+                                        <span key={tag} className="text-[10px] px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-300 border border-violet-500/20">{tag}</span>
+                                    ))}
+                                </div>
                             </div>
+                            {playingVideo.youtubeUrl && (
+                                <a
+                                    href={playingVideo.youtubeUrl.includes('://') ? playingVideo.youtubeUrl : `https://www.youtube.com/watch?v=${playingVideo.youtubeUrl}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex items-center gap-2 px-6 py-3 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-sm shadow-lg shadow-red-600/20 transition-all whitespace-nowrap"
+                                >
+                                    <ExternalLink size={18} /> Open in YouTube
+                                </a>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -497,8 +537,8 @@ const LearningResources: React.FC = () => {
                         key={cat.id}
                         onClick={() => handleCategoryChange(cat.id)}
                         className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all border whitespace-nowrap ${selectedCategory === cat.id
-                                ? `${cat.color} bg-slate-700/50 border-slate-600`
-                                : 'text-slate-400 border-transparent hover:text-white'
+                            ? `${cat.color} bg-slate-700/50 border-slate-600`
+                            : 'text-slate-400 border-transparent hover:text-white'
                             }`}
                     >
                         <span className="text-base">{cat.emoji}</span>
@@ -529,8 +569,8 @@ const LearningResources: React.FC = () => {
                         key={d}
                         onClick={() => setFilterDifficulty(d)}
                         className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${filterDifficulty === d
-                                ? 'bg-violet-500/20 text-violet-400 border border-violet-500/30'
-                                : 'text-slate-400 hover:text-white'
+                            ? 'bg-violet-500/20 text-violet-400 border border-violet-500/30'
+                            : 'text-slate-400 hover:text-white'
                             }`}
                     >
                         {d === 'all' ? '📺 All' : d === 'Beginner' ? '🟢 Beginner' : d === 'Intermediate' ? '🟡 Intermediate' : '🔴 Advanced'}
@@ -552,7 +592,7 @@ const LearningResources: React.FC = () => {
                                 className="group text-left rounded-2xl overflow-hidden border border-amber-500/20 bg-amber-500/5 hover:border-amber-500/40 transition-all hover:scale-[1.02]"
                             >
                                 <div className="relative">
-                                    <VideoThumbnail youtubeId={video.youtubeId} title={video.title} duration={video.duration} />
+                                    <VideoThumbnail youtubeUrl={video.youtubeUrl} title={video.title} duration={video.duration} />
                                     <div className="absolute top-2 left-2 px-2 py-0.5 rounded bg-amber-500 text-[10px] text-white font-bold z-10">⭐ Recommended</div>
                                 </div>
                                 <div className="p-4">
@@ -579,11 +619,11 @@ const LearningResources: React.FC = () => {
                             className="group text-left rounded-2xl overflow-hidden border border-slate-700/50 bg-slate-800/30 hover:border-slate-500 transition-all hover:scale-[1.02]"
                         >
                             <div className="relative">
-                                <VideoThumbnail youtubeId={video.youtubeId} title={video.title} duration={video.duration} />
+                                <VideoThumbnail youtubeUrl={video.youtubeUrl} title={video.title} duration={video.duration} />
                                 {video.difficulty && (
                                     <div className={`absolute top-2 left-2 px-2 py-0.5 rounded text-[10px] font-bold z-10 ${video.difficulty === 'Beginner' ? 'bg-emerald-600 text-white' :
-                                            video.difficulty === 'Intermediate' ? 'bg-amber-600 text-white' :
-                                                'bg-rose-600 text-white'
+                                        video.difficulty === 'Intermediate' ? 'bg-amber-600 text-white' :
+                                            'bg-rose-600 text-white'
                                         }`}>{video.difficulty}</div>
                                 )}
                             </div>

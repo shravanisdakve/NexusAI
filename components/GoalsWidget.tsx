@@ -22,24 +22,25 @@ const GoalsWidget: React.FC = () => {
   const handleAddGoal = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newGoalTitle.trim()) {
-        console.error('[GoalsWidget] Goal title is empty. Cannot add goal.');
-        return;
+      console.error('[GoalsWidget] Goal title is empty. Cannot add goal.');
+      return;
     }
     if (!user?.id) {
-        console.error('[GoalsWidget] User is not logged in. Cannot add goal.');
-        return;
+      console.error('[GoalsWidget] User is not logged in. Cannot add goal.');
+      return;
     }
 
     const newGoal = await addGoal({
-        title: newGoalTitle.trim(),
-        status: 'In Progress',
+      title: newGoalTitle.trim(),
+      status: 'In Progress',
     });
     if (newGoal) {
-        setGoals((prev) => [...prev, newGoal]);
-        setNewGoalTitle('');
+      setGoals((prev) => [...prev, newGoal]);
+      setNewGoalTitle('');
+      window.dispatchEvent(new CustomEvent('goalUpdated'));
     } else {
-        console.error('[GoalsWidget] Failed to add goal via API. Check network and server logs.');
-        alert('Failed to add goal. Please try again.');
+      console.error('[GoalsWidget] Failed to add goal via API. Check network and server logs.');
+      alert('Failed to add goal. Please try again.');
     }
   };
 
@@ -51,11 +52,13 @@ const GoalsWidget: React.FC = () => {
         g.id === goal.id ? { ...g, status: newStatus } : g
       )
     );
+    window.dispatchEvent(new CustomEvent('goalUpdated'));
   };
 
   const handleDeleteGoal = async (id: string) => {
     await deleteGoal(id);
     setGoals((prev) => prev.filter((goal) => goal.id !== id));
+    window.dispatchEvent(new CustomEvent('goalUpdated'));
   };
 
   return (

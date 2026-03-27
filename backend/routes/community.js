@@ -108,7 +108,7 @@ router.post('/rooms/:roomId/track-concept', auth, async (req, res) => {
 
         const currentConcepts = room.trackedConcepts || [];
         const normalized = concept.trim();
-        
+
         if (!currentConcepts.includes(normalized)) {
             room.trackedConcepts = [...currentConcepts, normalized];
             await room.save();
@@ -552,6 +552,9 @@ router.post('/rooms/:roomId/members/moderate', auth, async (req, res) => {
 // @access  Private
 router.get('/rooms/:roomId', auth, async (req, res) => {
     try {
+        if (!require('mongoose').Types.ObjectId.isValid(req.params.roomId)) {
+            return res.status(404).json({ success: false, message: 'Room not found (Invalid ID)' });
+        }
         const room = await StudyRoom.findById(req.params.roomId)
             .populate('createdBy', 'displayName email')
             .populate('participants.user', 'displayName email');
@@ -782,16 +785,16 @@ router.put('/rooms/:roomId/notes', auth, async (req, res) => {
                         .limit(10);
                     const chatLines = recentMessages.reverse().map(m => `${m.senderName}: ${m.content}`);
                     const newGaps = await analyzeKnowledgeGaps(content, chatLines);
-                    
+
                     if (newGaps && newGaps.length > 0) {
                         const roomToUpdate = await StudyRoom.findById(req.params.roomId);
                         roomToUpdate.knowledgeGaps = newGaps.map(topic => ({ topic }));
                         await roomToUpdate.save();
-                        
+
                         if (io) {
-                            io.to(req.params.roomId).emit('knowledge-gaps-updated', { 
-                                roomId: req.params.roomId, 
-                                gaps: newGaps 
+                            io.to(req.params.roomId).emit('knowledge-gaps-updated', {
+                                roomId: req.params.roomId,
+                                gaps: newGaps
                             });
                         }
                     }
@@ -821,21 +824,21 @@ router.post('/rooms/:roomId/analyze-gaps', auth, async (req, res) => {
         const recentMessages = await Message.find({ roomId: req.params.roomId })
             .sort({ timestamp: -1 })
             .limit(15);
-        
+
         const chatLines = recentMessages.reverse().map(m => `${m.senderName}: ${m.content}`);
         const notes = room.sharedNotes || '';
-        
+
         const newGaps = await analyzeKnowledgeGaps(notes, chatLines);
-        
+
         if (newGaps && newGaps.length > 0) {
             room.knowledgeGaps = newGaps.map(topic => ({ topic }));
             await room.save();
-            
+
             const io = req.app.get('io');
             if (io) {
-                io.to(req.params.roomId).emit('knowledge-gaps-updated', { 
-                    roomId: req.params.roomId, 
-                    gaps: newGaps 
+                io.to(req.params.roomId).emit('knowledge-gaps-updated', {
+                    roomId: req.params.roomId,
+                    gaps: newGaps
                 });
             }
         }

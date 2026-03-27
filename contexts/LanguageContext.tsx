@@ -13,7 +13,7 @@ const LanguageContext = createContext<LanguageContextType | undefined>(undefined
 
 export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [language, setLanguageState] = useState<Language>(() => {
-        const saved = localStorage.getItem('nexusLanguage');
+        const saved = localStorage.getItem('nexusLanguage') || localStorage.getItem('lang');
         return (saved as Language) || 'en';
     });
 
@@ -40,6 +40,7 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const setLanguage = useCallback((lang: Language) => {
         setLanguageState(lang);
         localStorage.setItem('nexusLanguage', lang);
+        localStorage.setItem('lang', lang); // Backwards compatibility / User expectation
         persistLanguagePreference(lang);
     }, [persistLanguagePreference]);
 

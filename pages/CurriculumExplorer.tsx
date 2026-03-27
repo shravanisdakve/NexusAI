@@ -153,6 +153,7 @@ const CurriculumExplorer: React.FC = () => {
     const [loadError, setLoadError] = useState('');
     const [expandedSubject, setExpandedSubject] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
+    const [filteredSubjects, setFilteredSubjects] = useState<Subject[]>([]);
 
     const branches = [
         'Common for All Branches',
@@ -166,11 +167,20 @@ const CurriculumExplorer: React.FC = () => {
 
     useEffect(() => {
         fetchCurriculum();
+        setExpandedSubject(null);
     }, [branch, semester]);
 
     useEffect(() => {
-        setExpandedSubject(null);
-    }, [branch, semester]);
+        if (curriculum?.subjects) {
+            const filtered = curriculum.subjects.filter(s =>
+                s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                s.subjectCode.toLowerCase().includes(searchQuery.toLowerCase())
+            );
+            setFilteredSubjects(filtered);
+        } else {
+            setFilteredSubjects([]);
+        }
+    }, [curriculum, searchQuery]);
 
     const fetchCurriculum = async () => {
         setLoading(true);
@@ -183,8 +193,10 @@ const CurriculumExplorer: React.FC = () => {
                 setCurriculum(buildEmptySemester(semester));
                 setLoadError(data?.message || 'No curriculum available for this selection.');
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error(error);
+            const errorMessage = error.response?.data?.message || error.message || 'Could not load curriculum right now.';
+
             // Fallback to mock data if backend fails
             if (branch === 'Common for All Branches' && semester === 1) {
                 setCurriculum({
@@ -238,17 +250,12 @@ const CurriculumExplorer: React.FC = () => {
                 setLoadError('Live curriculum could not be loaded. Showing sample semester data.');
             } else {
                 setCurriculum(buildEmptySemester(semester));
-                setLoadError('Could not load curriculum right now. Try another branch/semester or retry shortly.');
+                setLoadError(errorMessage);
             }
         } finally {
             setLoading(false);
         }
     };
-
-    const filteredSubjects = (curriculum?.subjects || []).filter(s =>
-        s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        s.subjectCode.toLowerCase().includes(searchQuery.toLowerCase())
-    );
 
     const selectedSubject = (curriculum?.subjects || []).find(s => s.subjectCode === expandedSubject);
 
@@ -374,78 +381,79 @@ const CurriculumExplorer: React.FC = () => {
                                     {(selectedSubject?.modules || []).map((module) => {
                                         const links = resolveResourceLinks(selectedSubject as Subject, module);
                                         return (
-                                        <Card key={module.moduleNumber} className="p-6 border-slate-700/40 overflow-hidden relative group">
-                                            <div className="absolute right-0 top-0 p-8 opacity-5 text-slate-200 group-hover:opacity-10 transition-opacity">
-                                                <span className="text-9xl font-black">{module.moduleNumber}</span>
-                                            </div>
-
-                                            <div className="flex items-start gap-4 mb-4">
-                                                <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center font-bold text-white shrink-0 shadow-lg shadow-blue-500/20">
-                                                    M{module.moduleNumber}
+                                            <Card key={module.moduleNumber} className="p-6 border-slate-700/40 overflow-hidden relative group">
+                                                <div className="absolute right-0 top-0 p-8 opacity-5 text-slate-200 group-hover:opacity-10 transition-opacity">
+                                                    <span className="text-9xl font-black">{module.moduleNumber}</span>
                                                 </div>
-                                                <div>
-                                                    <h3 className="text-xl font-bold text-white mb-1">{module.title}</h3>
-                                                    <div className="flex flex-wrap gap-2">
-                                                        {module.technicalRequirements && (
-                                                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-900 border border-slate-700 text-slate-400 flex items-center gap-1">
-                                                                <Settings className="w-3 h-3" /> {module.technicalRequirements}
-                                                            </span>
-                                                        )}
-                                                        {module.pedagogyFocus && (
-                                                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-900 border border-slate-700 text-slate-400 flex items-center gap-1">
-                                                                <Cpu className="w-3 h-3" /> {module.pedagogyFocus}
-                                                            </span>
-                                                        )}
+
+                                                <div className="flex items-start gap-4 mb-4">
+                                                    <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center font-bold text-white shrink-0 shadow-lg shadow-blue-500/20">
+                                                        M{module.moduleNumber}
+                                                    </div>
+                                                    <div>
+                                                        <h3 className="text-xl font-bold text-white mb-1">{module.title}</h3>
+                                                        <div className="flex flex-wrap gap-2">
+                                                            {module.technicalRequirements && (
+                                                                <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-900 border border-slate-700 text-slate-400 flex items-center gap-1">
+                                                                    <Settings className="w-3 h-3" /> {module.technicalRequirements}
+                                                                </span>
+                                                            )}
+                                                            {module.pedagogyFocus && (
+                                                                <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-900 border border-slate-700 text-slate-400 flex items-center gap-1">
+                                                                    <Cpu className="w-3 h-3" /> {module.pedagogyFocus}
+                                                                </span>
+                                                            )}
+                                                        </div>
                                                     </div>
                                                 </div>
-                                            </div>
 
-                                            <div className="space-y-3 pl-14">
-                                                <h4 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 flex items-center gap-2">
-                                                    <Book className="w-3 h-3" />
-                                                    {t('curriculum.syllabusTopics')}
-                                                </h4>
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                                                    {(module.topics || []).map((topic, i) => (
-                                                        <div key={i} className="flex items-start gap-2 text-sm text-slate-300">
-                                                            <ChevronRight className="w-4 h-4 text-blue-500 mt-0.5 shrink-0" />
-                                                            {topic}
-                                                        </div>
-                                                    ))}
+                                                <div className="space-y-3 pl-14">
+                                                    <h4 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 flex items-center gap-2">
+                                                        <Book className="w-3 h-3" />
+                                                        {t('curriculum.syllabusTopics')}
+                                                    </h4>
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                                        {(module.topics || []).map((topic, i) => (
+                                                            <div key={i} className="flex items-start gap-2 text-sm text-slate-300">
+                                                                <ChevronRight className="w-4 h-4 text-blue-500 mt-0.5 shrink-0" />
+                                                                {topic}
+                                                            </div>
+                                                        ))}
+                                                    </div>
                                                 </div>
-                                            </div>
 
-                                            <div className="mt-6 pl-14 flex gap-4">
-                                                <Button
-                                                    type="button"
-                                                    size="sm"
-                                                    variant="outline"
-                                                    className="text-[10px] h-8 gap-2"
-                                                    onClick={() => openExternalResource(links.tutorial)}
-                                                >
-                                                    <Code className="w-3 h-3" /> {t('curriculum.tutorials')}
-                                                </Button>
-                                                <Button
-                                                    type="button"
-                                                    size="sm"
-                                                    variant="outline"
-                                                    className="text-[10px] h-8 gap-2"
-                                                    onClick={() => openExternalResource(links.material)}
-                                                >
-                                                    <Download className="w-3 h-3" /> {t('curriculum.material')}
-                                                </Button>
-                                                <Button
-                                                    type="button"
-                                                    size="sm"
-                                                    variant="primary"
-                                                    className="text-[10px] h-8 gap-2 bg-emerald-600 hover:bg-emerald-500 shadow-md shadow-emerald-500/20"
-                                                    onClick={() => navigate(`/tutor?q=${encodeURIComponent(t('curriculum.generateRoadmapFor', { topic: module.title }))}`)}
-                                                >
-                                                    <Brain className="w-3 h-3" /> Generate AI Roadmap
-                                                </Button>
-                                            </div>
-                                        </Card>
-                                    )})}
+                                                <div className="mt-6 pl-14 flex gap-4">
+                                                    <Button
+                                                        type="button"
+                                                        size="sm"
+                                                        variant="outline"
+                                                        className="text-[10px] h-8 gap-2"
+                                                        onClick={() => openExternalResource(links.tutorial)}
+                                                    >
+                                                        <Code className="w-3 h-3" /> {t('curriculum.tutorials')}
+                                                    </Button>
+                                                    <Button
+                                                        type="button"
+                                                        size="sm"
+                                                        variant="outline"
+                                                        className="text-[10px] h-8 gap-2"
+                                                        onClick={() => openExternalResource(links.material)}
+                                                    >
+                                                        <Download className="w-3 h-3" /> {t('curriculum.material')}
+                                                    </Button>
+                                                    <Button
+                                                        type="button"
+                                                        size="sm"
+                                                        variant="primary"
+                                                        className="text-[10px] h-8 gap-2 bg-emerald-600 hover:bg-emerald-500 shadow-md shadow-emerald-500/20"
+                                                        onClick={() => navigate(`/tutor?q=${encodeURIComponent(t('curriculum.generateRoadmapFor', { topic: module.title }))}`)}
+                                                    >
+                                                        <Brain className="w-3 h-3" /> Generate AI Roadmap
+                                                    </Button>
+                                                </div>
+                                            </Card>
+                                        )
+                                    })}
                                 </motion.div>
                             ) : (
                                 <div className="h-full flex flex-col items-center justify-center p-12 text-center bg-slate-800/20 rounded-3xl border-2 border-dashed border-slate-700/50">

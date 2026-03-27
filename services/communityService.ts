@@ -31,10 +31,10 @@ export const subscribeToConnectionStatus = (callback: (connected: boolean) => vo
     if (!socket) return () => { };
     const onConnect = () => callback(true);
     const onDisconnect = () => callback(false);
-    
+
     socket.on('connect', onConnect);
     socket.on('disconnect', onDisconnect);
-    
+
     // Call immediately with current state
     callback(socket.connected);
 
@@ -69,6 +69,12 @@ export const getRoom = async (id: string): Promise<StudyRoom | null> => {
         console.error(`Error fetching room ${id}:`, error);
         return null;
     }
+};
+
+export const checkRoomExists = async (id: string): Promise<boolean> => {
+    if (!id || id.trim().length < 5) return false;
+    const room = await getRoom(id.trim());
+    return !!room;
 };
 
 export const addRoom = async (name: string, courseId: string, maxUsers: number, createdBy: any, university?: string, technique?: string, topic?: string): Promise<StudyRoom | null> => {
@@ -236,7 +242,7 @@ export const onTechniqueUpdate = (
 };
 
 export const onKnowledgeGapsUpdate = (roomId: string, callback: (gaps: string[]) => void) => {
-    if (!socket) return () => {};
+    if (!socket) return () => { };
 
     const handler = (payload: { roomId: string, gaps: string[] }) => {
         if (payload.roomId === roomId) {
@@ -520,7 +526,7 @@ export const clearQuiz = async (roomId: string) => {
 };
 
 export const onTrackedConceptsUpdate = (roomId: string, callback: (concepts: string[]) => void) => {
-    if (!socket) return () => {};
+    if (!socket) return () => { };
 
     const handler = (payload: { roomId: string, concepts: string[] }) => {
         if (payload.roomId === roomId) {
@@ -663,7 +669,7 @@ export const onTyping = (callback: (data: { userName: string }) => void) => {
 };
 
 export const onMuNotification = (callback: (data: any) => void) => {
-    if (!socket) return () => {};
+    if (!socket) return () => { };
     socket.on('mu-notification', callback);
     return () => socket?.off('mu-notification', callback);
 };
