@@ -331,17 +331,16 @@ const ToolCard: React.FC<ToolCardProps> = ({ name, href, description, icon: Icon
     // Professional look: Monochromatic icon backgrounds with subtle opacity.
 
     return (
-        <Link to={href} className="group block p-6 bg-slate-800 rounded-xl border border-white/10 shadow-card hover:translate-y-[-2px] hover:shadow-card-hover transition-all duration-300">
-            <div className="flex items-center space-x-4 mb-4">
-                <div className="w-12 h-12 flex items-center justify-center rounded-lg bg-violet-500/10 group-hover:bg-violet-500/20 transition-colors">
-                    <Icon className="w-6 h-6 text-slate-200 group-hover:text-violet-400 transition-colors" />
+        <Link to={href} className="group block p-4 bg-slate-800 rounded-xl border border-white/10 shadow-card hover:translate-y-[-2px] hover:shadow-card-hover transition-all duration-300">
+            <div className="flex items-center space-x-3 mb-3">
+                <div className="w-10 h-10 flex-shrink-0 flex items-center justify-center rounded-lg bg-violet-500/10 group-hover:bg-violet-500/20 transition-colors">
+                    <Icon className="w-5 h-5 text-slate-200 group-hover:text-violet-400 transition-colors" />
                 </div>
-                <h3 className="text-lg font-semibold text-slate-100 group-hover:text-violet-400 transition-colors truncate">{name}</h3>
+                <h3 className="text-sm font-semibold text-slate-100 group-hover:text-violet-400 transition-colors leading-snug">{name}</h3>
             </div>
-            <p className="text-sm text-slate-400/80 leading-relaxed mb-6 h-10 overflow-hidden">{description}</p>
-            <div className="flex items-center text-sm font-medium text-violet-400 group-hover:text-violet-300">
+            <div className="flex items-center text-xs font-medium text-violet-400 group-hover:text-violet-300">
                 <span className="uppercase tracking-wider text-xs">{t('dashboard.startSession')}</span>
-                <ArrowRight className="ml-2 w-4 h-4 transition-transform duration-300 group-hover:translate-x-1" />
+                <ArrowRight className="ml-2 w-3 h-3 transition-transform duration-300 group-hover:translate-x-1" />
             </div>
         </Link>
     );
@@ -511,7 +510,7 @@ const Dashboard: React.FC = () => {
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-12 pt-6">
                 <div>
                     <h1 className="text-4xl font-semibold text-white tracking-tight mb-2">
-                        {greeting.trim()}, <span className="text-indigo-400">{user?.displayName?.split(' ')[0] || 'User'}</span>!
+                        {`${greeting.trim()},`} <span className="text-indigo-400">{user?.displayName?.split(' ')[0] || 'User'}</span>!
                     </h1>
                     <p className="text-slate-400/60 text-lg">{pageSubtitle}</p>
                 </div>

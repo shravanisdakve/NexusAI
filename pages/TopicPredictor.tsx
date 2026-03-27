@@ -30,23 +30,37 @@ const TopicPredictor: React.FC = () => {
     ];
 
     const handlePredict = async () => {
-        if (!subject) return;
+        const trimmedSubject = subject.trim();
+        if (!trimmedSubject) return;
+
         setLoading(true);
         setError('');
         setThinkingStep(0);
+        setPredictions([]);
+        setLikelyQuestions([]);
 
         const thinkingInterval = setInterval(() => {
             setThinkingStep(prev => (prev + 1) % thinkingLogs.length);
         }, 1200);
 
         try {
-            const result = await predictTopics(subject);
-            setPredictions(result.predictions || []);
-            setOverallTrend(result.overallTrend || '');
-            
-            const questions = await getLikelyQuestions(subject);
+            console.log('Fetching prediction for subject:', trimmedSubject);
+            const result = await predictTopics(trimmedSubject);
+            console.log('Prediction result received:', result);
+
+            // Bug fix: The service returns data.prediction, check if it's the predictions array
+            const finalPredictions = Array.isArray(result) ? result : (result?.predictions || []);
+            setPredictions(finalPredictions);
+            setOverallTrend(result?.overallTrend || '');
+
+            const questions = await getLikelyQuestions(trimmedSubject);
             setLikelyQuestions(questions || []);
+
+            if (finalPredictions.length === 0) {
+                setError('No high-yield topics found for this subject. Try a more specific name.');
+            }
         } catch (err: any) {
+            console.error("Prediction Error:", err);
             setError(err.message || 'Failed to predict topics. Try ingesting more papers first.');
         } finally {
             clearInterval(thinkingInterval);
@@ -56,8 +70,8 @@ const TopicPredictor: React.FC = () => {
 
     return (
         <div className="space-y-8 max-w-6xl mx-auto pb-20">
-            <PageHeader 
-                title="MU Topic Predictor" 
+            <PageHeader
+                title="MU Topic Predictor"
                 subtitle="Data-driven exam analysis based on past 5 years of Mumbai University papers."
             />
 
@@ -65,7 +79,7 @@ const TopicPredictor: React.FC = () => {
                 <div className="flex flex-col md:flex-row gap-4 items-end">
                     <div className="flex-1">
                         <label htmlFor="subject-input" className="block text-sm font-medium text-slate-400 mb-2">Subject Name</label>
-                        <Input 
+                        <Input
                             id="subject-input"
                             name="subject"
                             value={subject}
@@ -74,8 +88,8 @@ const TopicPredictor: React.FC = () => {
                             className="bg-slate-900/50"
                         />
                     </div>
-                    <Button 
-                        onClick={handlePredict} 
+                    <Button
+                        onClick={handlePredict}
                         isLoading={loading}
                         className="bg-gradient-to-r from-indigo-600 to-violet-600 px-8 py-6 h-auto text-lg font-bold"
                     >

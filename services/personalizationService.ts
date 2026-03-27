@@ -201,15 +201,15 @@ export const getTimeOfDayGreeting = (language: 'en' | 'mr' | 'hi' = 'en'): strin
     const slot = hour >= 5 && hour < 12 ? 'morning' : hour >= 12 && hour < 18 ? 'afternoon' : 'evening';
 
     if (language === 'mr') {
-        if (slot === 'morning') return 'Shubh sakal';
-        if (slot === 'afternoon') return 'Shubh dupar';
-        return 'Shubh sandhya';
+        if (slot === 'morning') return 'शुभ सकाळ';
+        if (slot === 'afternoon') return 'शुभ दुपार';
+        return 'शुभ संध्याकाळ';
     }
 
     if (language === 'hi') {
-        if (slot === 'morning') return 'Shubh prabhat';
-        if (slot === 'afternoon') return 'Shubh dopahar';
-        return 'Shubh sandhya';
+        if (slot === 'morning') return 'शुभ प्रभात';
+        if (slot === 'afternoon') return 'शुभ दोपहर';
+        return 'शुभ संध्या';
     }
 
     if (slot === 'morning') return 'Good morning';

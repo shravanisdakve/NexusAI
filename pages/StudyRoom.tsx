@@ -17,10 +17,10 @@ import {
     saveQuizAnswer,
     clearQuiz,
     requestModeration,
-    getRoomMessages, // Added
-    sendChatMessage, // Added
-    subscribeToMessages, // Added
-    subscribeToConnectionStatus, // Added
+    getRoomMessages,
+    sendChatMessage,
+    subscribeToMessages,
+    subscribeToConnectionStatus,
     sendTyping,
     onTyping,
     onKnowledgeGapsUpdate,
@@ -30,7 +30,9 @@ import {
     advanceTechniquePhase,
     moderateRoomMember,
     onTrackedConceptsUpdate,
-    saveTrackedConcept
+    saveTrackedConcept,
+    onReaction,
+    sendReaction
 } from '../services/communityService';
 import { streamStudyBuddyChat, generateQuizQuestion, extractTextFromFile, summarizeText, generateQuizSet } from '../services/geminiService';
 import { startSession, endSession, recordQuizResult } from '../services/analyticsService';
@@ -243,34 +245,35 @@ const StudyRoom: React.FC = () => {
             return;
         }
         if (!currentUser) {
-            console.error('handleSendChatMessage: Aborting - missing data. User might not be fully logged in.', { messageText: chatInput, roomId, currentUser });
-            // Optional: You could show a toast here "Please wait for login..." or similar.
-            // For now, let's try to fetch it if possible or just return.
+            console.error('handleSendChatMessage: Aborting - user not logged in.');
             return;
         }
 
         const newMessage: ChatMessage = {
+            id: 'temp-' + Date.now(),
             role: 'user',
             parts: [{ text: messageText }],
             user: { email: currentUser.email, displayName: currentUser.displayName },
             timestamp: Date.now()
         };
-        console.log("handleSendChatMessage: Sending message:", newMessage);
+
+        // Add to local state immediately for better UX (message shows without waiting for echo)
+        setAllMessages(prev => [...prev, newMessage]);
+        setChatInput('');
 
         try {
             await sendChatMessage(roomId, {
                 ...newMessage,
                 text: newMessage.parts[0].text,
                 sender: currentUser.displayName,
-                userId: currentUser.id, // Pass ObjectId for DB
-                email: currentUser.email // Pass email for UI mapping
-            }); // USE REAL SOCKET
-            setChatInput(''); // Clear input AFTER successful send
-            // Force clear typing for self
+                userId: currentUser.id,
+                email: currentUser.email
+            });
             setTypingUsers(prev => prev.filter(u => u !== currentUser.displayName));
-            console.log("handleSendChatMessage: Message sent via socket, input cleared.");
         } catch (error) {
             console.error("handleSendChatMessage: Error saving message:", error);
+            // Roll back optimistic update on failure
+            setAllMessages(prev => prev.filter(m => m.id !== newMessage.id));
         }
     };
 
@@ -295,7 +298,7 @@ const StudyRoom: React.FC = () => {
 
             const newUsers = room.users.filter(p => !prevEmails.includes(p.email) && p.email !== currentUser?.email);
             const leftUsers = prevParticipantsRef.current.filter(p => !currentEmails.includes(p.email));
-            
+
             if (leftUsers.length > 0) {
                 leftUsers.forEach(user => {
                     postSystemMessage(`${user.displayName} has left the room.`);
@@ -428,27 +431,41 @@ const StudyRoom: React.FC = () => {
 
         const unsubMessages = subscribeToMessages((rawMsg) => {
             console.log("Received socket message:", rawMsg);
-            const newMessage: ChatMessage = {
+            const serverEmail = rawMsg.email || rawMsg.userId || 'unknown';
+            const serverText = rawMsg.text || '';
+            const serverMsg: ChatMessage = {
                 id: rawMsg.id || Date.now().toString(),
                 role: 'user',
-                parts: [{ text: rawMsg.text || '' }],
+                parts: [{ text: serverText }],
                 user: {
                     displayName: rawMsg.sender || 'Unknown',
-                    email: rawMsg.email || rawMsg.userId || 'unknown'
+                    email: serverEmail
                 },
                 timestamp: rawMsg.timestamp ? new Date(rawMsg.timestamp).getTime() : Date.now()
             };
 
             setAllMessages(prev => {
-                if (prev.some(m => m.id === newMessage.id)) return prev;
-                return [...prev, newMessage];
+                // If exact ID already present, skip
+                if (prev.some(m => m.id === serverMsg.id)) return prev;
+                // Replace any temp optimistic message from same sender with same text
+                const tempIdx = prev.findIndex(
+                    m => m.id?.startsWith('temp-') &&
+                        m.user?.email === serverEmail &&
+                        m.parts[0]?.text === serverText
+                );
+                if (tempIdx !== -1) {
+                    const updated = [...prev];
+                    updated[tempIdx] = serverMsg;
+                    return updated;
+                }
+                return [...prev, serverMsg];
             });
         });
 
         const unsubNotes = onNotesUpdate(roomId, setNotes);
 
         const unsubResources = onResourcesUpdate(roomId, setResources);
-        
+
         const unsubQuiz = onQuizUpdate(roomId, (quiz) => {
             setSharedQuiz(quiz);
             setParticipants(currentParticipants => {
@@ -467,6 +484,12 @@ const StudyRoom: React.FC = () => {
         const unsubTrackedConcepts = onTrackedConceptsUpdate(roomId, (concepts) => {
             if (concepts) {
                 setTrackedConcepts(concepts);
+            }
+        });
+
+        const unsubReaction = onReaction(({ roomId: reactionRoomId, emoji }) => {
+            if (reactionRoomId === roomId) {
+                setReactions(prev => [...prev, { id: Date.now(), emoji }]);
             }
         });
 
@@ -492,6 +515,7 @@ const StudyRoom: React.FC = () => {
             unsubQuiz();
             unsubKnowledgeGaps();
             unsubTrackedConcepts(); // Cleanup for tracked concepts
+            unsubReaction(); // Cleanup for reactions
 
             if (currentUser) {
                 leaveRoom(roomId);
@@ -758,6 +782,9 @@ const StudyRoom: React.FC = () => {
 
     const handleReaction = (emoji: string) => {
         setReactions(prev => [...prev, { id: Date.now(), emoji }]);
+        if (roomId) {
+            sendReaction(roomId, emoji);
+        }
     };
 
     const handleMentionMember = (member: { email: string; displayName: string }) => {
@@ -1210,7 +1237,7 @@ const StudyRoom: React.FC = () => {
                                     </span>
                                     <span className="text-[11px] text-slate-400">{techniqueCycleLabel}</span>
                                 </div>
-                                
+
                                 {effectiveTechniqueLabel === 'Spaced Repetition' && (
                                     <div className="hidden sm:flex flex-col items-center justify-center px-4 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-xl animate-in zoom-in duration-300">
                                         <div className="flex items-center gap-1.5">
@@ -1281,7 +1308,7 @@ const StudyRoom: React.FC = () => {
                                         <p className="opacity-80">{mediaError.message}</p>
                                     </div>
                                 </div>
-                                <Button 
+                                <Button
                                     size="sm"
                                     onClick={getMedia}
                                     className={`
@@ -1317,6 +1344,7 @@ const StudyRoom: React.FC = () => {
                                     {participants.filter(p => p.email !== currentUser?.email).map(p => (
                                         <VideoTile key={p.email} displayName={p.displayName} isMuted={false} />
                                     ))}
+                                    <Reactions reactions={reactions} />
                                 </div>
                             )}
                         </div>
@@ -1881,7 +1909,7 @@ const ParticipantsPanel: React.FC<{
                                         >
                                             {actionOnThisMember && memberActionState?.action === 'remove' ? 'Removing...' : 'Remove'}
                                         </Button>
-                <Button
+                                        <Button
                                             size="sm"
                                             variant="secondary"
                                             onClick={() => onTransferHost(memberDescriptor)}

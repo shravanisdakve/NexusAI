@@ -333,6 +333,16 @@ export const subscribeToMessages = (callback: (msg: any) => void) => {
     return () => socket?.off('receive-message', callback);
 };
 
+export const sendReaction = (roomId: string, emoji: string) => {
+    if (socket) socket.emit('send-reaction', { roomId, emoji });
+};
+
+export const onReaction = (callback: (data: { roomId: string, emoji: string }) => void) => {
+    if (!socket) return () => { };
+    socket.on('receive-reaction', callback);
+    return () => socket?.off('receive-reaction', callback);
+};
+
 export const subscribeToDraw = (callback: (data: any) => void) => {
     if (!socket) return () => { };
     socket.on('draw', callback);
