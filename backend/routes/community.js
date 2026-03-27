@@ -11,6 +11,11 @@ const Post = require('../models/Post');
 const User = require('../models/user');
 const auth = require('../middleware/auth');
 
+router.use((req, res, next) => {
+    console.log(`[COMMUNITY ROUTE] ${req.method} ${req.url}`);
+    next();
+});
+
 const roomResourceStorage = multer.diskStorage({
     destination: (req, file, cb) => {
         const dir = path.join('uploads', 'room-resources');
@@ -60,13 +65,19 @@ const mapRoom = (room) => {
         mutedUserEmails,
         technique: room.technique,
         topic: room.topic,
-        techniqueState: room.techniqueState || null
+        techniqueState: room.techniqueState || null,
+        trackedConcepts: room.trackedConcepts || []
     };
 };
 
 const emitRoomUpdate = (io, room) => {
     if (!io) return;
     io.to(room._id.toString()).emit('room-update', mapRoom(room));
+};
+
+const emitTrackedConceptsUpdate = (io, roomId, concepts) => {
+    if (!io) return;
+    io.to(roomId).emit('tracked-concepts-updated', { roomId, concepts });
 };
 
 const emitTechniqueUpdate = (io, room) => {
@@ -77,6 +88,41 @@ const emitTechniqueUpdate = (io, room) => {
         techniqueState: room.techniqueState || null
     });
 };
+
+// @route   POST /api/community/rooms/:roomId/track-concept
+// @desc    Add a concept to the tracked list for this study room
+// @access  Private
+router.post('/rooms/:roomId/track-concept', auth, async (req, res) => {
+    console.log(`[POST] /rooms/${req.params.roomId}/track-concept hit with concept:`, req.body.concept);
+    try {
+        const { concept } = req.body;
+        if (!concept || typeof concept !== 'string' || !concept.trim()) {
+            return res.status(400).json({ success: false, message: 'Concept string is required.' });
+        }
+
+        const room = await StudyRoom.findById(req.params.roomId);
+        if (!room) {
+            console.log(`[POST] track-concept: Room ${req.params.roomId} not found`);
+            return res.status(404).json({ success: false, message: 'Room not found' });
+        }
+
+        const currentConcepts = room.trackedConcepts || [];
+        const normalized = concept.trim();
+        
+        if (!currentConcepts.includes(normalized)) {
+            room.trackedConcepts = [...currentConcepts, normalized];
+            await room.save();
+        }
+
+        const io = req.app.get('io');
+        emitTrackedConceptsUpdate(io, req.params.roomId, room.trackedConcepts);
+
+        res.json({ success: true, concepts: room.trackedConcepts });
+    } catch (error) {
+        console.error('Error tracking concept:', error);
+        res.status(500).json({ success: false, message: 'Server Error' });
+    }
+});
 
 const getCurrentUser = async (req) => {
     const user = await User.findById(req.user.id).select('displayName email');
@@ -703,6 +749,7 @@ router.get('/rooms/:roomId/notes', auth, async (req, res) => {
         res.status(500).json({ success: false, message: 'Server Error' });
     }
 });
+const { analyzeKnowledgeGaps } = require('../services/geminiService');
 
 // @route   PUT /api/community/rooms/:roomId/notes
 // @desc    Update shared room notes
@@ -726,12 +773,81 @@ router.put('/rooms/:roomId/notes', auth, async (req, res) => {
             });
         }
 
+        // Trigger gap analysis if notes changed significantly
+        if (content.length > 50) {
+            setTimeout(async () => {
+                try {
+                    const recentMessages = await Message.find({ roomId: req.params.roomId })
+                        .sort({ timestamp: -1 })
+                        .limit(10);
+                    const chatLines = recentMessages.reverse().map(m => `${m.senderName}: ${m.content}`);
+                    const newGaps = await analyzeKnowledgeGaps(content, chatLines);
+                    
+                    if (newGaps && newGaps.length > 0) {
+                        const roomToUpdate = await StudyRoom.findById(req.params.roomId);
+                        roomToUpdate.knowledgeGaps = newGaps.map(topic => ({ topic }));
+                        await roomToUpdate.save();
+                        
+                        if (io) {
+                            io.to(req.params.roomId).emit('knowledge-gaps-updated', { 
+                                roomId: req.params.roomId, 
+                                gaps: newGaps 
+                            });
+                        }
+                    }
+                } catch (err) {
+                    console.error("Delayed gap analysis error:", err);
+                }
+            }, 1000);
+        }
+
         res.json({ success: true, notes: room.sharedNotes });
     } catch (error) {
         console.error('Error saving room notes:', error);
         res.status(500).json({ success: false, message: 'Server Error' });
     }
 });
+
+// @route   POST /api/community/rooms/:roomId/analyze-gaps
+// @desc    Manually trigger room knowledge gap analysis
+// @access  Private
+router.post('/rooms/:roomId/analyze-gaps', auth, async (req, res) => {
+    try {
+        const room = await StudyRoom.findById(req.params.roomId);
+        if (!room) {
+            return res.status(404).json({ success: false, message: 'Room not found' });
+        }
+
+        const recentMessages = await Message.find({ roomId: req.params.roomId })
+            .sort({ timestamp: -1 })
+            .limit(15);
+        
+        const chatLines = recentMessages.reverse().map(m => `${m.senderName}: ${m.content}`);
+        const notes = room.sharedNotes || '';
+        
+        const newGaps = await analyzeKnowledgeGaps(notes, chatLines);
+        
+        if (newGaps && newGaps.length > 0) {
+            room.knowledgeGaps = newGaps.map(topic => ({ topic }));
+            await room.save();
+            
+            const io = req.app.get('io');
+            if (io) {
+                io.to(req.params.roomId).emit('knowledge-gaps-updated', { 
+                    roomId: req.params.roomId, 
+                    gaps: newGaps 
+                });
+            }
+        }
+
+        res.json({ success: true, gaps: newGaps });
+    } catch (error) {
+        console.error('Manual gap analysis error:', error);
+        res.status(500).json({ success: false, message: 'Server Error' });
+    }
+});
+
+
 
 // @route   GET /api/community/rooms/:roomId/user-notes/:userId
 // @desc    Get private notes for a user in a room

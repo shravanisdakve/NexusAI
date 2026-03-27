@@ -78,7 +78,12 @@ const StudyRoomSchema = new mongoose.Schema({
         remainingSec: { type: Number, default: 25 * 60 },
         version: { type: Number, default: 1 },
         updatedAt: { type: Date, default: Date.now }
-    }
+    },
+    knowledgeGaps: [{
+        topic: { type: String, required: true },
+        updatedAt: { type: Date, default: Date.now }
+    }],
+    trackedConcepts: [String]
 });
 
 module.exports = mongoose.model('StudyRoom', StudyRoomSchema);

@@ -146,7 +146,7 @@ const GPACalculator: React.FC = () => {
                                 {subjects.map((subject, index) => (
                                     <div key={subject.id} className="flex gap-3 items-end group animate-in slide-in-from-left-2 duration-300" style={{ animationDelay: `${index * 50}ms` }}>
                                         <div className="flex-1">
-                                            <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 ml-1">S{index + 1}</label>
+                                            <label htmlFor={`subject-name-${subject.id}`} className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 ml-1">S{index + 1}</label>
                                             <Input
                                                 id={`subject-name-${subject.id}`}
                                                 name={`subjectName-${subject.id}`}
@@ -157,7 +157,7 @@ const GPACalculator: React.FC = () => {
                                             />
                                         </div>
                                         <div className="w-20">
-                                            <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 ml-1">{t('gpa.credits')}</label>
+                                            <label htmlFor={`subject-credits-${subject.id}`} className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 ml-1">{t('gpa.credits')}</label>
                                             <Input
                                                 id={`subject-credits-${subject.id}`}
                                                 name={`subjectCredits-${subject.id}`}
@@ -169,7 +169,7 @@ const GPACalculator: React.FC = () => {
                                             />
                                         </div>
                                         <div className="w-24">
-                                            <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 ml-1">{t('gpa.grade')}</label>
+                                            <label htmlFor={`subject-grade-${subject.id}`} className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 ml-1">{t('gpa.grade')}</label>
                                             <Input
                                                 id={`subject-grade-${subject.id}`}
                                                 name={`subjectGrade-${subject.id}`}
@@ -202,7 +202,7 @@ const GPACalculator: React.FC = () => {
                                 <div className="grid grid-cols-2 gap-4">
                                     {semesters.map((sem, index) => (
                                         <div key={sem.id} className="group relative">
-                                            <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Semester {index + 1}</label>
+                                            <label htmlFor={`sem-pointer-${sem.id}`} className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Semester {index + 1}</label>
                                             <div className="flex gap-2">
                                                 <Input
                                                     id={`sem-pointer-${sem.id}`}

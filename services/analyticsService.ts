@@ -57,14 +57,24 @@ export const recordPomodoroCycle = async () => {
 };
 
 // --- Quiz Tracking ---
-export const recordQuizResult = async (topic: string, correct: boolean, courseId: string | null = null) => {
+export const recordQuizResult = async (
+    topic: string, 
+    correct: boolean, 
+    courseId: string | null = null,
+    question?: string,
+    userAnswer?: string,
+    correctAnswer?: string
+) => {
     if (!localStorage.getItem('token')) return;
 
     try {
         await axios.post(`${API_URL}/api/analytics/quiz`, {
             topic,
             isCorrect: correct,
-            score: correct ? 100 : 0
+            score: correct ? 100 : 0,
+            question,
+            userAnswer,
+            correctAnswer
         }, { headers: getAuthHeaders() });
     } catch (error) {
         console.error("Error logging quiz:", error);
@@ -123,7 +133,8 @@ export const getProductivityReport = async (courseId: string | null = null) => {
             strengths,
             weaknesses,
             completedPomodoros: data.pomodoroSessions || 0,
-            sessions: data.recentActivity || []
+            sessions: data.recentActivity || [],
+            quizHistory: data.quizHistory || []
         };
 
     } catch (error) {

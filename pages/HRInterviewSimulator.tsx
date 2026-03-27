@@ -84,6 +84,8 @@ const HRInterviewSimulator: React.FC = () => {
     const scrollRef = useRef<HTMLDivElement>(null);
     const MAX_QUESTIONS = 5;
 
+    const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
     useEffect(() => { trackToolUsage('placement'); }, []);
 
     useEffect(() => {
@@ -127,6 +129,7 @@ Start the interview with a warm greeting and ask your first ${catLabel.toLowerCa
 
             const stream = await streamChat(prompt);
             const text = await readStreamToText(stream);
+            await sleep(1500 + Math.random() * 1000); // Intro delay
             setMessages([{ role: 'hr', text: text.trim() }]);
         } catch (error) {
             console.error('HR interview start error:', error);
@@ -163,6 +166,10 @@ ${isLastQuestion
 
             const stream = await streamChat(prompt);
             const text = await readStreamToText(stream);
+            
+            // Artificial delay to simulate HR thinking/evaluating
+            await sleep(2000 + Math.random() * 2000);
+            
             setMessages(prev => [...prev, { role: 'hr', text: text.trim() }]);
 
             if (isLastQuestion) {

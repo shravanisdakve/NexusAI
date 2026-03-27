@@ -12,125 +12,77 @@ const SIMULATOR_CONFIG = [
     {
         slug: 'tcs-nqt',
         name: 'TCS NQT 2025 Simulator',
-        description: 'Foundation style aptitude + reasoning drill based on current campus hiring patterns.',
-        durationMin: 75,
-        sections: ['Numerical', 'Verbal', 'Reasoning'],
+        description: 'Foundation style aptitude + reasoning + verbal + psychometric drill based on current campus hiring patterns.',
+        durationMin: 25,
+        sections: ['Numerical', 'Verbal', 'Reasoning', 'Technical', 'Psychometric'],
     },
     {
         slug: 'capgemini',
         name: 'Capgemini Exceller Drive',
-        description: 'Game-based aptitude and technical screening style challenge for exceller hiring track.',
-        durationMin: 70,
-        sections: ['Quant', 'Logical', 'Technical'],
+        description: 'Comprehensive challenge including Game-based logic, English, and Pseudo-code for exceller hiring track.',
+        durationMin: 20,
+        sections: ['Quant', 'Logical', 'Verbal', 'Technical', 'Behavioral'],
     },
 ];
 
 const SIMULATOR_QUESTIONS = {
     'tcs-nqt': [
-        {
-            id: 1,
-            section: 'Numerical',
-            text: 'A train covers 360 km in 4 hours. What is its average speed?',
-            options: ['80 km/h', '85 km/h', '90 km/h', '95 km/h'],
-            correctIndex: 2,
-        },
-        {
-            id: 2,
-            section: 'Numerical',
-            text: 'If 20% of a number is 84, what is the number?',
-            options: ['360', '400', '420', '480'],
-            correctIndex: 2,
-        },
-        {
-            id: 3,
-            section: 'Verbal',
-            text: 'Choose the correct sentence.',
-            options: [
-                'Each of the students were present.',
-                'Each of the students was present.',
-                'Each students was present.',
-                'Each students were present.',
-            ],
-            correctIndex: 1,
-        },
-        {
-            id: 4,
-            section: 'Reasoning',
-            text: 'If all coders are problem solvers and some problem solvers are musicians, which statement is true?',
-            options: [
-                'All coders are musicians.',
-                'Some coders are musicians.',
-                'No coder is a musician.',
-                'No definite conclusion about coders being musicians.',
-            ],
-            correctIndex: 3,
-        },
-        {
-            id: 5,
-            section: 'Reasoning',
-            text: 'In a certain code, MUMBAI is written as NVNCBJ. How is DELHI written?',
-            options: ['EFMIJ', 'EFMII', 'EFMHI', 'DEMIJ'],
-            correctIndex: 0,
-        },
-        {
-            id: 6,
-            section: 'Numerical',
-            text: 'The average of first 10 natural numbers is:',
-            options: ['5', '5.5', '6', '6.5'],
-            correctIndex: 1,
-        },
+        // Numerical (1-5)
+        { id: 1, section: 'Numerical', text: 'A train covers 360 km in 4 hours. What is its average speed?', options: ['80 km/h', '85 km/h', '90 km/h', '95 km/h'], correctIndex: 2 },
+        { id: 2, section: 'Numerical', text: 'If 20% of a number is 84, what is the number?', options: ['360', '400', '420', '480'], correctIndex: 2 },
+        { id: 7, section: 'Numerical', text: 'A shopkeeper offers a 10% discount and still makes a 20% profit. If the cost price is Rs. 900, what is the marked price?', options: ['Rs. 1000', 'Rs. 1100', 'Rs. 1200', 'Rs. 1300'], correctIndex: 2 },
+        { id: 10, section: 'Numerical', text: 'If the radius of a circle is increased by 50%, by what percentage does the area increase?', options: ['100%', '125%', '150%', '225%'], correctIndex: 1 },
+        { id: 13, section: 'Numerical', text: 'The ratio of ages of A and B is 3:4. After 5 years, the ratio becomes 4:5. What is the current age of A?', options: ['10', '12', '15', '18'], correctIndex: 2 },
+        
+        // Verbal (6-9)
+        { id: 3, section: 'Verbal', text: 'Choose the correct sentence.', options: ['Each of the students were present.', 'Each of the students was present.', 'Each students was present.', 'Each students were present.'], correctIndex: 1 },
+        { id: 8, section: 'Verbal', text: 'Identify the synonym for "DILIGENT".', options: ['Lazy', 'Hardworking', 'Smart', 'Quick'], correctIndex: 1 },
+        { id: 11, section: 'Verbal', text: 'Choose the antonym for "OBSCURE".', options: ['Hidden', 'Clear', 'Dark', 'Vague'], correctIndex: 1 },
+        { id: 14, section: 'Verbal', text: 'Fill in: The CEO ______ the invitation to speak at the summit.', options: ['declined', 'rejects', 'refused to', 'was declined'], correctIndex: 0 },
+        
+        // Reasoning (10-13)
+        { id: 4, section: 'Reasoning', text: 'If all coders are problem solvers and some problem solvers are musicians, which statement is true?', options: ['All coders are musicians.', 'Some coders are musicians.', 'No coder is a musician.', 'No definite conclusion about coders being musicians.'], correctIndex: 3 },
+        { id: 5, section: 'Reasoning', text: 'In a certain code, MUMBAI is written as NVNCBJ. How is DELHI written?', options: ['EFMIJ', 'EFMII', 'EFMHI', 'DEMIJ'], correctIndex: 0 },
+        { id: 9, section: 'Reasoning', text: 'Complete the series: 2, 6, 12, 20, 30, ?', options: ['36', '40', '42', '48'], correctIndex: 2 },
+        { id: 12, section: 'Reasoning', text: 'Pointing to a man, a woman says: "He is the only son of my mother\'s father." How is the man related to the woman?', options: ['Brother', 'Father', 'Uncle', 'Grandfather'], correctIndex: 2 },
+        
+        // Technical & Psychometric (14-17)
+        { id: 15, section: 'Technical', text: 'In C++, which of the following is used for dynamic memory allocation?', options: ['malloc', 'new', 'alloc', 'create'], correctIndex: 1 },
+        { id: 16, section: 'Technical', text: 'What is the primary role of a Load Balancer in system design?', options: ['Database backup', 'Traffic distribution', 'Encryption', 'Cache management'], correctIndex: 1 },
+        { id: 17, section: 'Psychometric', text: 'You are leading a project and a teammate consistently misses deadlines. Your first action is:', options: ['Report to Manager', 'Publicly warn them', 'Private discussion to understand root cause', 'Assign their work to someone else'], correctIndex: 2 },
+        { id: 18, section: 'Psychometric', text: 'If a client asks for a feature that would slightly compromise security but vastly improve speed, you:', options: ['Say yes immediately', 'Say no bluntly', 'Explain risks and suggest a balanced alternative', 'Ignore the request'], correctIndex: 2 }
     ],
     capgemini: [
-        {
-            id: 1,
-            section: 'Quant',
-            text: 'A and B complete a task in 12 days and 18 days respectively. Working together, they finish in:',
-            options: ['6.8 days', '7.2 days', '7.5 days', '8 days'],
-            correctIndex: 1,
-        },
-        {
-            id: 2,
-            section: 'Quant',
-            text: 'What is the simple interest on Rs. 15,000 at 8% p.a. for 2 years?',
-            options: ['Rs. 2,000', 'Rs. 2,200', 'Rs. 2,400', 'Rs. 2,600'],
-            correctIndex: 2,
-        },
-        {
-            id: 3,
-            section: 'Logical',
-            text: 'Find the odd one out: 3, 5, 11, 14, 17',
-            options: ['3', '5', '11', '14'],
-            correctIndex: 3,
-        },
-        {
-            id: 4,
-            section: 'Logical',
-            text: 'If SOUTH is coded as 71328 and NORTH as 46528, what is the code for SOUTHNORTH?',
-            options: ['7132846528', '4652871328', '7132846582', '7132465288'],
-            correctIndex: 0,
-        },
-        {
-            id: 5,
-            section: 'Technical',
-            text: 'Which data structure is best suited for implementing recursion call stack?',
-            options: ['Queue', 'Stack', 'Linked List', 'Tree'],
-            correctIndex: 1,
-        },
-        {
-            id: 6,
-            section: 'Technical',
-            text: 'Which SQL clause is used to filter grouped rows?',
-            options: ['WHERE', 'GROUP BY', 'HAVING', 'ORDER BY'],
-            correctIndex: 2,
-        },
+        // Quant & Logic (1-6)
+        { id: 1, section: 'Quant', text: 'A and B complete a task in 12 days and 18 days respectively. Working together, they finish in:', options: ['6.8 days', '7.2 days', '7.5 days', '8 days'], correctIndex: 1 },
+        { id: 2, section: 'Quant', text: 'What is the simple interest on Rs. 15,000 at 8% p.a. for 2 years?', options: ['Rs. 2,000', 'Rs. 2,200', 'Rs. 2,400', 'Rs. 2,600'], correctIndex: 2 },
+        { id: 7, section: 'Quant', text: 'A motorboat whose speed is 15 km/hr in still water goes 30 km downstream and comes back in a total of 4.5 hours. What is the speed of the stream?', options: ['4 km/hr', '5 km/hr', '6 km/hr', '10 km/hr'], correctIndex: 1 },
+        { id: 3, section: 'Logical', text: 'Find the odd one out: 3, 5, 11, 14, 17', options: ['3', '5', '11', '14'], correctIndex: 3 },
+        { id: 4, section: 'Logical', text: 'If SOUTH is coded as 71328 and NORTH as 46528, what is the code for SOUTHNORTH?', options: ['7132846528', '4652871328', '7132846582', '7132465288'], correctIndex: 0 },
+        { id: 8, section: 'Logical', text: 'Look at this series: 7, 10, 8, 11, 9, 12, ... What number should come next?', options: ['7', '10', '12', '13'], correctIndex: 1 },
+        
+        // Verbal (New section for Capgemini 7-10)
+        { id: 13, section: 'Verbal', text: 'Find the correctly spelled word.', options: ['Necessary', 'Neccessary', 'Nessessary', 'Necesary'], correctIndex: 0 },
+        { id: 14, section: 'Verbal', text: 'Convert to Passive: "The chef prepared a delicious meal."', options: ['A delicious meal prepares the chef.', 'A delicious meal was prepared by the chef.', 'Meal was delicious and prepared.', 'Chef has prepared the meal.'], correctIndex: 1 },
+        { id: 15, section: 'Verbal', text: 'Identify the error: "He don\'t know the answer to the question."', options: ['He', "don't", 'the answer', 'no error'], correctIndex: 1 },
+        
+        // Technical / Pseudo-code (11-14)
+        { id: 5, section: 'Technical', text: 'Which data structure is best suited for implementing recursion call stack?', options: ['Queue', 'Stack', 'Linked List', 'Tree'], correctIndex: 1 },
+        { id: 6, section: 'Technical', text: 'Which SQL clause is used to filter grouped rows?', options: ['WHERE', 'GROUP BY', 'HAVING', 'ORDER BY'], correctIndex: 2 },
+        { id: 9, section: 'Technical', text: 'Which of the following is not a pillar of OOPS?', options: ['Encapsulation', 'Polymorphism', 'Compilation', 'Abstraction'], correctIndex: 2 },
+        { id: 16, section: 'Technical', text: 'What is the output of: x = 5; y = x++; print y;?', options: ['4', '5', '6', 'Error'], correctIndex: 1 },
+        
+        // Behavioral / Game-based Logic (15-18)
+        { id: 17, section: 'Behavioral', text: 'When faced with a complex task you\'ve never done before, you:', options: ['Panic', 'Wait for instructions', 'Research, break it down, and start learning', 'Ask someone else to do it'], correctIndex: 2 },
+        { id: 18, section: 'Behavioral', text: 'Teammates are arguing over a design choice. You:', options: ['Pick a side', 'Leave them to it', 'Listen to both and facilitate a consensus', 'Complain to HR'], correctIndex: 2 }
     ],
 };
 
 const FALLBACK_TRENDS = [
-    { collegeName: 'SPIT', avgPackage: 10.2, highestPackage: 38.5, year: 2025 },
-    { collegeName: 'VJTI', avgPackage: 8.5, highestPackage: 27.0, year: 2025 },
-    { collegeName: 'DJSCE', avgPackage: 8.1, highestPackage: 25.0, year: 2025 },
-    { collegeName: 'TSEC', avgPackage: 7.5, highestPackage: 19.0, year: 2025 },
+    { collegeName: 'SPIT', avgPackage: 10.2, highestPackage: 38.5, year: 2025, source: 'SPIT Placement Portal (Projected)' },
+    { collegeName: 'VJTI', avgPackage: 8.5, highestPackage: 27.0, year: 2025, source: 'VJTI Official Stats 2024' },
+    { collegeName: 'DJSCE', avgPackage: 8.1, highestPackage: 25.0, year: 2025, source: 'DJSCE TPO Report' },
+    { collegeName: 'TSEC', avgPackage: 7.5, highestPackage: 19.0, year: 2025, source: 'TSEC Placement Cell' },
 ];
 
 const FALLBACK_STARTUPS = [
@@ -355,6 +307,162 @@ router.get('/trends/overall', async (req, res) => {
         }
 
         res.json({ success: true, trends });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// Predict placement probability
+router.post('/predict', auth, async (req, res) => {
+    try {
+        const { college, branch, cgpa, skills, targetCompany } = req.body;
+        
+        let baseProb = 50;
+        const breakdown = [];
+
+        // College Tier adjustments (MU Specific)
+        const collegeName = String(college || '').toUpperCase();
+        if (['SPIT', 'VJTI'].includes(collegeName)) {
+            baseProb += 15;
+            breakdown.push({ label: 'Top-Tier College Bonus', impact: 15, type: 'positive' });
+        } else if (['DJSCE', 'NMIMS', 'KJSCE'].includes(collegeName)) {
+            baseProb += 10;
+            breakdown.push({ label: 'Tier-1 College Bonus', impact: 10, type: 'positive' });
+        } else if (['TSEC', 'VESIT', 'FR AGNEL'].includes(collegeName)) {
+            baseProb += 5;
+            breakdown.push({ label: 'Reputed College Bonus', impact: 5, type: 'positive' });
+        } else {
+            baseProb -= 5;
+            breakdown.push({ label: 'Lower Tier College Adjustment', impact: -5, type: 'negative' });
+        }
+
+        // CGPA adjustments
+        const gpa = Number(cgpa) || 0;
+        if (gpa >= 9) {
+            baseProb += 15;
+            breakdown.push({ label: 'Outstanding CGPA (9+)', impact: 15, type: 'positive' });
+        } else if (gpa >= 8) {
+            baseProb += 10;
+            breakdown.push({ label: 'Strong CGPA (8+)', impact: 10, type: 'positive' });
+        } else if (gpa < 7 && gpa >= 6.5) {
+            baseProb -= 10;
+            breakdown.push({ label: 'CGPA Filter Risk (< 7)', impact: -10, type: 'negative' });
+        } else if (gpa < 6.5) {
+            baseProb -= 25;
+            breakdown.push({ label: 'Critical CGPA Filter (< 6.5)', impact: -25, type: 'negative' });
+        }
+
+        // Target Company specific expectations
+        const company = String(targetCompany || '').toUpperCase();
+        let expectedSkills = [];
+        let difficultyPenalty = 0;
+        let ctcEstimate = '';
+        
+        if (company.includes('TCS') && company.includes('DIGITAL')) {
+            expectedSkills = ['JAVA', 'PYTHON', 'DSA', 'SQL'];
+            difficultyPenalty = 10;
+            ctcEstimate = '7.0 LPA';
+        } else if (company.includes('TCS')) {
+            expectedSkills = ['C', 'JAVA', 'SQL'];
+            difficultyPenalty = 0;
+            ctcEstimate = '3.36 LPA';
+        } else if (company.includes('INFOSYS') && company.includes('DSE')) {
+            expectedSkills = ['DSA', 'SYSTEM DESIGN', 'JAVA', 'PYTHON', 'NODE'];
+            difficultyPenalty = 15;
+            ctcEstimate = '6.25 - 9.5 LPA';
+        } else if (company.includes('INFOSYS')) {
+            expectedSkills = ['OOP', 'SQL', 'JAVA'];
+            difficultyPenalty = 0;
+            ctcEstimate = '3.6 LPA';
+        } else if (['JP MORGAN', 'MORGAN STANLEY', 'BARCLAYS'].includes(company)) {
+            expectedSkills = ['DSA', 'SYSTEM DESIGN', 'SPRING BOOT', 'REACT', 'CLOUD'];
+            difficultyPenalty = 25;
+            ctcEstimate = '14.0 - 20.0 LPA';
+        } else if (company.includes('JIO')) {
+            expectedSkills = ['JAVA', 'SPRING BOOT', 'REACT', 'DSA'];
+            difficultyPenalty = 5;
+            ctcEstimate = '6.0 - 8.0 LPA';
+        } else {
+            expectedSkills = ['HTML', 'CSS', 'JS', 'SQL'];
+            difficultyPenalty = 5;
+            ctcEstimate = '4.0 - 6.0 LPA';
+        }
+
+        if (difficultyPenalty > 0) {
+            baseProb -= difficultyPenalty;
+            breakdown.push({ label: `High Entry Bar for ${targetCompany}`, impact: -difficultyPenalty, type: 'negative' });
+        }
+
+        // Skills Match
+        const userSkills = Array.isArray(skills) ? skills.map(s => String(s).toUpperCase()) : [];
+        let matchedSkillsCount = 0;
+        expectedSkills.forEach(reqSkill => {
+            if (userSkills.some(us => us.includes(reqSkill) || reqSkill.includes(us))) {
+                matchedSkillsCount++;
+            }
+        });
+
+        if (expectedSkills.length > 0) {
+            const skillMatchRatio = matchedSkillsCount / expectedSkills.length;
+            const skillPointBonus = Math.round(skillMatchRatio * 20);
+            baseProb += skillPointBonus;
+            if (skillPointBonus > 0) {
+                breakdown.push({ label: 'Technical Skill Match', impact: skillPointBonus, type: 'positive' });
+            } else {
+                breakdown.push({ label: 'Missing Key Tech Skills', impact: 0, type: 'negative' });
+            }
+        }
+
+        // Branch adjustments
+        const branchName = String(branch || '').toUpperCase();
+        if (['COMPUTER', 'IT', 'DATA SCIENCE', 'AI'].some(b => branchName.includes(b))) {
+            baseProb += 5;
+            breakdown.push({ label: 'Branch Relevancy (Tech)', impact: 5, type: 'positive' });
+        } else if (!['EXTC', 'ELECTRONICS'].some(b => branchName.includes(b))) {
+            baseProb -= 10;
+            breakdown.push({ label: 'Non-Tech Branch Factor', impact: -10, type: 'negative' });
+        }
+
+        // Clamp probability between 5 and 95
+        const probability = Math.max(5, Math.min(95, Math.round(baseProb)));
+
+        let message = '';
+        if (probability > 80) message = 'Excellent chances. Maintain your CGPA and practice DSA.';
+        else if (probability > 60) message = `Good chances. Focus on improving ${expectedSkills.filter(s => !userSkills.some(us => us.includes(s))).join(', ') || 'coding speed'}.`;
+        else if (probability > 40) message = 'Fair chances. You need to boost your technical skills and aptitude preparation.';
+        else message = 'Challenging. Work extensively on aptitude, foundational programming, and consider building standout projects.';
+
+        // Comparisons (Quick benchmarks for other companies)
+        const commonCompanies = ['TCS Ninja', 'TCS Digital', 'Infosys', 'Accenture', 'JPMC'];
+        const comparisons = commonCompanies.map(comp => {
+            let tempProb = 50;
+            // Simplified logic for comparison
+            if (['SPIT', 'VJTI'].includes(collegeName)) tempProb += 15;
+            else if (['DJSCE', 'NMIMS'].includes(collegeName)) tempProb += 10;
+            
+            if (gpa >= 8.5) tempProb += 15;
+            
+            if (comp.includes('Digital') || comp.includes('JPMC')) tempProb -= 20;
+            if (comp.includes('Ninja') || comp.includes('Infosys')) tempProb += 5;
+
+            return {
+                company: comp,
+                probability: Math.max(5, Math.min(95, Math.round(tempProb + (matchedSkillsCount * 3))))
+            };
+        });
+
+        res.json({
+            success: true,
+            prediction: {
+                probability,
+                message,
+                ctcEstimate,
+                matchedSkillsCount,
+                expectedSkills,
+                breakdown,
+                comparisons
+            }
+        });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }

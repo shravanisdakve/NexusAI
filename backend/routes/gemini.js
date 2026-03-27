@@ -65,15 +65,18 @@ router.post('/streamStudyBuddyChat', async (req, res) => {
     try {
         const { message, notes, language } = req.body;
         console.log(`[StreamStudyBuddy] Language: ${language}, Notes length: ${notes?.length}`);
-        let systemInstruction = `You are an expert AI Study Buddy. The user has provided the following notes to study from:
----
-${notes || 'No notes provided yet.'}
----
-Your knowledge is strictly limited to the text provided above. You CANNOT use any external information. When responding to the user:
-1. First, determine if the user's question can be answered using ONLY the provided notes.
-2. If the answer is in the notes, provide a comprehensive answer based exclusively on that text.
-3. If the answer is NOT in the notes, you MUST begin your response with the exact phrase: "Based on the provided notes, I can't find information on that topic." After this phrase, you may optionally and briefly mention what the notes DO cover. Do not try to answer the original question.
-4. Keep your answers very concise, precise, and easy-to-understand. Avoid long, verbose explanations, and use bullet points where appropriate.`;
+        let systemInstruction = `You are an expert AI Study Buddy. 
+        
+        CONTEXT NOTES PROVIDED BY USER:
+        ---
+        ${notes || 'No specific notes uploaded yet.'}
+        ---
+        
+        INSTRUCTIONS:
+        1. If relevant study notes are provided above, prioritize them for your answer.
+        2. If the answer is NOT in the notes or if NO notes are provided, use your extensive general knowledge to help the student.
+        3. Do NOT refuse to answer just because something isn't in the notes.
+        4. Keep your answers very concise, precise, and easy-to-understand. Use bullet points and focus on clarity for engineering students.`;
 
         if (language === 'mr') {
             systemInstruction += ' IMPORTANT: Respond ONLY in MARATHI (मराठी).';
@@ -700,6 +703,136 @@ router.post('/getFeynmanFeedback', async (req, res) => {
         res.json(JSON.parse(cleanedResponse));
     } catch (error) {
         console.error("Error in getFeynmanFeedback:", error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// --- DOCUMENT HIGHLIGHTER SERVICE ---
+router.post('/generateHighlights', async (req, res) => {
+    try {
+        const { text, language } = req.body;
+        const model = genAI.getGenerativeModel({
+            model: "gemini-2.0-flash",
+            generationConfig: { responseMimeType: "application/json" }
+        });
+
+        let prompt = `You are an expert academic highlighter. Analyze the provided study text and identify the MOST CRITICAL sentences that a student should highlight for revision.
+        
+        DIRECTIONS:
+        1. Select 5-10 key sentences or short phrases.
+        2. These must be definitions, core principles, or vital facts.
+        3. RETURN ONLY a JSON array of strings, where each string is the EXACT sentence captured from the text.
+        
+        Text: "${text.substring(0, 8000)}"
+        
+        Schema: ["sentence 1", "sentence 2", ...]`;
+
+        if (language === 'mr') {
+            prompt += ' (IMPORTANT: Sentences should be extracted from the text as is.)';
+        }
+
+        const result = await model.generateContent(prompt);
+        const cleanedResponse = result.response.text().replace(/```json|```/g, '').trim();
+        res.json({ highlights: JSON.parse(cleanedResponse) });
+    } catch (error) {
+        console.error("Error in generateHighlights:", error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// --- MIND MAP GENERATOR SERVICE ---
+router.post('/generateMindMap', async (req, res) => {
+    try {
+        const { text, language } = req.body;
+        const model = getModel('gemini-2.0-flash');
+
+        let prompt = `Analyze the following study text and generate a Mermaid.js Mind Map syntax.
+        
+        STRUCTURE RULES:
+        1. Use 'mindmap' as the root keyword.
+        2. The central node should be the main topic of the text.
+        3. Create 3-5 primary branches for key concepts.
+        4. Create 2-3 sub-branches for details under each primary branch.
+        5. Use simple title-case for labels. 
+        6. Avoid special characters like parentheses or colons in labels.
+        
+        Text: "${text.substring(0, 6000)}"
+        
+        Example Output Format:
+        mindmap
+          root((Main Topic))
+            Branch A
+              Sub A1
+              Sub A2
+            Branch B
+              Sub B1
+        
+        RETURN ONLY THE MERMAID CODE. NO MARKDOWN CODES.`;
+
+        if (language === 'mr') {
+            prompt += ' (IMPORTANT: All node labels MUST be in MARATHI (मराठी).)';
+        } else if (language === 'hi') {
+            prompt += ' (IMPORTANT: All node labels MUST be in HINDI (हिंदी).)';
+        }
+
+        const result = await model.generateContent(prompt);
+        const mermaidCode = result.response.text().replace(/```mermaid|```/g, '').trim();
+        res.json({ mindMap: mermaidCode });
+    } catch (error) {
+        console.error("Error in generateMindMap:", error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// --- SIMPLIFY (ELI5) SERVICE ---
+router.post('/simplify', async (req, res) => {
+    try {
+        const { text, language } = req.body;
+        const model = getModel('gemini-2.0-flash');
+
+        let prompt = `Explain the following concept like I am a 5-year-old (ELI5).
+        
+        GUIDELINES:
+        1. Use very simple language and relatable analogies.
+        2. Keep it fun and engaging.
+        3. Limit to 3 short paragraphs.
+        
+        Text to simplify: "${text}"`;
+
+        if (language === 'mr') {
+            prompt += ' IMPORTANT: Respond ONLY in MARATHI (मराठी).';
+        } else if (language === 'hi') {
+            prompt += ' IMPORTANT: Respond ONLY in HINDI (हिंदी).';
+        }
+
+        const result = await model.generateContent(prompt);
+        res.json({ simplifiedText: result.response.text() });
+    } catch (error) {
+        console.error("Error in simplify route:", error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// --- RESUME ANALYSIS SERVICE ---
+router.post('/generateResumeAnalysis', async (req, res) => {
+    try {
+        const { targetRole, skills, projects, branch } = req.body;
+        const { generateResumeAnalysis } = require('../services/geminiService');
+        
+        const result = await generateResumeAnalysis({
+            targetRole,
+            skills,
+            projects,
+            branch
+        });
+
+        if (!result) {
+            throw new Error("AI failed to generate resume analysis.");
+        }
+
+        res.json(result);
+    } catch (error) {
+        console.error("Error in generateResumeAnalysis route:", error);
         res.status(500).json({ error: error.message });
     }
 });

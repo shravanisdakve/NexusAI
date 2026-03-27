@@ -12,8 +12,8 @@ export const PageHeader: React.FC<PageHeaderProps> = ({ title, subtitle, icon })
     <div className="mb-8 flex items-start gap-4">
         {icon && <div className="p-3 bg-slate-800/50 rounded-xl border border-slate-700/50 shadow-lg">{icon}</div>}
         <div>
-            <h1 className="text-4xl font-extrabold text-white tracking-tight">{title}</h1>
-            <p className="mt-2 text-slate-400 text-lg max-w-2xl">{subtitle}</p>
+            <h1 className="text-3xl font-extrabold text-white tracking-tight">{title}</h1>
+            <p className="mt-2 text-slate-400 text-base max-w-2xl">{subtitle}</p>
         </div>
     </div>
 );
@@ -281,3 +281,45 @@ export const ToastContainer: React.FC<{ toasts: { id: string; message: string; t
         ))}
     </div>
 );
+
+// Tooltip Component (Simple Implementation)
+export const TooltipProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+    <div className="tooltip-provider relative">{children}</div>
+);
+
+export const Tooltip: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+    const [isVisible, setIsVisible] = useState(false);
+
+    return (
+        <div 
+            className="relative inline-block"
+            onMouseEnter={() => setIsVisible(true)}
+            onMouseLeave={() => setIsVisible(false)}
+        >
+            {React.Children.map(children, child => {
+                if (React.isValidElement(child) && (child.type === TooltipTrigger || (child.props as any).asChild)) {
+                    return React.cloneElement(child as React.ReactElement<any>, { isVisible });
+                }
+                if (React.isValidElement(child) && child.type === TooltipContent) {
+                    return isVisible ? child : null;
+                }
+                return child;
+            })}
+        </div>
+    );
+};
+
+export const TooltipTrigger: React.FC<{ children: React.ReactElement; asChild?: boolean; isVisible?: boolean }> = ({ children, asChild }) => {
+    return children;
+};
+
+export const TooltipContent: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className = '' }) => {
+    return (
+        <div className={`absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-[60] animate-in fade-in slide-in-from-bottom-1 duration-200 ${className}`}>
+            <div className="bg-slate-900 border border-slate-700 rounded-lg p-3 shadow-2xl min-w-[200px] text-left">
+                {children}
+                <div className="absolute top-full left-1/2 -translate-x-1/2 w-2 h-2 bg-slate-900 border-r border-b border-slate-700 rotate-45 -mt-1"></div>
+            </div>
+        </div>
+    );
+};

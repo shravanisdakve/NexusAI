@@ -24,15 +24,24 @@ export const initializeSocket = (token: string) => {
         withCredentials: true
     });
 
-    socket.on('connect', () => {
-        console.log('[Socket] Connected:', socket?.id);
-    });
-
-    socket.on('disconnect', () => {
-        console.log('[Socket] Disconnected');
-    });
-
     return socket;
+};
+
+export const subscribeToConnectionStatus = (callback: (connected: boolean) => void) => {
+    if (!socket) return () => { };
+    const onConnect = () => callback(true);
+    const onDisconnect = () => callback(false);
+    
+    socket.on('connect', onConnect);
+    socket.on('disconnect', onDisconnect);
+    
+    // Call immediately with current state
+    callback(socket.connected);
+
+    return () => {
+        socket?.off('connect', onConnect);
+        socket?.off('disconnect', onDisconnect);
+    };
 };
 
 export const getSocket = () => socket;
@@ -224,6 +233,26 @@ export const onTechniqueUpdate = (
 
     socket.on('room-technique-updated', handler);
     return () => socket?.off('room-technique-updated', handler);
+};
+
+export const onKnowledgeGapsUpdate = (roomId: string, callback: (gaps: string[]) => void) => {
+    if (!socket) return () => {};
+
+    const handler = (payload: { roomId: string, gaps: string[] }) => {
+        if (payload.roomId === roomId) {
+            callback(payload.gaps);
+        }
+    };
+
+    socket.on('knowledge-gaps-updated', handler);
+    return () => socket?.off('knowledge-gaps-updated', handler);
+};
+
+export const triggerKnowledgeGapAnalysis = async (roomId: string): Promise<string[]> => {
+    const response = await axios.post(`${API_URL}/api/community/rooms/${roomId}/analyze-gaps`, {}, {
+        headers: getAuthHeaders()
+    });
+    return response.data?.gaps || [];
 };
 
 // --- Message Management ---
@@ -490,6 +519,26 @@ export const clearQuiz = async (roomId: string) => {
     });
 };
 
+export const onTrackedConceptsUpdate = (roomId: string, callback: (concepts: string[]) => void) => {
+    if (!socket) return () => {};
+
+    const handler = (payload: { roomId: string, concepts: string[] }) => {
+        if (payload.roomId === roomId) {
+            callback(payload.concepts);
+        }
+    };
+
+    socket.on('tracked-concepts-updated', handler);
+    return () => socket?.off('tracked-concepts-updated', handler);
+};
+
+export const saveTrackedConcept = async (roomId: string, concept: string): Promise<string[]> => {
+    const response = await axios.post(`${API_URL}/api/community/rooms/${roomId}/track-concept`, { concept }, {
+        headers: getAuthHeaders()
+    });
+    return response.data?.concepts || [];
+};
+
 // --- Q&A FORUM SERVICES ---
 export const getThreads = async (courseId: string): Promise<Thread[]> => {
     try {
@@ -611,4 +660,10 @@ export const onTyping = (callback: (data: { userName: string }) => void) => {
     if (!socket) return () => { };
     socket.on('user-typing', callback);
     return () => socket?.off('user-typing', callback);
+};
+
+export const onMuNotification = (callback: (data: any) => void) => {
+    if (!socket) return () => {};
+    socket.on('mu-notification', callback);
+    return () => socket?.off('mu-notification', callback);
 };

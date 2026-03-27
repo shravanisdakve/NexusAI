@@ -8,11 +8,20 @@ const server = require('http').createServer(app);
 const socketHandler = require('./socketHandler');
 
 // 1. Connect Database FIRST
-connectDB();
+(async () => {
+    try {
+        await connectDB();
+    } catch (err) {
+        console.error('Initial DB connection failed:', err);
+    }
+})();
 
 // Setup Sockets
 const io = socketHandler(server);
 app.set('io', io);
+
+const initScraperCron = require('./cron/muScraper');
+initScraperCron(io);
 
 const path = require('path');
 const helmet = require('helmet');
@@ -43,10 +52,12 @@ const devAllowedOrigins = [
   'http://localhost:3000',
   'http://localhost:5173',
   'http://localhost:5174',
+  'http://localhost:5175',
   'http://localhost:4173',
   'http://127.0.0.1:3000',
   'http://127.0.0.1:5173',
   'http://127.0.0.1:5174',
+  'http://127.0.0.1:5175',
   'http://127.0.0.1:4173'
 ];
 
@@ -86,7 +97,8 @@ if (process.env.NODE_ENV !== 'production') {
 
 // 5. Routes
 app.use('/api/auth', require('./routes/auth'));
-app.use('/api/gemini', require('./routes/geminiMultiProvider'));
+app.use('/api/gemini', require('./routes/extractionProvider'));
+
 app.use('/api/analytics', require('./routes/analytics'));
 app.use('/api/community', require('./routes/community'));
 app.use('/api/notes', require('./routes/notes'));
@@ -101,6 +113,7 @@ app.use('/api/placement', require('./routes/placement'));
 app.use('/api/university', require('./routes/university'));
 app.use('/api/personalization', require('./routes/personalization'));
 app.use('/api/ai-chat', require('./routes/aiChat'));
+app.use('/api/mu-tutor', require('./routes/muTutor'));
 app.use('/api/gamification', require('./routes/gamification'));
 
 // 6. Health Check Route
@@ -135,7 +148,8 @@ app.use((err, req, res, next) => {
   });
 });
 
-const PORT = process.env.PORT || 5000;
+console.log('--- ALL ROUTES LOADED, STARTING SERVER ---');
+const PORT = process.env.PORT || 3002;
 server.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
 });

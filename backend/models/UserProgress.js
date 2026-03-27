@@ -30,6 +30,14 @@ const UserProgressSchema = new mongoose.Schema({
         timestamp: { type: Date, default: Date.now },
         duration: Number, // in seconds
         score: Number
+    }],
+    quizHistory: [{
+        topic: String,
+        question: String,
+        userAnswer: String,
+        correctAnswer: String,
+        isCorrect: Boolean,
+        timestamp: { type: Date, default: Date.now }
     }]
 }, { timestamps: true });
 

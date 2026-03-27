@@ -20,14 +20,19 @@ import {
     getRoomMessages, // Added
     sendChatMessage, // Added
     subscribeToMessages, // Added
+    subscribeToConnectionStatus, // Added
     sendTyping,
     onTyping,
+    onKnowledgeGapsUpdate,
+    triggerKnowledgeGapAnalysis,
     onTechniqueUpdate,
     updateTechniqueState,
     advanceTechniquePhase,
-    moderateRoomMember
+    moderateRoomMember,
+    onTrackedConceptsUpdate,
+    saveTrackedConcept
 } from '../services/communityService';
-import { streamStudyBuddyChat, generateQuizQuestion, extractTextFromFile, summarizeText } from '../services/geminiService';
+import { streamStudyBuddyChat, generateQuizQuestion, extractTextFromFile, summarizeText, generateQuizSet } from '../services/geminiService';
 import { startSession, endSession, recordQuizResult } from '../services/analyticsService';
 // --- REMOVED Clock import here ---
 import { Bot, User, Send, MessageSquare, Users, Brain, UploadCloud, Lightbulb, FileText, Paperclip, FolderOpen, AlertTriangle, Info, Palette, Briefcase, X, Play, Pause, SkipForward, RotateCcw } from 'lucide-react';
@@ -98,11 +103,16 @@ const StudyRoom: React.FC = () => {
     const [memberActionState, setMemberActionState] = useState<{ email: string; action: string } | null>(null);
     const [showMusicPlayer, setShowMusicPlayer] = useState(false);
     const [showWhiteboard, setShowWhiteboard] = useState(false);
+    const [neuralState, setNeuralState] = useState('Standby');
+    const [isNeuralActive, setIsNeuralActive] = useState(false);
     const [showShareModal, setShowShareModal] = useState(false);
     const [techniqueName, setTechniqueName] = useState<string>('Pomodoro Technique');
     const [techniqueState, setTechniqueState] = useState<TechniqueState | null>(null);
     const [techniqueRemainingSec, setTechniqueRemainingSec] = useState<number>(0);
     const [isTechniqueSyncing, setIsTechniqueSyncing] = useState(false);
+    const [knowledgeGaps, setKnowledgeGaps] = useState<string[]>([]);
+    const [trackedConcepts, setTrackedConcepts] = useState<string[]>([]);
+    // Derived — room loaded AND socket connected = AI ACTIVE.
     // Localized Strings Helper for Study Room
     const getLocalizedMessage = (type: 'default' | 'welcome', lang: string, params?: any) => {
         const isMr = lang === 'mr';
@@ -110,9 +120,9 @@ const StudyRoom: React.FC = () => {
 
         switch (type) {
             case 'default':
-                if (isMr) return "नमस्कार! काही नोट्स अपलोड करा आणि मी तुम्हाला अभ्यास करण्यास मदत करेन.";
-                if (isHi) return "नमस्ते! कुछ नोट्स अपलोड करें और मैं आपको अध्ययन करने में मदद करूँगा।";
-                return "Hello! Upload some notes and I'll help you study.";
+                if (isMr) return "नमस्कार! अभ्यासविषयक काहीही विचारा किंवा अधिक अचूक उत्तरांसाठी काही नोट्स अपलोड करा.";
+                if (isHi) return "नमस्ते! अध्ययन से संबंधित कुछ भी पूछें या अधिक सटीक उत्तरों के लिए कुछ नोट्स अपलोड करें।";
+                return "Hello! Ask me anything about your studies or upload notes for more specific help.";
 
             case 'welcome':
                 if (isMr) return `स्वागत आहे! ही खोली "${params.topic}" विषयावर "${params.technique}" तंत्राचा वापर करून "लक्ष्यित शिक्षण" सत्रासाठी तयार केली आहे. चला सुरुवात करूया!`;
@@ -125,6 +135,19 @@ const StudyRoom: React.FC = () => {
     };
 
     const [allMessages, setAllMessages] = useState<ChatMessage[]>([]);
+    const [isConnected, setIsConnected] = useState(false);
+
+    // Track connection status
+    useEffect(() => {
+        const unsub = subscribeToConnectionStatus((connected) => {
+            setIsConnected(connected);
+            console.log(`[StudyRoom] Socket Status: ${connected ? 'CONNECTED' : 'OFFLINE'}`);
+        });
+        return unsub;
+    }, []);
+
+    const neuralContextStatus: 'OFFLINE' | 'ACTIVE' | 'MAPPING' = (room?.id && isConnected) ? 'ACTIVE' : (room?.id ? 'MAPPING' : 'OFFLINE');
+
     const [chatInput, setChatInput] = useState('');
     // Initial placeholder, updated in useEffect
     const [aiMessages, setAiMessages] = useState<ChatMessage[]>([{ role: 'model', parts: [{ text: "..." }] }]);
@@ -262,7 +285,9 @@ const StudyRoom: React.FC = () => {
         await sendChatMessage(roomId, { ...systemMessage, text: text, sender: 'System' });
     }, [roomId]);
 
+    // --- Effects for Setup and Teardown ---
 
+    // Effect to handle participant join/leave messages
     useEffect(() => {
         if (room) {
             const prevEmails = prevParticipantsRef.current.map(p => p.email);
@@ -270,6 +295,7 @@ const StudyRoom: React.FC = () => {
 
             const newUsers = room.users.filter(p => !prevEmails.includes(p.email) && p.email !== currentUser?.email);
             const leftUsers = prevParticipantsRef.current.filter(p => !currentEmails.includes(p.email));
+            
             if (leftUsers.length > 0) {
                 leftUsers.forEach(user => {
                     postSystemMessage(`${user.displayName} has left the room.`);
@@ -280,7 +306,7 @@ const StudyRoom: React.FC = () => {
         }
     }, [room, currentUser, postSystemMessage]);
 
-    // --- Effects for Setup and Teardown ---
+    // Callback to get media stream
     const getMedia = useCallback(async () => {
         if (localStreamRef.current) {
             localStreamRef.current.getTracks().forEach(track => track.stop());
@@ -313,6 +339,7 @@ const StudyRoom: React.FC = () => {
         }
     }, []);
 
+    // Effect to initialize media stream on component mount
     useEffect(() => {
         getMedia();
         return () => {
@@ -322,7 +349,7 @@ const StudyRoom: React.FC = () => {
         };
     }, [getMedia]);
 
-
+    // Main effect for room setup, subscriptions, and cleanup
     useEffect(() => {
         if (!roomId || !currentUser) return;
         setInitialMessagesLoaded(false);
@@ -331,8 +358,6 @@ const StudyRoom: React.FC = () => {
             clearTimeout(autoModeratorTimerRef.current);
             autoModeratorTimerRef.current = null;
         }
-
-        // --- REMOVED: let sessionId: string | null = null; ---
 
         joinRoom(roomId, currentUser);
 
@@ -369,6 +394,9 @@ const StudyRoom: React.FC = () => {
             }
             if (updatedRoom.techniqueState) {
                 setTechniqueState(updatedRoom.techniqueState);
+            }
+            if (updatedRoom.knowledgeGaps) {
+                setKnowledgeGaps(updatedRoom.knowledgeGaps);
             }
         });
 
@@ -416,9 +444,11 @@ const StudyRoom: React.FC = () => {
                 return [...prev, newMessage];
             });
         });
+
         const unsubNotes = onNotesUpdate(roomId, setNotes);
 
         const unsubResources = onResourcesUpdate(roomId, setResources);
+        
         const unsubQuiz = onQuizUpdate(roomId, (quiz) => {
             setSharedQuiz(quiz);
             setParticipants(currentParticipants => {
@@ -427,8 +457,22 @@ const StudyRoom: React.FC = () => {
                 }
                 return currentParticipants;
             });
-
         });
+
+        const unsubKnowledgeGaps = onKnowledgeGapsUpdate(roomId, (gaps) => {
+            console.log("Knowledge gaps updated via socket:", gaps);
+            setKnowledgeGaps(gaps);
+        });
+
+        const unsubTrackedConcepts = onTrackedConceptsUpdate(roomId, (concepts) => {
+            if (concepts) {
+                setTrackedConcepts(concepts);
+            }
+        });
+
+        // Initial trigger for knowledge gap analysis
+        triggerKnowledgeGapAnalysis(roomId).catch(console.error);
+
 
         return () => {
             // --- Stop Timer ---
@@ -444,9 +488,11 @@ const StudyRoom: React.FC = () => {
             unsubMessages();
             unsubTyping();
             unsubNotes();
-
             unsubResources();
             unsubQuiz();
+            unsubKnowledgeGaps();
+            unsubTrackedConcepts(); // Cleanup for tracked concepts
+
             if (currentUser) {
                 leaveRoom(roomId);
             }
@@ -551,6 +597,8 @@ const StudyRoom: React.FC = () => {
     }, [participantChatMessages]);
 
     useEffect(() => { aiChatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [aiMessages, sharedQuiz])
+
+    // neuralContextStatus is now a derived const (see declaration above) — no effect needed.
 
     useEffect(() => {
         if (room && room.technique && room.topic && !welcomeMessageSent.current) {
@@ -743,6 +791,16 @@ const StudyRoom: React.FC = () => {
         setShowShareModal(true);
     };
 
+    const handleTriggerGapAnalysis = async () => {
+        if (!roomId) return;
+        try {
+            const gaps = await triggerKnowledgeGapAnalysis(roomId);
+            setKnowledgeGaps(gaps);
+        } catch (error) {
+            console.error('Failed to trigger manual gap analysis:', error);
+        }
+    };
+
     const handleModerateMember = async (
         member: { email: string; displayName: string },
         action: 'mute_chat' | 'unmute_chat' | 'remove' | 'transfer_host'
@@ -824,8 +882,8 @@ const StudyRoom: React.FC = () => {
 
     // --- AI Buddy & Quiz Handlers ---
     const handleSendAiMessage = useCallback(async () => {
-        if (!notes || notes.trim() === '' || notes.startsWith("Extracting text from")) {
-            setAiMessages(prev => [...prev, { role: 'model', parts: [{ text: "Please upload some notes first using the button above so I have context!" }] }]);
+        if (notes && notes.startsWith("Extracting text from")) {
+            setAiMessages(prev => [...prev, { role: 'model', parts: [{ text: "I'm still reading your document. Please wait a moment!" }] }]);
             setAiInput('');
             return;
         }
@@ -902,18 +960,49 @@ const StudyRoom: React.FC = () => {
     }, [aiInput, isAiLoading, notes, language]);
 
     const handleGenerateQuiz = async () => {
-        if (isAiLoading || !notes.trim() || !roomId) return;
+        const quizContext = notes.trim() || room?.topic || 'General Studies';
+        if (isAiLoading || !quizContext || !roomId) return;
         setIsAiLoading(true);
         postSystemMessage(`${currentUser?.displayName} is generating a quiz for the group!`);
 
         try {
-            const quizJsonString = await generateQuizQuestion(notes, language);
-            const parsedQuiz = JSON.parse(quizJsonString);
-            await saveQuiz(roomId, parsedQuiz);
+            if (effectiveTechniqueLabel === 'Spaced Repetition') {
+                const quizJson = await generateQuizSet(quizContext, 10, language);
+                const quizSet = JSON.parse(quizJson);
+                const multiQuiz = {
+                    id: Date.now().toString(),
+                    topic: room?.topic || 'Review Session',
+                    questions: quizSet.questions || [],
+                    isMulti: true,
+                    currentIndex: 0,
+                    completed: false,
+                    answers: []
+                };
+                await saveQuiz(roomId, multiQuiz);
+                postSystemMessage(`${currentUser?.displayName} generated a 10-question Active Recall quiz! 🧠🔥`);
+            } else {
+                const quizJsonString = await generateQuizQuestion(quizContext, language);
+                const parsedQuiz = JSON.parse(quizJsonString);
+                await saveQuiz(roomId, parsedQuiz);
+            }
         } catch (err) {
             postSystemMessage("Sorry, I couldn't generate a quiz. Please try again.");
         } finally {
             setIsAiLoading(false);
+        }
+    };
+
+    const handleTrackConcept = async (concept: string) => {
+        if (!roomId || !concept || !currentUser) {
+            console.warn('[handleTrackConcept] Missing dependencies:', { roomId, concept, currentUser: !!currentUser });
+            return;
+        }
+        console.log(`[handleTrackConcept] Tracking: "${concept}" for room: ${roomId}`);
+        try {
+            await saveTrackedConcept(roomId, concept);
+            postSystemMessage(`${currentUser.displayName} is now tracking a new concept: "${concept.substring(0, 30)}${concept.length > 30 ? '...' : ''}" 🧠`);
+        } catch (error) {
+            console.error('Failed to track concept error detail:', error);
         }
     };
 
@@ -1026,7 +1115,8 @@ const StudyRoom: React.FC = () => {
             const retryAfterSec = typeof err?.retryAfterSec === 'number' ? err.retryAfterSec : undefined;
             const isQuotaError = err?.code === 'AI_QUOTA_EXCEEDED'
                 || err?.status === 429
-                || /quota|too many requests|rate limit|429/i.test(errorMessage);
+                || /quota|busy|capacity|rate limit|too many requests|429/i.test(errorMessage);
+
             if (isQuotaError) {
                 console.warn('File extraction rate limited; preserving previous notes.');
             } else {
@@ -1035,11 +1125,11 @@ const StudyRoom: React.FC = () => {
             setNotes(previousNotesSnapshot);
 
             if (isQuotaError) {
-                const retryHint = retryAfterSec ? ` Please retry in about ${retryAfterSec}s.` : ' Please retry in a short while.';
+                const retryHint = retryAfterSec ? ` Please wait approximately ${retryAfterSec}s and try again.` : ' Please wait a moment and try uploading again.';
                 setAiMessages([{
                     role: 'model',
                     parts: [{
-                        text: `AI extraction is temporarily rate limited.${retryHint} Your previous shared notes were kept unchanged.`
+                        text: `⚠️ **AI Service Busy**: The study notes extraction service is temporarily rate limited because of high demand.${retryHint} Your current shared notes remain unchanged for the room.`
                     }]
                 }]);
             } else {
@@ -1120,6 +1210,16 @@ const StudyRoom: React.FC = () => {
                                     </span>
                                     <span className="text-[11px] text-slate-400">{techniqueCycleLabel}</span>
                                 </div>
+                                
+                                {effectiveTechniqueLabel === 'Spaced Repetition' && (
+                                    <div className="hidden sm:flex flex-col items-center justify-center px-4 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-xl animate-in zoom-in duration-300">
+                                        <div className="flex items-center gap-1.5">
+                                            <span className="text-xl font-black text-emerald-400 leading-none">{trackedConcepts.length}</span>
+                                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.8)]" />
+                                        </div>
+                                        <span className="text-[8px] font-black tracking-[0.15em] uppercase text-emerald-300/60 mt-1 whitespace-nowrap">Concepts Tracked</span>
+                                    </div>
+                                )}
                             </div>
 
                             <div className="mt-2 flex items-start justify-between gap-4">
@@ -1165,27 +1265,34 @@ const StudyRoom: React.FC = () => {
                         </div>
 
                         {mediaError && (
-                            // ... (media error display) ...
                             <div className={`
-                            p-3 rounded-lg text-sm mb-4 ring-1 flex justify-between items-center animate-in fade-in-50
+                            p-4 rounded-2xl text-sm mb-6 border shadow-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 animate-in slide-in-from-top-4 duration-500
                             ${mediaError.type === 'error'
-                                    ? 'bg-red-900/50 text-red-300 ring-red-700'
-                                    : 'bg-sky-900/50 text-sky-300 ring-sky-700'
+                                    ? 'bg-red-500/10 text-red-100 border-red-500/30'
+                                    : 'bg-amber-500/10 text-amber-100 border-amber-500/30'
                                 }
                         `}>
-                                <div className="flex items-center gap-2">
-                                    {mediaError.type === 'error' ? <AlertTriangle size={18} /> : <Info size={18} />}
-                                    <span className="font-medium">{mediaError.message}</span>
+                                <div className="flex items-center gap-3">
+                                    <div className={`p-2 rounded-full ${mediaError.type === 'error' ? 'bg-red-500/20' : 'bg-amber-500/20'}`}>
+                                        {mediaError.type === 'error' ? <AlertTriangle size={24} className="text-red-400" /> : <Info size={24} className="text-amber-400" />}
+                                    </div>
+                                    <div>
+                                        <p className="font-bold text-base">{mediaError.type === 'error' ? 'Camera Error' : 'Permission Required'}</p>
+                                        <p className="opacity-80">{mediaError.message}</p>
+                                    </div>
                                 </div>
-                                <button onClick={getMedia} className={`
-                                font-semibold text-white rounded-md py-1 px-3 text-xs transition-colors
-                                ${mediaError.type === 'error'
-                                        ? 'bg-red-600/50 hover:bg-red-600/80'
-                                        : 'bg-sky-600/50 hover:bg-sky-600/80'
-                                    }
-                            `}>
+                                <Button 
+                                    size="sm"
+                                    onClick={getMedia}
+                                    className={`
+                                    whitespace-nowrap font-bold h-10 px-6
+                                    ${mediaError.type === 'error'
+                                            ? 'bg-red-600 hover:bg-red-500'
+                                            : 'bg-amber-600 hover:bg-amber-500 text-black'
+                                        }
+                                `}>
                                     Retry Access
-                                </button>
+                                </Button>
                             </div>
                         )}
                         <div className="flex-1 min-h-0 relative">
@@ -1222,7 +1329,7 @@ const StudyRoom: React.FC = () => {
                     <aside className={`fixed inset-x-3 top-[5.5rem] bottom-24 z-50 rounded-2xl bg-slate-900/90 backdrop-blur-xl border border-white/10 flex flex-col min-h-0 shadow-2xl transition-all duration-300 xl:relative xl:inset-auto xl:top-auto xl:bottom-auto xl:z-20 xl:w-[24rem] 2xl:w-[26rem] xl:h-full xl:rounded-none xl:bg-slate-900/40 xl:border-l xl:border-t-0 xl:border-r-0 xl:border-b-0 xl:border-white/5 ${isMobilePanelOpen ? 'opacity-100 translate-y-0 pointer-events-auto' : 'opacity-0 translate-y-[105%] pointer-events-none xl:opacity-100 xl:translate-y-0 xl:pointer-events-auto'}`}>
                         <div className="flex border-b border-white/5 p-2 gap-1 bg-black/20 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                             <TabButton id="chat" activeTab={activeTab} setActiveTab={setActiveTab} icon={MessageSquare} label="Chat" />
-                            <TabButton id="ai" activeTab={activeTab} setActiveTab={setActiveTab} icon={Brain} label="AI" />
+                            <TabButton id="ai" activeTab={activeTab} setActiveTab={setActiveTab} icon={Brain} label="AI" neuralStatus={neuralContextStatus} />
                             <TabButton id="notes" activeTab={activeTab} setActiveTab={setActiveTab} icon={FileText} label="Notes" />
                             <TabButton id="tools" activeTab={activeTab} setActiveTab={setActiveTab} icon={Briefcase} label="Tools" />
                             <TabButton id="participants" activeTab={activeTab} setActiveTab={setActiveTab} icon={Users} label="Members" count={participants.length} />
@@ -1276,6 +1383,9 @@ const StudyRoom: React.FC = () => {
                                 sharedQuiz={sharedQuiz}
                                 chatEndRef={aiChatEndRef}
                                 isLoading={isAiLoading}
+                                neuralStatus={neuralContextStatus}
+                                activeTechnique={effectiveTechniqueLabel}
+                                onTrackConcept={handleTrackConcept}
                             />
                         )}
                         {activeTab === 'notes' && (
@@ -1295,6 +1405,11 @@ const StudyRoom: React.FC = () => {
                                 topic={room?.topic || 'General Study'}
                                 isActive={true}
                                 courseId={room?.courseId}
+                                knowledgeGaps={knowledgeGaps}
+                                onTriggerGapAnalysis={handleTriggerGapAnalysis}
+                                activeTechnique={effectiveTechniqueLabel}
+                                trackedConcepts={trackedConcepts}
+                                onTrackConcept={handleTrackConcept}
                             />
                         )}
                     </aside>
@@ -1412,10 +1527,10 @@ const Leaderboard: React.FC<{ quiz: SharedQuiz, participants: { email: string; d
     );
 };
 
-const TabButton: React.FC<{ id: ActiveTab, activeTab: ActiveTab, setActiveTab: (tab: ActiveTab) => void, icon: React.ElementType, label: string, count?: number }> = ({ id, activeTab, setActiveTab, icon: Icon, label, count }) => (
+const TabButton: React.FC<{ id: ActiveTab, activeTab: ActiveTab, setActiveTab: (tab: ActiveTab) => void, icon: React.ElementType, label: string, count?: number, neuralStatus?: string }> = ({ id, activeTab, setActiveTab, icon: Icon, label, count, neuralStatus }) => (
     <button
         onClick={() => setActiveTab(id)}
-        className={`flex items-center justify-center gap-1.5 px-2.5 py-2 min-w-[84px] md:min-w-0 md:flex-1 text-xs font-medium rounded-lg whitespace-nowrap transition-all duration-200 ${activeTab === id
+        className={`relative flex items-center justify-center gap-1.5 px-2.5 py-2 min-w-[84px] md:min-w-0 md:flex-1 text-xs font-medium rounded-lg whitespace-nowrap transition-all duration-200 ${activeTab === id
             ? 'bg-violet-600/20 text-violet-300 shadow-[0_0_10px_rgba(124,58,237,0.2)]'
             : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
             }`}
@@ -1424,8 +1539,10 @@ const TabButton: React.FC<{ id: ActiveTab, activeTab: ActiveTab, setActiveTab: (
         <Icon size={15} />
         {label && <span>{label}</span>}
         {count !== undefined && count > 0 && <span className="text-[10px] bg-slate-800 text-slate-300 rounded-full px-1.5 min-w-[1.2em]">{count}</span>}
+        {neuralStatus === 'ACTIVE' && <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_4px_rgba(16,185,129,0.8)]" />}
     </button>
 );
+
 
 const ChatPanel: React.FC<any> = ({ messages, input, setInput, onSend, currentUser, chatEndRef, typingUsers, roomId }) => {
 
@@ -1489,6 +1606,7 @@ const ChatPanel: React.FC<any> = ({ messages, input, setInput, onSend, currentUs
             </div>
             <div className="mt-auto flex gap-2 relative">
                 <Input
+                    id="room-chat-input"
                     name="chat-message"
                     value={input}
                     onChange={e => {
@@ -1505,6 +1623,7 @@ const ChatPanel: React.FC<any> = ({ messages, input, setInput, onSend, currentUs
                     }}
                     placeholder="Type a message..."
                     className="flex-1"
+                    aria-label="Type a message to the room"
                 />
                 <Button onClick={handleSend} disabled={!input.trim()} className="px-3"><Send size={16} /></Button>
             </div>
@@ -1646,11 +1765,13 @@ const ParticipantsPanel: React.FC<{
                 )}
 
                 <Input
+                    id="member-search-input"
                     name="member-search"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     placeholder="Search members by name or email..."
                     className="h-9 text-xs"
+                    aria-label="Search members"
                 />
 
                 <div className="space-y-2">
@@ -1760,7 +1881,7 @@ const ParticipantsPanel: React.FC<{
                                         >
                                             {actionOnThisMember && memberActionState?.action === 'remove' ? 'Removing...' : 'Remove'}
                                         </Button>
-                                        <Button
+                <Button
                                             size="sm"
                                             variant="secondary"
                                             onClick={() => onTransferHost(memberDescriptor)}
@@ -1779,21 +1900,36 @@ const ParticipantsPanel: React.FC<{
         );
     };
 
-const AiPanel: React.FC<any> = ({ messages, input, setInput, onSend, notes, isExtracting, onUploadClick, onQuizMe, onSummarize, chatEndRef, isLoading, sharedQuiz }) => (
+const AiPanel: React.FC<any> = ({ messages, input, setInput, onSend, notes, isExtracting, onUploadClick, onQuizMe, onSummarize, chatEndRef, isLoading, sharedQuiz, neuralStatus, activeTechnique, onTrackConcept }) => (
     <div className="flex flex-col flex-1 overflow-hidden relative">
+        <div className="flex items-center justify-between px-4 py-2 bg-black/30 border-b border-white/5">
+            <div className="flex items-center gap-2">
+                <div className={`w-2 h-2 rounded-full ${neuralStatus === 'ACTIVE' ? 'bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.8)]' : neuralStatus === 'MAPPING' ? 'bg-sky-500 animate-bounce' : 'bg-slate-600'}`}></div>
+                <span className="text-[10px] uppercase font-bold tracking-widest text-slate-400">Context: {neuralStatus}</span>
+            </div>
+            {neuralStatus !== 'OFFLINE' && (
+                <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-violet-500/10 border border-violet-500/20">
+                    <span className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-ping"></span>
+                    <span className="text-[9px] font-black text-violet-300 uppercase">Agent Mode</span>
+                </div>
+            )}
+        </div>
         <div className="flex-1 overflow-y-auto p-4 space-y-4 pb-20 scrollbar-thin scrollbar-thumb-slate-700">
-            {!notes && (
-                <div className="text-center p-6 border-2 border-dashed border-slate-700 rounded-xl bg-slate-800/30 mx-4 mt-4">
-                    <UploadCloud size={32} className="mx-auto text-slate-500 mb-2" />
-                    <p className="text-sm text-slate-300 font-medium">No Context Loaded</p>
-                    <p className="text-xs text-slate-500 mb-4">Upload study material to get better AI help.</p>
-                    <Button onClick={onUploadClick} disabled={isExtracting || isLoading} className="text-xs bg-slate-700 hover:bg-slate-600 w-full justify-center">
-                        Upload Notes Provided By Class
-                    </Button>
+            {neuralStatus === 'MAPPING' && messages.length <= 1 && (
+                <div className="flex flex-col items-center justify-center p-8 space-y-4 animate-in fade-in zoom-in-95 duration-700">
+                    <div className="relative h-16 w-16">
+                        <div className="absolute inset-0 rounded-full border-2 border-violet-500/20 animate-ping" />
+                        <div className="absolute inset-2 rounded-full border-2 border-violet-500/40 animate-pulse" />
+                        <Brain className="absolute inset-0 m-auto text-violet-400" size={32} />
+                    </div>
+                    <div className="text-center">
+                        <p className="text-sm font-bold text-slate-200">Neural Sync Active</p>
+                        <p className="text-[10px] text-slate-500 uppercase tracking-widest mt-1">Downloading Curriculum Ontology...</p>
+                    </div>
                 </div>
             )}
 
-            {messages.map((msg: ChatMessage, i: number) => (
+            {messages.map((msg: any, i: number) => (
                 <div key={i} className={`flex items-start gap-3 ${msg.role === 'model' ? '' : 'justify-end'}`}>
                     {msg.role === 'model' && (
                         <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-600 to-indigo-600 flex items-center justify-center flex-shrink-0 shadow-lg ring-1 ring-white/10">
@@ -1805,13 +1941,30 @@ const AiPanel: React.FC<any> = ({ messages, input, setInput, onSend, notes, isEx
                         : 'bg-indigo-600 text-white rounded-tr-none'
                         }`}>
                         {msg.parts[0].text}
+
+                        {msg.role === 'model' && activeTechnique === 'Spaced Repetition' && (
+                            <div className="mt-3 pt-3 border-t border-white/5 flex justify-end">
+                                <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => {
+                                        // Extract a likely concept from the message or prompt user
+                                        const concept = msg.parts[0].text.substring(0, 40).trim();
+                                        onTrackConcept(concept);
+                                    }}
+                                    className="h-7 text-[10px] bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20 border border-emerald-500/20"
+                                >
+                                    <Brain size={12} className="mr-1.5" /> Track Concept
+                                </Button>
+                            </div>
+                        )}
                     </div>
                 </div>
             ))}
             {isLoading && (
                 <div className="flex items-center gap-2 text-slate-400 text-xs ml-12">
                     <Spinner size="sm" />
-                    <span>Thinking...</span>
+                    <span>Neural Processing...</span>
                 </div>
             )}
             <div ref={chatEndRef}></div>
@@ -1822,13 +1975,15 @@ const AiPanel: React.FC<any> = ({ messages, input, setInput, onSend, notes, isEx
             <div className="flex gap-2">
                 <div className="flex-1 relative">
                     <Input
+                        id="ai-chat-input"
                         name="ai-message"
                         value={input}
                         onChange={e => setInput(e.target.value)}
                         onKeyPress={e => e.key === 'Enter' && onSend()}
-                        placeholder={notes ? "Ask a question about your notes..." : "Upload notes to start..."}
+                        placeholder="Ask the Study Buddy anything..."
                         className="w-full pl-4 pr-10 py-3 bg-slate-800/50 border-slate-700/50 focus:ring-violet-500/50 rounded-xl transition-all"
                         disabled={isExtracting || !!sharedQuiz || isLoading}
+                        aria-label="Ask the AI assistant"
                     />
                     {notes && <div className="absolute right-3 top-1/2 -translate-y-1/2 w-2 h-2 bg-emerald-500 rounded-full" title="Context Active"></div>}
                 </div>
@@ -1837,14 +1992,12 @@ const AiPanel: React.FC<any> = ({ messages, input, setInput, onSend, notes, isEx
 
             <div className="flex gap-2 mt-3 overflow-x-auto pb-1 scrollbar-none">
                 <Button onClick={onUploadClick} size="sm" variant="secondary" className="text-xs whitespace-nowrap bg-slate-800/50 border border-slate-700/50 hover:bg-slate-700"><Paperclip size={12} className="mr-1.5" /> Context</Button>
-                <Button onClick={onQuizMe} size="sm" variant="secondary" className="text-xs whitespace-nowrap bg-slate-800/50 border border-slate-700/50 hover:bg-slate-700"><Lightbulb size={12} className="mr-1.5" /> Generate Quiz</Button>
+                <Button onClick={onQuizMe} disabled={isExtracting || !!sharedQuiz || isLoading} size="sm" variant="secondary" className="text-xs whitespace-nowrap bg-slate-800/50 border border-slate-700/50 hover:bg-slate-700"><Lightbulb size={12} className="mr-1.5" /> Generate Quiz</Button>
                 <Button onClick={onSummarize} disabled={isExtracting || !!sharedQuiz || isLoading || !notes?.trim()} size="sm" variant="secondary" className="text-xs whitespace-nowrap bg-slate-800/50 border border-slate-700/50 hover:bg-slate-700 disabled:opacity-60"><Info size={12} className="mr-1.5" /> Summarize</Button>
             </div>
-            <p className="text-[10px] text-center text-slate-500 mt-2">AI can make mistakes. Double check important info.</p>
+            <p className="text-[10px] text-center text-slate-500 mt-2">AI can make mistakes. Triple-check synthesized data.</p>
         </div>
     </div>
 );
-
-
 
 export default StudyRoom;

@@ -20,34 +20,21 @@ const ProjectGenerator: React.FC = () => {
     const [ideas, setIdeas] = useState<ProjectIdea[]>([]);
     const [loading, setLoading] = useState(false);
 
+    const [error, setError] = useState<string | null>(null);
+
     const handleGenerate = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
+        setError(null);
         try {
             const result = await generateProjectIdeas(branch, interest, difficulty, language);
             // Result is expected to be a JSON string, parse it
             const parsedIdeas = JSON.parse(result);
             setIdeas(parsedIdeas);
-        } catch (error) {
-            console.error("Error generating ideas:", error);
-            // Fallback to sample ideas if AI fails
-            setIdeas([
-                {
-                    title: "Smart Campus Navigator",
-                    description: "An AR-based mobile app that helps students navigate university canteens, libraries, and labs with real-time crowd tracking.",
-                    techStack: ["React Native", "AR.js", "Firebase", "Node.js"]
-                },
-                {
-                    title: "AI Study Buddy",
-                    description: "A personalized study assistant that creates flashcards and quizzes from your handwritten notes using OCR and NLP.",
-                    techStack: ["Python", "Tesseract OCR", "OpenAI API", "React"]
-                },
-                {
-                    title: "Decentralized Voting System",
-                    description: "A secure blockchain-based voting system for student council elections ensuring transparency and anonymity.",
-                    techStack: ["Solidity", "Ethereum", "Web3.js", "React"]
-                }
-            ]);
+        } catch (err: any) {
+            console.error("Error generating ideas:", err);
+            setError(err.message || "Failed to connect to AI Core. Please check your API keys or network.");
+            setIdeas([]);
         } finally {
             setLoading(false);
         }
@@ -102,6 +89,13 @@ const ProjectGenerator: React.FC = () => {
                         <div className="text-center py-12 bg-slate-800/30 rounded-xl">
                             <Sparkles className="w-8 h-8 text-violet-400 mx-auto animate-pulse mb-4" />
                             <p className="text-slate-400">Brainstorming potential projects...</p>
+                        </div>
+                    ) : error ? (
+                        <div className="p-6 bg-red-900/20 border border-red-500/30 rounded-xl text-center">
+                            <Sparkles className="w-8 h-8 text-red-400 mx-auto mb-4" />
+                            <h3 className="text-lg font-bold text-red-200 mb-2">AI Node Disconnected</h3>
+                            <p className="text-sm text-red-300/80">{error}</p>
+                            <Button onClick={handleGenerate} className="mt-4 bg-red-600 hover:bg-red-700 text-white border-none">Retry Connection</Button>
                         </div>
                     ) : ideas.length > 0 ? (
                         ideas.map((idea, index) => (

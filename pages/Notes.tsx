@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import ReactMarkdown from 'react-markdown';
 import { useAuth } from '../contexts/AuthContext';
 import { getCourses, addCourse } from '../services/courseService';
 import { getNotes, addTextNote, uploadNoteFile, deleteNote, getFlashcards, addFlashcards, updateFlashcard, updateNoteContent, getQuizzes, savePersonalQuiz, updateQuizScore } from '../services/notesService';
@@ -151,16 +152,17 @@ const StudyPlanView: React.FC<{
 
             <div className="space-y-4 text-left">
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1">Academic Goal</label>
+                <label htmlFor="study-goal-input" className="block text-sm font-medium text-slate-300 mb-1">Academic Goal</label>
                 <Input
+                  id="study-goal-input"
                   placeholder="e.g., Master organic chemistry mechanisms"
                   value={goal}
                   onChange={e => setGoal(e.target.value)}
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1">Timeframe (Days)</label>
-                <Select value={duration} onChange={e => setDuration(e.target.value)}>
+                <label htmlFor="study-duration-select" className="block text-sm font-medium text-slate-300 mb-1">Timeframe (Days)</label>
+                <Select id="study-duration-select" value={duration} onChange={e => setDuration(e.target.value)}>
                   {[3, 5, 7, 10, 14, 21, 30].map(d => (
                     <option key={d} value={d}>{d} Days</option>
                   ))}
@@ -263,16 +265,13 @@ const Notes: React.FC = () => {
   const [isSingleGenerating, setIsSingleGenerating] = useState<string | null>(null); // Track which note ID is generating
 
   const location = useLocation();
+  const initRef = useRef(false);
 
-  // Handle deep linking from Dashboard
   useEffect(() => {
-    if (location.state?.activeTab) {
-      setActiveTab(location.state.activeTab);
+    if (location.state?.course) {
+      setSelectedCourse(location.state.course);
     }
-    if (location.state?.courseId) {
-      setSelectedCourse(location.state.courseId);
-    }
-  }, [location]);
+  }, []); // ← empty array = runs only once on mount
 
 
   // --- Data Fetching Effects ---
@@ -462,7 +461,10 @@ const Notes: React.FC = () => {
 
       console.log(`Generating flashcards from extracted text (length: ${extractedContent.length})`);
       const flashcardsJson = await generateFlashcards(extractedContent, language);
-      const newFlashcards = JSON.parse(flashcardsJson).map((f: any) => ({
+      const parsedData = JSON.parse(flashcardsJson);
+      const flashcardsArray = Array.isArray(parsedData) ? parsedData : (parsedData.flashcards || []);
+      
+      const newFlashcards = flashcardsArray.map((f: any) => ({
         ...f,
         id: `mock_flashcard_${Date.now()}_${Math.random()}`,
         bucket: 1,
@@ -492,7 +494,10 @@ const Notes: React.FC = () => {
     try {
       console.log(`Generating flashcards from single note '${note.title}' (length: ${note.content.length})`);
       const flashcardsJson = await generateFlashcards(note.content, language);
-      const newFlashcards = JSON.parse(flashcardsJson).map((f: any) => ({
+      const parsedData = JSON.parse(flashcardsJson);
+      const flashcardsArray = Array.isArray(parsedData) ? parsedData : (parsedData.flashcards || []);
+
+      const newFlashcards = flashcardsArray.map((f: any) => ({
         ...f,
         id: `mock_flashcard_${Date.now()}_${Math.random()}`,
         bucket: 1,
@@ -530,8 +535,9 @@ const Notes: React.FC = () => {
 
     try {
       console.log("Generating quiz from notes...");
-      const quizJson = await generateQuizSet(content, 5, language); // Default 5 questions
-      const questionSet = JSON.parse(quizJson);
+      const quizJson = await generateQuizSet(content, 5, language);
+      const parsedData = JSON.parse(quizJson);
+      const questionSet = Array.isArray(parsedData) ? parsedData : (parsedData.questions || parsedData.quiz || []);
 
       const newQuiz: PersonalQuiz = {
         id: `quiz_${Date.now()}`,
@@ -568,12 +574,19 @@ const Notes: React.FC = () => {
 
       {/* --- Course Selector --- */}
       <div className="flex items-center gap-2">
-        <BookOpen className="w-6 h-6 mr-2 text-violet-400" />
+        <label htmlFor="course-select-notes" className="flex items-center">
+          <BookOpen className="w-6 h-6 mr-2 text-violet-400" />
+          <span className="sr-only">Select Course</span>
+        </label>
         <Select
           id="course-select-notes"
           name="courseId"
           value={selectedCourse}
-          onChange={e => setSelectedCourse(e.target.value)}
+          onChange={e => {
+            const val = e.target.value;
+            console.log("[Notes] Manually selecting course:", val);
+            setSelectedCourse(val);
+          }}
           className="w-full md:w-1/3"
         >
           <option value="">Select a Course</option>
@@ -581,7 +594,7 @@ const Notes: React.FC = () => {
             <option key={course.id} value={course.id}>{course.name}</option>
           )}
         </Select>
-        <Button onClick={handleAddCourse} className="p-2.5"><PlusCircle size={16} /></Button>
+        <Button onClick={handleAddCourse} className="p-2.5" aria-label="Add new course"><PlusCircle size={16} /></Button>
       </div>
 
       {selectedCourse ? (
@@ -893,7 +906,10 @@ const NotesView: React.FC<{
               ) : (
                 <div className="p-4">
                   {activeNote.type === 'text' && (
-                    <div className="prose prose-invert max-w-none whitespace-pre-wrap">{activeNote.content || <p className="text-slate-400">This note is empty. Click 'Edit' to start writing.</p>}</div>
+                    <div className="prose prose-invert max-w-none">
+                      <ReactMarkdown>{activeNote.content || ''}</ReactMarkdown>
+                      {!activeNote.content && <p className="text-slate-400">This note is empty. Click 'Edit' to start writing.</p>}
+                    </div>
                   )}
                   {(activeNote.type === 'file' || activeNote.fileUrl) && activeNote.type !== 'text' && (
                     <div className="p-4 bg-slate-700/50 rounded-lg text-center">
@@ -999,13 +1015,18 @@ const AddNoteModal: React.FC<{ isOpen: boolean, onClose: () => void, courseId: s
         />
 
         {noteType === 'text' && (
-          <Textarea
-            placeholder="Write your note or doubt here..."
-            value={content}
-            onChange={e => setContent(e.target.value)}
-            rows={8}
-            className="bg-slate-900/50 border-white/5 resize-none focus:ring-violet-500/50"
-          />
+          <>
+            <label htmlFor="add-note-content" className="sr-only">Note Content</label>
+            <Textarea
+              id="add-note-content"
+              name="noteContent"
+              placeholder="Write your note or doubt here..."
+              value={content}
+              onChange={e => setContent(e.target.value)}
+              rows={8}
+              className="bg-slate-900/50 border-white/5 resize-none focus:ring-violet-500/50"
+            />
+          </>
         )}
 
         {noteType === 'file' && (
@@ -1172,11 +1193,12 @@ const FlashcardPlayer: React.FC<{ flashcards: FlashcardType[], onComplete: () =>
         <X size={24} />
       </button>
       <div
-        className="relative w-full max-w-2xl h-80"
+        className="relative w-full max-w-2xl h-80 cursor-pointer group"
         style={{ perspective: '1000px' }}
+        onClick={() => setIsFlipped(!isFlipped)}
       >
         <div
-          className={`relative w-full h-full transition-transform duration-500 transform-style-3d ${isFlipped ? 'rotate-y-180' : ''}`}
+          className={`relative w-full h-full transition-transform duration-500 transform-style-3d shadow-2xl rounded-xl ${isFlipped ? 'rotate-y-180' : ''}`}
         >
           {/* Front */}
           <div className="absolute w-full h-full bg-slate-700 rounded-lg flex items-center justify-center p-8 text-center backface-hidden">
@@ -1189,7 +1211,8 @@ const FlashcardPlayer: React.FC<{ flashcards: FlashcardType[], onComplete: () =>
         </div>
       </div>
 
-      <p className="text-slate-300 mt-4 text-sm">Card {currentIndex + 1} of {flashcards.length}</p>
+      <p className="text-slate-500 mt-4 text-xs animate-pulse uppercase tracking-widest">Tap the card to flip</p>
+      <p className="text-slate-300 mt-1 text-sm">Card {currentIndex + 1} of {flashcards.length}</p>
 
       <div className="absolute bottom-10 flex gap-4">
         {!isFlipped ? (
@@ -1197,6 +1220,7 @@ const FlashcardPlayer: React.FC<{ flashcards: FlashcardType[], onComplete: () =>
         ) : (
           <>
             <Button onClick={() => handleNext(false)} className="bg-red-600 hover:bg-red-700 px-8 py-3 text-lg">Incorrect</Button>
+            <Button onClick={() => setIsFlipped(false)} variant="outline" className="px-6 py-3 text-lg">Flip Back</Button>
             <Button onClick={() => handleNext(true)} className="bg-green-600 hover:bg-green-700 px-8 py-3 text-lg">Correct</Button>
           </>
         )}

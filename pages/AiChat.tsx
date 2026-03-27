@@ -6,10 +6,10 @@ import { type ChatMessage } from '../types';
 import { streamChat, streamStudyBuddyChat, extractTextFromFile, generateQuizQuestion } from '../services/geminiService';
 import { trackToolUsage } from '../services/personalizationService';
 import { startSession, endSession, recordQuizResult, getProductivityReport } from '../services/analyticsService';
-import { createChatSession, addMessageToSession } from '../services/aiChatService'; // Added import
+import { createChatSession, addMessageToSession } from '../services/aiChatService';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
-import { Bot, User, Send, Mic, Volume2, VolumeX, Lightbulb, Sparkles, Calendar, Image as ImageIcon, X, Paperclip } from 'lucide-react';
+import { Bot, User, Send, Mic, Volume2, VolumeX, Lightbulb, Sparkles, Calendar, Image as ImageIcon, X, Paperclip, Target, Library } from 'lucide-react';
 
 interface Quiz {
     topic: string;
@@ -28,6 +28,8 @@ const UPLOADED_CONTEXT_MAX_CHARS = parsePositiveInt(import.meta.env.VITE_AI_DOC_
 const UPLOADED_QUIZ_CONTEXT_MAX_CHARS = parsePositiveInt(import.meta.env.VITE_AI_DOC_QUIZ_CONTEXT_MAX_CHARS, 12000);
 const UPLOAD_MAX_FILE_MB = parsePositiveInt(import.meta.env.VITE_AI_DOC_MAX_FILE_MB, 10);
 
+import ReactMarkdown from 'react-markdown';
+
 const ChatItem: React.FC<{ message: ChatMessage; onSpeak: (text: string) => void }> = ({ message, onSpeak }) => {
     const isModel = message.role === 'model';
     const text = message.parts.map(part => part.text).join('');
@@ -41,7 +43,9 @@ const ChatItem: React.FC<{ message: ChatMessage; onSpeak: (text: string) => void
             )}
             <div className={`flex flex-col gap-2 max-w-xl`}>
                 <div className={`p-4 rounded-2xl ${isModel ? 'bg-slate-800 rounded-tl-none' : 'bg-sky-600 text-white rounded-br-none'}`}>
-                    <div className="prose prose-invert prose-sm" style={{ whiteSpace: 'pre-wrap' }}>{text}</div>
+                    <div className="prose prose-invert prose-sm">
+                        <ReactMarkdown>{text}</ReactMarkdown>
+                    </div>
                 </div>
                 {isModel && text && (
                     <button onClick={() => onSpeak(text)} className="flex items-center gap-1 text-xs text-slate-400 hover:text-violet-400 transition-colors self-start ml-2">
@@ -58,8 +62,6 @@ const ChatItem: React.FC<{ message: ChatMessage; onSpeak: (text: string) => void
     );
 };
 
-
-// Localized Strings Helper
 const getLocalizedMessage = (type: 'default' | 'weakness' | 'activeRecall' | 'feynman' | 'spacedRepetition' | 'notes', lang: string, params?: any) => {
     const isMr = lang === 'mr';
     const isHi = lang === 'hi';
@@ -112,13 +114,11 @@ const AiTutor: React.FC = () => {
     };
 
     const [messages, setMessages] = useState<ChatMessage[]>([
-        { role: 'model', parts: [{ text: "..." }] } // Placeholder, will update in useEffect
+        { role: 'model', parts: [{ text: "..." }] }
     ]);
 
-    // Update initial message when language changes or on mount
     useEffect(() => {
-        // Only update if it's the very first message and still the default placeholder or previous default
-        if (messages.length === 1 && messages[0].role === 'model') {
+        if (messages.length === 1 && messages[0].role === 'model' && messages[0].parts[0].text === "...") {
             setMessages([{
                 role: 'model',
                 parts: [{ text: getLocalizedMessage('default', language) }]
@@ -153,10 +153,9 @@ const AiTutor: React.FC = () => {
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const location = useLocation();
     const navigate = useNavigate();
-    const { user } = useAuth(); // Get user context
+    const { user } = useAuth();
     const proactiveMessageSent = useRef(false);
 
-    // Construct User System Context
     const getUserContext = () => {
         if (!user) return '';
         const parts = [
@@ -169,19 +168,14 @@ const AiTutor: React.FC = () => {
         return `[SYSTEM_CONTEXT: ${parts.join(' | ')}]`;
     };
 
-    // Initialize Chat Session on Mount
     useEffect(() => {
         const initSession = async () => {
             try {
-                // If we don't have a session ID yet, creation one.
-                // In a future update, we could check for an existing recent session here.
                 if (!sessionId && proactiveMessageSent.current) {
-                    // We wait for the proactive message logic to fire first so we save the right greeting
                     const initialMsg = messages[0];
                     if (initialMsg) {
                         const session = await createChatSession("AI Tutor Session", [initialMsg]);
                         setSessionId(session._id);
-                        console.log("Created AI Chat Session:", session._id);
                     }
                 }
             } catch (err) {
@@ -189,7 +183,6 @@ const AiTutor: React.FC = () => {
             }
         };
 
-        // Very basic debouncing/check to ensure messages state is settled
         if (messages.length > 0 && !sessionId) {
             initSession();
         }
@@ -349,11 +342,15 @@ const AiTutor: React.FC = () => {
             }
         } catch (err: any) {
             console.error("File extraction failed:", err);
-            let userFriendlyMsg = 'Could not read this file. Please try another image/document.';
-            if (err?.status === 429) {
-                userFriendlyMsg = 'File reading is rate-limited right now. Please retry shortly.';
+            let userFriendlyMsg = 'Could not read this file. Please ensure it is a valid document or image.';
+            
+            // Check for explicit 429 rate limit errors from our new backend
+            const isQuotaError = err?.status === 429 || /quota|busy|capacity|rate limit/i.test(err?.message || '');
+            
+            if (isQuotaError) {
+                userFriendlyMsg = 'NexusAI File Reader is currently busy due to Google API limits. Please wait 30 seconds and try uploading again.';
             } else if (err?.status === 503) {
-                userFriendlyMsg = 'File-reading model is currently unavailable. Please retry in a minute.';
+                userFriendlyMsg = 'The extraction engine is currently starting up. Please try again in a few moments.';
             } else if (typeof err?.message === 'string' && err.message.trim()) {
                 userFriendlyMsg = err.message;
             }
@@ -366,6 +363,7 @@ const AiTutor: React.FC = () => {
             setIsExtracting(false);
             if (e.target) e.target.value = '';
         }
+
     };
 
     const handleSend = useCallback(async (messageToSend?: string, isVoiceInput = false) => {
@@ -389,7 +387,6 @@ const AiTutor: React.FC = () => {
         setError(null);
         setQuiz(null);
 
-        // --- Save User Message ---
         if (sessionId) {
             addMessageToSession(sessionId, [newUserMessage]).catch(e => console.error("Failed to save user message", e));
         }
@@ -457,9 +454,8 @@ const AiTutor: React.FC = () => {
                 }
             }
 
-            setIsLoading(false); // Hide loading indicator once streaming is complete
+            setIsLoading(false);
 
-            // --- Save Model Response ---
             if (sessionId && modelResponse) {
                 const finalModelMsg: ChatMessage = { role: 'model', parts: [{ text: modelResponse }] };
                 addMessageToSession(sessionId, [finalModelMsg]).catch(e => console.error("Failed to save model message", e));
@@ -470,16 +466,13 @@ const AiTutor: React.FC = () => {
             }
         } catch (err: any) {
             console.error("AI Tutor Error:", err);
-
             let userFriendlyMsg = 'Sorry, something went wrong. Please try again.';
             const rawError = err.message || '';
-
             if (rawError.includes('429') || rawError.toLowerCase().includes('quota')) {
                 userFriendlyMsg = 'The AI is currently at its limit (free tier). Please wait about a minute and try again.';
             } else if (rawError.includes('404')) {
                 userFriendlyMsg = 'The AI model is currently unavailable. I am looking into it.';
             }
-
             setError(userFriendlyMsg);
             setMessages(prev => [...prev, { role: 'model', parts: [{ text: userFriendlyMsg }] }]);
         } finally {
@@ -502,9 +495,6 @@ const AiTutor: React.FC = () => {
             const quizJsonString = await generateQuizQuestion(context, language);
             const parsedQuiz = JSON.parse(quizJsonString);
             setQuiz(parsedQuiz);
-
-            // Note: We're not saving the quiz interaction to chat history explicitly here for simplicity, 
-            // but normally you might want to save the question/answer text.
         } catch (err) {
             console.error("Failed to generate quiz", err);
             setError("Sorry, I couldn't generate a quiz question right now. Please try again.");
@@ -517,7 +507,16 @@ const AiTutor: React.FC = () => {
         if (!quiz) return;
 
         const isCorrect = selectedIndex === quiz.correctOptionIndex;
-        await recordQuizResult(quiz.topic, isCorrect, selectedCourse);
+        
+        // --- DATA PIPELINE: Save Detailed Result ---
+        await recordQuizResult(
+            quiz.topic, 
+            isCorrect, 
+            selectedCourse,
+            quiz.question,
+            quiz.options[selectedIndex],
+            quiz.options[quiz.correctOptionIndex]
+        );
 
         let feedbackMessage = '';
         if (isCorrect) {
@@ -528,21 +527,17 @@ const AiTutor: React.FC = () => {
 
         setMessages(prev => [...prev, { role: 'model', parts: [{ text: feedbackMessage }] }]);
 
-        // Save quiz feedback
         if (sessionId) {
             addMessageToSession(sessionId, [{ role: 'model', parts: [{ text: feedbackMessage }] }]);
         }
 
         setQuiz(prev => prev ? { ...prev, userAnswerIndex: selectedIndex } : null);
-        setTimeout(() => setQuiz(null), 3000); // Hide quiz after 3 seconds
+        setTimeout(() => setQuiz(null), 3000);
     };
 
     useEffect(() => {
         const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-        if (!SpeechRecognition) {
-            console.warn("Speech recognition not supported in this browser.");
-            return;
-        }
+        if (!SpeechRecognition) return;
         const recognition = new SpeechRecognition();
         recognition.continuous = false;
         recognition.interimResults = true;
@@ -556,48 +551,26 @@ const AiTutor: React.FC = () => {
             setError("Speech recognition is not available in your browser.");
             return;
         }
-
         if (isListening) {
             recognition.stop();
             return;
         }
-
         setError(null);
-
         let finalTranscript = '';
         recognition.onresult = (event: any) => {
             let interimTranscript = '';
             for (let i = event.resultIndex; i < event.results.length; ++i) {
                 const transcript = event.results[i][0].transcript;
-                if (event.results[i].isFinal) {
-                    finalTranscript += transcript + ' ';
-                } else {
-                    interimTranscript += transcript;
-                }
+                if (event.results[i].isFinal) finalTranscript += transcript + ' ';
+                else interimTranscript += transcript;
             }
             setInput(finalTranscript + interimTranscript);
         };
-
         recognition.onend = () => {
             setIsListening(false);
-            if (finalTranscript.trim()) {
-                handleSend(finalTranscript.trim(), true);
-            }
+            if (finalTranscript.trim()) handleSend(finalTranscript.trim(), true);
         };
-
-        recognition.onerror = (event: any) => {
-            if (event.error === 'no-speech') {
-                // User was silent, this is not a fatal error. Just stop listening.
-            } else if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
-                console.error("Speech recognition permission error", event.error);
-                setError("Microphone access denied. Please enable it in your browser settings to use voice input.");
-            } else {
-                console.error("Speech recognition error", event.error);
-                setError(`Speech recognition error: ${event.error}. Please try again.`);
-            }
-            setIsListening(false);
-        };
-
+        recognition.onerror = () => setIsListening(false);
         setInput('');
         recognition.start();
         setIsListening(true);
@@ -614,16 +587,18 @@ const AiTutor: React.FC = () => {
                         </div>
                     )}
                 </div>
-                <CourseSelector selectedCourse={selectedCourse} onCourseChange={setSelectedCourse} />
+                <div className="flex items-center gap-2">
+                    <Button size="sm" variant="ghost" onClick={() => navigate('/topic-predictor')} className="text-amber-400 bg-amber-400/10 hover:bg-amber-400/20 border border-amber-400/20"><Target size={14} className="mr-1" /> Topic Predictor</Button>
+                    <Button size="sm" variant="ghost" onClick={() => navigate('/paper-bank')} className="text-sky-400 bg-sky-400/10 hover:bg-sky-400/20 border border-sky-400/20"><Library size={14} className="mr-1" /> Paper Bank</Button>
+                    <CourseSelector selectedCourse={selectedCourse} onCourseChange={setSelectedCourse} />
+                </div>
             </div>
             <div className="flex-1 bg-slate-800/50 rounded-xl p-4 flex flex-col overflow-hidden ring-1 ring-slate-700">
                 <div className="flex-1 overflow-y-auto pr-2">
                     {messages.map((msg, index) => <ChatItem key={index} message={msg} onSpeak={handleSpeak} />)}
                     {isLoading && !quiz && (
                         <div className="flex items-start gap-4 my-4">
-                            <div className="flex-shrink-0 w-10 h-10 rounded-full bg-violet-600 flex items-center justify-center">
-                                <Bot className="w-6 h-6 text-white" />
-                            </div>
+                            <div className="flex-shrink-0 w-10 h-10 rounded-full bg-violet-600 flex items-center justify-center"><Bot className="w-6 h-6 text-white" /></div>
                             <div className="max-w-xl p-4 rounded-2xl bg-slate-800 rounded-tl-none">
                                 <div className="loading-dot">
                                     <span className="inline-block w-2 h-2 bg-slate-400 rounded-full"></span>
@@ -647,16 +622,7 @@ const AiTutor: React.FC = () => {
                                         else if (isSelected && !isCorrect) buttonClass = 'bg-red-500/80';
                                         else buttonClass = 'bg-slate-800/50 opacity-60';
                                     }
-                                    return (
-                                        <button
-                                            key={index}
-                                            onClick={() => handleAnswerQuiz(index)}
-                                            disabled={quiz.userAnswerIndex !== undefined}
-                                            className={`p-3 text-left text-sm rounded-lg transition-all duration-200 ${buttonClass}`}
-                                        >
-                                            {option}
-                                        </button>
-                                    )
+                                    return <button key={index} onClick={() => handleAnswerQuiz(index)} disabled={quiz.userAnswerIndex !== undefined} className={`p-3 text-left text-sm rounded-lg transition-all duration-200 ${buttonClass}`}>{option}</button>
                                 })}
                             </div>
                         </div>
@@ -668,75 +634,18 @@ const AiTutor: React.FC = () => {
                     {(selectedDocument || isExtracting || uploadedContextMeta) && (
                         <div className="flex items-center gap-2 p-2 bg-slate-900/80 rounded-lg border border-slate-700 w-fit animate-in slide-in-from-bottom-2">
                             <ImageIcon size={16} className="text-sky-400" />
-                            <span className="text-xs text-slate-300 max-w-[260px] truncate">
-                                {isExtracting
-                                    ? `Reading ${selectedDocument?.name || 'file'}...`
-                                    : uploadedContextMeta
-                                        ? `${uploadedContextMeta.name}${uploadedContextMeta.truncated ? ' (trimmed for AI context)' : ''}`
-                                        : selectedDocument?.name}
-                            </span>
-                            <button onClick={clearUploadedContext} className="text-slate-500 hover:text-rose-400" disabled={isExtracting}>
-                                <X size={14} />
-                            </button>
+                            <span className="text-xs text-slate-300 max-w-[260px] truncate">{isExtracting ? `Reading ${selectedDocument?.name || 'file'}...` : uploadedContextMeta ? `${uploadedContextMeta.name}${uploadedContextMeta.truncated ? ' (trimmed for AI context)' : ''}` : selectedDocument?.name}</span>
+                            <button onClick={clearUploadedContext} className="text-slate-500 hover:text-rose-400" disabled={isExtracting}><X size={14} /></button>
                         </div>
                     )}
                     <div className="flex items-center gap-2">
-                        <input
-                            type="file"
-                            ref={fileInputRef}
-                            onChange={handleImageUpload}
-                            accept="image/*,.pdf,.txt,.md,.ppt,.pptx"
-                            className="hidden"
-                        />
-                        <Button
-                            onClick={() => fileInputRef.current?.click()}
-                            disabled={isLoading || !!quiz || isExtracting}
-                            className="px-4 py-3 bg-slate-700 hover:bg-slate-600"
-                            aria-label="Upload file"
-                        >
-                            <Paperclip className="w-5 h-5" />
-                        </Button>
-                        <Input
-                            id="chat-input"
-                            name="chatInput"
-                            type="text"
-                            value={input}
-                            onChange={(e) => setInput(e.target.value)}
-                            onKeyPress={(e) => e.key === 'Enter' && !isLoading && handleSend()}
-                            placeholder={uploadedContextMeta ? "Ask anything from your uploaded file..." : "Ask a question or upload notes/image..."}
-                            disabled={isLoading || !!quiz || isExtracting}
-                            className="flex-1"
-                            autoComplete="off"
-                        />
-                        <Button
-                            onClick={handleQuizMe}
-                            disabled={isLoading || !!quiz || isExtracting}
-                            className="px-4 py-3 bg-slate-700 hover:bg-slate-600"
-                            aria-label="Quiz me"
-                        >
-                            <Lightbulb className="w-5 h-5" />
-                        </Button>
-                        <Button
-                            onClick={handleListen}
-                            disabled={isLoading || !!quiz || isExtracting}
-                            className={`px-4 py-3 ${isListening ? 'bg-red-600 hover:bg-red-700' : 'bg-slate-700 hover:bg-slate-600'}`}
-                            aria-label={isListening ? 'Stop listening' : 'Start listening'}
-                        >
-                            <Mic className="w-5 h-5" />
-                        </Button>
-                        <Button
-                            onClick={() => {
-                                speechSynthesis.cancel();
-                                setIsAutoSpeaking(prev => !prev);
-                            }}
-                            className={`px-4 py-3 ${isAutoSpeaking ? 'bg-violet-600 hover:bg-violet-700' : 'bg-slate-700 hover:bg-slate-600'}`}
-                            aria-label={isAutoSpeaking ? 'Disable automatic speaking' : 'Enable automatic speaking'}
-                        >
-                            {isAutoSpeaking ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
-                        </Button>
-                        <Button onClick={() => handleSend()} isLoading={isLoading} disabled={!input.trim() || !!quiz || isExtracting} className="px-4 py-3">
-                            {!isLoading && <Send className="w-5 h-5" />}
-                        </Button>
+                        <input type="file" ref={fileInputRef} onChange={handleImageUpload} accept="image/*,.pdf,.txt,.md,.ppt,.pptx" className="hidden" />
+                        <Button onClick={() => fileInputRef.current?.click()} disabled={isLoading || !!quiz || isExtracting} className="px-4 py-3 bg-slate-700 hover:bg-slate-600"><Paperclip className="w-5 h-5" /></Button>
+                        <Input id="chat-input" name="chatInput" type="text" value={input} onChange={(e) => setInput(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && !isLoading && handleSend()} placeholder={uploadedContextMeta ? "Ask anything from your uploaded file..." : "Ask a question or upload notes/image..."} disabled={isLoading || !!quiz || isExtracting} className="flex-1" autoComplete="off" aria-label="Ask the AI Tutor" />
+                        <Button onClick={handleQuizMe} disabled={isLoading || !!quiz || isExtracting} className="px-4 py-3 bg-slate-700 hover:bg-slate-600"><Lightbulb className="w-5 h-5" /></Button>
+                        <Button onClick={handleListen} disabled={isLoading || !!quiz || isExtracting} className={`px-4 py-3 ${isListening ? 'bg-red-600 hover:bg-red-700' : 'bg-slate-700 hover:bg-slate-600'}`}><Mic className="w-5 h-5" /></Button>
+                        <Button onClick={() => { speechSynthesis.cancel(); setIsAutoSpeaking(prev => !prev); }} className={`px-4 py-3 ${isAutoSpeaking ? 'bg-violet-600 hover:bg-violet-700' : 'bg-slate-700 hover:bg-slate-600'}`}>{isAutoSpeaking ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}</Button>
+                        <Button onClick={() => handleSend()} isLoading={isLoading} disabled={!input.trim() || !!quiz || isExtracting} className="px-4 py-3">{!isLoading && <Send className="w-5 h-5" />}</Button>
                     </div>
                 </div>
             </div>

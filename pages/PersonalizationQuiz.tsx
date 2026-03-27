@@ -146,8 +146,10 @@ const PersonalizationQuiz: React.FC = () => {
 
                                 <div className="grid gap-4">
                                     <div>
-                                        <label className="block text-sm font-medium text-slate-300 mb-1">{t('personalization.state')}</label>
+                                        <label htmlFor="state-select" className="block text-sm font-medium text-slate-300 mb-1">{t('personalization.state')}</label>
                                         <select
+                                            id="state-select"
+                                            name="state"
                                             className="w-full bg-slate-900/50 border border-slate-600 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-violet-500 outline-none"
                                             value={formData.state}
                                             onChange={(e) => updateField('state', e.target.value)}
@@ -158,8 +160,10 @@ const PersonalizationQuiz: React.FC = () => {
                                     </div>
 
                                     <div>
-                                        <label className="block text-sm font-medium text-slate-300 mb-1">{t('personalization.city')}</label>
+                                        <label htmlFor="city-select" className="block text-sm font-medium text-slate-300 mb-1">{t('personalization.city')}</label>
                                         <select
+                                            id="city-select"
+                                            name="city"
                                             className="w-full bg-slate-900/50 border border-slate-600 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-violet-500 outline-none"
                                             value={formData.city}
                                             onChange={(e) => updateField('city', e.target.value)}
@@ -171,8 +175,10 @@ const PersonalizationQuiz: React.FC = () => {
                                     </div>
 
                                     <div>
-                                        <label className="block text-sm font-medium text-slate-300 mb-1">{t('personalization.college')}</label>
+                                        <label htmlFor="college-select" className="block text-sm font-medium text-slate-300 mb-1">{t('personalization.college')}</label>
                                         <select
+                                            id="college-select"
+                                            name="college"
                                             className="w-full bg-slate-900/50 border border-slate-600 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-violet-500 outline-none"
                                             value={formData.college}
                                             onChange={(e) => updateField('college', e.target.value)}
@@ -184,8 +190,10 @@ const PersonalizationQuiz: React.FC = () => {
                                     </div>
 
                                     <div>
-                                        <label className="block text-sm font-medium text-slate-300 mb-1">{t('personalization.branch')}</label>
+                                        <label htmlFor="branch-select" className="block text-sm font-medium text-slate-300 mb-1">{t('personalization.branch')}</label>
                                         <select
+                                            id="branch-select"
+                                            name="branch"
                                             className="w-full bg-slate-900/50 border border-slate-600 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-violet-500 outline-none"
                                             value={formData.branch}
                                             onChange={(e) => updateField('branch', e.target.value)}
@@ -202,8 +210,10 @@ const PersonalizationQuiz: React.FC = () => {
                                     </div>
 
                                     <div>
-                                        <label className="block text-sm font-medium text-slate-300 mb-1">{t('personalization.currentYear')}</label>
+                                        <label htmlFor="year-select" className="block text-sm font-medium text-slate-300 mb-1">{t('personalization.currentYear')}</label>
                                         <select
+                                            id="year-select"
+                                            name="year"
                                             className="w-full bg-slate-900/50 border border-slate-600 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-violet-500 outline-none"
                                             value={formData.year}
                                             onChange={(e) => updateField('year', e.target.value)}
@@ -282,8 +292,10 @@ const PersonalizationQuiz: React.FC = () => {
 
                                 <div className="grid gap-6">
                                     <div>
-                                        <label className="block text-sm font-medium text-slate-300 mb-2">{t('personalization.primaryTarget')}</label>
+                                        <label htmlFor="target-exam-select" className="block text-sm font-medium text-slate-300 mb-2">{t('personalization.primaryTarget')}</label>
                                         <select
+                                            id="target-exam-select"
+                                            name="targetExam"
                                             className="w-full bg-slate-900/50 border border-slate-600 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-violet-500 outline-none"
                                             value={formData.targetExam}
                                             onChange={(e) => updateField('targetExam', e.target.value)}
@@ -297,8 +309,10 @@ const PersonalizationQuiz: React.FC = () => {
                                     </div>
 
                                     <div>
-                                        <label className="block text-sm font-medium text-slate-300 mb-2">{t('personalization.minorDegree')}</label>
+                                        <label htmlFor="minor-degree-select" className="block text-sm font-medium text-slate-300 mb-2">{t('personalization.minorDegree')}</label>
                                         <select
+                                            id="minor-degree-select"
+                                            name="minorDegree"
                                             className="w-full bg-slate-900/50 border border-slate-600 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-violet-500 outline-none"
                                             value={formData.minorDegree}
                                             onChange={(e) => updateField('minorDegree', e.target.value)}
@@ -313,8 +327,10 @@ const PersonalizationQuiz: React.FC = () => {
                                     </div>
 
                                     <div>
-                                        <label className="block text-sm font-medium text-slate-300 mb-2">{t('personalization.backlogs')}</label>
+                                        <label htmlFor="backlogs-input" className="block text-sm font-medium text-slate-300 mb-2">{t('personalization.backlogs')}</label>
                                         <input
+                                            id="backlogs-input"
+                                            name="backlogs"
                                             type="number"
                                             min={0}
                                             className="w-full bg-slate-900/50 border border-slate-600 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-violet-500 outline-none"

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Brain, Send, User, Bot, Sparkles, MessageSquare, CheckCircle, AlertCircle, RefreshCcw } from 'lucide-react';
+import { Brain, Send, User, Bot, Sparkles, MessageSquare, CheckCircle, AlertCircle, RefreshCcw, Info } from 'lucide-react';
 import { Button, Spinner } from './ui';
 import { streamFeynmanChat, getFeynmanFeedback } from '../services/geminiService';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -22,6 +22,8 @@ interface Feedback {
     verdict: string;
     improvement: string;
 }
+
+import ReactMarkdown from 'react-markdown';
 
 const FeynmanAssistant: React.FC<FeynmanAssistantProps> = ({ topic, notes }) => {
     const [messages, setMessages] = useState<Message[]>([]);
@@ -124,8 +126,32 @@ const FeynmanAssistant: React.FC<FeynmanAssistantProps> = ({ topic, notes }) => 
                     <div className="p-2 rounded-lg bg-violet-600/20 text-violet-400">
                         <Brain size={18} />
                     </div>
-                    <div>
-                        <h3 className="text-sm font-semibold text-white">Feynman Assistant</h3>
+                    <div className="relative group">
+                        <div className="flex items-center gap-1.5 cursor-help">
+                            <h3 className="text-sm font-semibold text-white">Feynman Assistant</h3>
+                            <Info size={12} className="text-slate-500 group-hover:text-violet-400 transition-colors" />
+                        </div>
+                        
+                        {/* THE HOVER TOOLTIP */}
+                        <div className="absolute left-0 top-full mt-2 w-72 p-4 bg-slate-900/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl z-[100] opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 transform origin-top-left scale-95 group-hover:scale-100">
+                            <div className="space-y-4">
+                                <section>
+                                    <h4 className="text-[10px] font-bold text-sky-400 uppercase tracking-widest mb-1">Meaning</h4>
+                                    <p className="text-[11px] text-slate-200 leading-relaxed">
+                                        A learning method where you explain a concept in simple terms, identifying gaps in your understanding to focus your study.
+                                    </p>
+                                </section>
+                                <section>
+                                    <h4 className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest mb-1">Use</h4>
+                                    <p className="text-[11px] text-slate-200 leading-relaxed">
+                                        Try to explain your topic to the AI Buddy in "Simple Mode". If you can't explain it simply, you don't understand it well enough.
+                                    </p>
+                                </section>
+                            </div>
+                            {/* Pointer/Arrow */}
+                            <div className="absolute -top-1 left-4 w-2 h-2 bg-slate-900 border-l border-t border-white/10 rotate-45"></div>
+                        </div>
+
                         <p className="text-[10px] text-slate-400">Teaching: <span className="text-violet-300">{topic}</span></p>
                     </div>
                 </div>
@@ -168,7 +194,7 @@ const FeynmanAssistant: React.FC<FeynmanAssistantProps> = ({ topic, notes }) => 
                                         {m.role === 'user' ? <User size={14} className="text-white" /> : <Bot size={14} className="text-violet-400" />}
                                     </div>
                                     <div className={`p-3 rounded-2xl text-xs leading-relaxed ${m.role === 'user' ? 'bg-violet-600 text-white rounded-tr-none' : 'bg-slate-800 text-slate-200 border border-slate-700 rounded-tl-none'}`}>
-                                        {m.text}
+                                        <ReactMarkdown>{m.text}</ReactMarkdown>
                                     </div>
                                 </div>
                             </div>

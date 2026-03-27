@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 
 type AppMode = 'study' | 'placement';
 
@@ -10,13 +11,17 @@ interface ModeContextType {
 const ModeContext = createContext<ModeContextType | undefined>(undefined);
 
 export const ModeProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-    const [mode, setMode] = useState<AppMode>(() => {
-        const path = typeof window !== 'undefined' ? window.location.hash || window.location.pathname : '';
-        if (path.includes('/placement') || path.includes('/resume-builder') || path.includes('/interview')) {
-            return 'placement';
+    const location = useLocation();
+    const [mode, setMode] = useState<AppMode>('study');
+
+    useEffect(() => {
+        const path = location.pathname || '';
+        if (path.includes('/placement') || path.includes('/resume-builder') || path.includes('/interview') || path.includes('/practice-hub') || path.includes('/company-hub') || path.includes('/learning-resources')) {
+            setMode('placement');
+        } else {
+            setMode('study');
         }
-        return 'study';
-    });
+    }, [location]);
 
     return (
         <ModeContext.Provider value={{ mode, setMode }}>

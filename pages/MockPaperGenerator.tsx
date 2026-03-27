@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import ReactMarkdown from 'react-markdown';
 import { PageHeader, Button, Input, Select } from '../components/ui';
 import { FileText, Sparkles, Download, CheckCircle, ArrowLeft, Printer } from 'lucide-react';
 import { generateMockPaper } from '../services/geminiService';
@@ -63,7 +64,7 @@ const MockPaperGenerator: React.FC = () => {
                             <Sparkles size={18} className="text-violet-400" /> Paper Settings
                         </h3>
                         <div>
-                            <label className="block text-sm font-medium text-slate-400 mb-2">Subject Name</label>
+                            <label htmlFor="mock-subject" className="block text-sm font-medium text-slate-400 mb-2">Subject Name</label>
                             <Input
                                 id="mock-subject"
                                 name="subject"
@@ -74,7 +75,7 @@ const MockPaperGenerator: React.FC = () => {
                             />
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-slate-400 mb-2">Branch</label>
+                            <label htmlFor="mock-branch" className="block text-sm font-medium text-slate-400 mb-2">Branch</label>
                             <Input
                                 id="mock-branch"
                                 name="branch"
@@ -84,7 +85,7 @@ const MockPaperGenerator: React.FC = () => {
                             />
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-slate-400 mb-2">Year</label>
+                            <label htmlFor="mock-year" className="block text-sm font-medium text-slate-400 mb-2">Year</label>
                             <Select id="mock-year" name="year" value={year} onChange={(e) => setYear(e.target.value)}>
                                 <option>First Year</option>
                                 <option>Second Year</option>
@@ -144,11 +145,13 @@ const MockPaperGenerator: React.FC = () => {
                                             <div className="space-y-4 pl-6">
                                                 {q.subQuestions.map((sub, sIdx) => (
                                                     <div key={sIdx} className="flex justify-between items-start group">
-                                                        <p className="flex-1 pr-12">
-                                                            <span className="mr-3 font-semibold">({String.fromCharCode(97 + sIdx)})</span>
-                                                            {sub.text}
-                                                        </p>
-                                                        <span className="font-medium italic opacity-70">({sub.marks})</span>
+                                                        <div className="flex-1 pr-12 flex gap-3">
+                                                            <span className="font-semibold shrink-0">({String.fromCharCode(97 + sIdx)})</span>
+                                                            <div className="prose prose-sm max-w-none text-slate-900">
+                                                                <ReactMarkdown>{sub.text}</ReactMarkdown>
+                                                            </div>
+                                                        </div>
+                                                        <span className="font-medium italic opacity-70 flex-shrink-0">({sub.marks})</span>
                                                     </div>
                                                 ))}
                                             </div>

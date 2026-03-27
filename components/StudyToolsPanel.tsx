@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { Layers, Network, Brain, Wand2 } from 'lucide-react';
+import { Layers, Network, Brain, Wand2, Target, RotateCcw, MessageSquare } from 'lucide-react';
 import { Button, Spinner } from './ui';
 import FlashcardDeck from './FlashcardDeck';
 import KnowledgeMap from './KnowledgeMap';
@@ -8,20 +8,30 @@ import { generateFlashcards as generateFlashcardsApi } from '../services/geminiS
 import { getFlashcards, addFlashcards, getQuizzes } from '../services/notesService';
 import { Flashcard as FlashcardType } from '../types';
 
-type ToolTab = 'flashcards' | 'map' | 'feynman';
+type ToolTab = 'flashcards' | 'map' | 'feynman' | 'gaps';
 
 interface StudyToolsPanelProps {
     notes: string;
     topic: string;
     isActive: boolean;
     courseId?: string;
+    knowledgeGaps?: string[];
+    onTriggerGapAnalysis?: () => Promise<void>;
+    trackedConcepts?: string[];
+    onTrackConcept?: (concept: string) => Promise<void>;
+    activeTechnique?: string;
 }
 
-const StudyToolsPanel: React.FC<StudyToolsPanelProps> = ({ notes, topic, isActive, courseId }) => {
-    const [activeTab, setActiveTab] = useState<ToolTab>('flashcards');
+const StudyToolsPanel: React.FC<StudyToolsPanelProps> = ({ 
+    notes, topic, isActive, courseId, knowledgeGaps, onTriggerGapAnalysis,
+    trackedConcepts = [], onTrackConcept, activeTechnique
+}) => {
+    const [activeTab, setActiveTab] = useState<ToolTab | 'review'>('flashcards');
+    const [newConceptInput, setNewConceptInput] = useState('');
     const [flashcards, setFlashcards] = useState<FlashcardType[]>([]);
     const [isGeneratingCards, setIsGeneratingCards] = useState(false);
     const [isFetchingCards, setIsFetchingCards] = useState(false);
+    const [isAnalyzingGaps, setIsAnalyzingGaps] = useState(false);
     const [quizScores, setQuizScores] = useState<number[]>([]);
     const canPersistFlashcards = !!courseId && courseId !== 'general';
     const generalFlashcardsStorageKey = useMemo(() => {
@@ -318,20 +328,61 @@ const StudyToolsPanel: React.FC<StudyToolsPanelProps> = ({ notes, topic, isActiv
         }
     };
 
+    const handleTriggerGaps = async () => {
+        if (!onTriggerGapAnalysis) return;
+        setIsAnalyzingGaps(true);
+        try {
+            await onTriggerGapAnalysis();
+        } finally {
+            setIsAnalyzingGaps(false);
+        }
+    };
+
     if (!isActive) return null;
 
     return (
         <div className="flex flex-col flex-1 overflow-hidden h-full bg-slate-900/40 relative">
             {/* Tool Selector */}
-            <div className="flex gap-1 p-2 border-b border-white/5 bg-slate-900/60 backdrop-blur-md">
-                <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setActiveTab('flashcards')}
-                    className={`flex-1 text-xs ${activeTab === 'flashcards' ? 'bg-violet-600/20 text-violet-300' : 'text-slate-400'}`}
-                >
-                    <Layers size={14} className="mr-1.5" /> Cards
-                </Button>
+            <div className="flex gap-1 p-2 border-b border-white/5 bg-slate-900/60 backdrop-blur-md overflow-x-auto scrollbar-none">
+                {activeTechnique === 'Spaced Repetition' && (
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setActiveTab('review')}
+                        className={`flex-1 text-xs whitespace-nowrap ${activeTab === 'review' ? 'bg-emerald-600/20 text-emerald-300' : 'text-slate-400'}`}
+                    >
+                        <Brain size={14} className="mr-1.5" /> Review
+                    </Button>
+                )}
+                <div className="relative group flex-1">
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setActiveTab('flashcards')}
+                        className={`w-full text-xs ${activeTab === 'flashcards' ? 'bg-violet-600/20 text-violet-300' : 'text-slate-400'}`}
+                    >
+                        <Brain size={14} className="mr-1.5" /> Cards
+                    </Button>
+
+                    {/* Hover Info Tooltip (Spaced Repetition) */}
+                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-3 bg-slate-900/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl z-[100] opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 transform origin-bottom scale-95 group-hover:scale-100 pointer-events-none">
+                        <div className="space-y-3">
+                            <section>
+                                <h4 className="text-[9px] font-bold text-sky-400 uppercase tracking-widest mb-1">MEANING</h4>
+                                <p className="text-[10px] text-slate-200 leading-tight">
+                                    An evidence-based learning technique that performs review of material at increasing intervals to leverage the spacing effect.
+                                </p>
+                            </section>
+                            <section>
+                                <h4 className="text-[9px] font-bold text-emerald-400 uppercase tracking-widest mb-1">USE</h4>
+                                <p className="text-[10px] text-slate-200 leading-tight">
+                                    Generate key points from your notes and schedule them for review. Ideal for long-term retention of large amounts of info.
+                                </p>
+                            </section>
+                        </div>
+                        <div className="absolute top-full left-1/2 -translate-x-1/2 w-2 h-2 bg-slate-900 border-r border-b border-white/10 rotate-45 -mt-1"></div>
+                    </div>
+                </div>
                 <Button
                     variant="ghost"
                     size="sm"
@@ -340,13 +391,42 @@ const StudyToolsPanel: React.FC<StudyToolsPanelProps> = ({ notes, topic, isActiv
                 >
                     <Network size={14} className="mr-1.5" /> Map
                 </Button>
+                <div className="relative group flex-1">
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setActiveTab('feynman')}
+                        className={`w-full text-xs ${activeTab === 'feynman' ? 'bg-violet-600/20 text-violet-300' : 'text-slate-400'}`}
+                    >
+                        <MessageSquare size={14} className="mr-1.5" /> Feynman
+                    </Button>
+                    
+                    {/* Hover Info Tooltip */}
+                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-3 bg-slate-900/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl z-[100] opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 transform origin-bottom scale-95 group-hover:scale-100 pointer-events-none">
+                        <div className="space-y-3">
+                            <section>
+                                <h4 className="text-[9px] font-bold text-sky-400 uppercase tracking-widest mb-1">MEANING</h4>
+                                <p className="text-[10px] text-slate-200 leading-tight">
+                                    Explain concepts simply as if teaching to a child to identify gaps in your own understanding.
+                                </p>
+                            </section>
+                            <section>
+                                <h4 className="text-[9px] font-bold text-emerald-400 uppercase tracking-widest mb-1">USE</h4>
+                                <p className="text-[10px] text-slate-200 leading-tight">
+                                    Identify knowledge gaps by stripping away complex jargon and simplifying into a clear narrative.
+                                </p>
+                            </section>
+                        </div>
+                        <div className="absolute top-full left-1/2 -translate-x-1/2 w-2 h-2 bg-slate-900 border-r border-b border-white/10 rotate-45 -mt-1"></div>
+                    </div>
+                </div>
                 <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => setActiveTab('feynman')}
-                    className={`flex-1 text-xs ${activeTab === 'feynman' ? 'bg-violet-600/20 text-violet-300' : 'text-slate-400'}`}
+                    onClick={() => setActiveTab('gaps')}
+                    className={`flex-1 text-xs ${activeTab === 'gaps' ? 'bg-violet-600/20 text-violet-300' : 'text-slate-400'}`}
                 >
-                    <Brain size={14} className="mr-1.5" /> Feynman
+                    <Target size={14} className="mr-1.5" /> Gaps
                 </Button>
             </div>
 
@@ -430,6 +510,130 @@ const StudyToolsPanel: React.FC<StudyToolsPanelProps> = ({ notes, topic, isActiv
                             <p className="text-[10px] text-slate-400 leading-relaxed italic">
                                 "If you want to master something, teach it. The Feynman Technique identifies gaps in your knowledge by challenging you to explain complex ideas in simple terms."
                             </p>
+                        </div>
+                    </div>
+                )}
+
+                {/* GAPS TAB */}
+                {activeTab === 'gaps' && (
+                    <div className="h-full flex flex-col animate-in fade-in-50">
+                        <div className="flex justify-between items-start mb-4">
+                            <div>
+                                <h3 className="text-sm font-medium text-slate-200 mb-1 flex items-center gap-2">
+                                    <Target size={16} className="text-rose-400" /> Collective Knowledge Gaps
+                                </h3>
+                                <p className="text-xs text-slate-500">AI insights on group struggles.</p>
+                            </div>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={handleTriggerGaps}
+                                disabled={isAnalyzingGaps}
+                                className="h-7 text-[10px] border-rose-500/30 text-rose-300 hover:bg-rose-500/20"
+                            >
+                                {isAnalyzingGaps ? <Spinner size="sm" /> : <><RotateCcw size={10} className="mr-1" /> Refresh</>}
+                            </Button>
+                        </div>
+                        
+                        <div className="flex-1 overflow-y-auto space-y-3 pr-2 scrollbar-thin scrollbar-thumb-slate-700">
+                            {(!knowledgeGaps || knowledgeGaps.length === 0) ? (
+                                <div className="p-8 rounded-2xl border border-dashed border-slate-700 bg-slate-800/20 flex flex-col items-center justify-center text-center mt-4">
+                                    <div className="w-12 h-12 rounded-full bg-emerald-500/10 flex items-center justify-center mb-4 ring-1 ring-emerald-500/20">
+                                        <Target size={24} className="text-emerald-400" />
+                                    </div>
+                                    <p className="text-slate-300 font-medium text-sm">No Gaps Detected Yet</p>
+                                    <p className="text-slate-500 text-xs mt-2 leading-relaxed max-w-[200px]">
+                                        Discuss topics or upload notes to help the AI identify collective learning gaps.
+                                    </p>
+                                </div>
+                            ) : (
+                                knowledgeGaps.map((gap, idx) => (
+                                    <div key={idx} className="group p-4 rounded-xl border border-rose-500/10 bg-gradient-to-br from-rose-500/5 to-transparent hover:from-rose-500/10 transition-all duration-300 flex items-start gap-4">
+                                        <div className="w-8 h-8 rounded-lg bg-rose-500/20 flex items-center justify-center flex-shrink-0 mt-0.5 group-hover:scale-110 transition-transform shadow-inner">
+                                            <span className="text-rose-400 text-xs font-bold">{idx + 1}</span>
+                                        </div>
+                                        <div className="flex-1">
+                                            <p className="text-sm font-semibold text-rose-100">{gap}</p>
+                                            <p className="text-[11px] text-rose-400/60 mt-2 leading-relaxed">
+                                                <span className="text-rose-400/80 font-medium">Group Nudge:</span> This concept seems to be a common friction point. Try explaining it using the Feynman tool!
+                                            </p>
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    </div>
+                )}
+
+                {/* REVIEW TAB (Spaced Repetition) */}
+                {activeTab === 'review' && (
+                    <div className="h-full flex flex-col space-y-4 animate-in slide-in-from-right-4 duration-300">
+                        <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-2xl p-4">
+                            <h3 className="text-sm font-bold text-emerald-300 flex items-center gap-2 mb-2">
+                                <Brain size={16} /> Spaced Repetition
+                            </h3>
+                            <p className="text-xs text-slate-400 leading-relaxed">
+                                Moving ideas from short-term to long-term memory via <b>Active Recall</b>.
+                            </p>
+                        </div>
+
+                        <div className="space-y-3">
+                            <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-1">Track New Concept</h4>
+                            <div className="flex gap-2">
+                                <input
+                                    type="text"
+                                    value={newConceptInput}
+                                    onChange={(e) => setNewConceptInput(e.target.value)}
+                                    placeholder="Enter topic to revisit..."
+                                    className="flex-1 bg-slate-800/50 border border-white/10 rounded-xl px-3 py-2 text-xs focus:ring-1 ring-emerald-500/50 outline-none"
+                                    onKeyPress={(e) => {
+                                        if (e.key === 'Enter' && newConceptInput.trim() && onTrackConcept) {
+                                            onTrackConcept(newConceptInput.trim());
+                                            setNewConceptInput('');
+                                        }
+                                    }}
+                                />
+                                <Button
+                                    size="sm"
+                                    onClick={() => {
+                                        if (newConceptInput.trim() && onTrackConcept) {
+                                            onTrackConcept(newConceptInput.trim());
+                                            setNewConceptInput('');
+                                        }
+                                    }}
+                                    disabled={!newConceptInput.trim()}
+                                    className="bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl px-3"
+                                >
+                                    Track
+                                </Button>
+                            </div>
+                        </div>
+
+                        <div className="flex-1 min-h-0 flex flex-col space-y-3">
+                            <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-1">Review Items ({trackedConcepts.length})</h4>
+                            
+                            <div className="flex-1 overflow-y-auto space-y-2 pr-1 scrollbar-thin scrollbar-thumb-slate-700">
+                                {trackedConcepts.length === 0 ? (
+                                    <div className="flex flex-col items-center justify-center p-8 border-2 border-dashed border-slate-800 rounded-2xl text-center">
+                                        <Layers size={24} className="text-slate-700 mb-2" />
+                                        <p className="text-xs text-slate-600 italic">No concepts tracked yet.<br/>Use the AI chat or the input above.</p>
+                                    </div>
+                                ) : (
+                                    trackedConcepts.map((concept, idx) => (
+                                        <div key={idx} className="p-3 bg-slate-800/40 border border-white/5 rounded-xl hover:border-emerald-500/30 transition-all flex items-center justify-between group">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-6 h-6 rounded-lg bg-emerald-500/10 flex items-center justify-center text-[10px] font-bold text-emerald-400">
+                                                    {idx + 1}
+                                                </div>
+                                                <span className="text-xs text-slate-200 font-medium">{concept}</span>
+                                            </div>
+                                            <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
                         </div>
                     </div>
                 )}

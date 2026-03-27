@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import ReactMarkdown from 'react-markdown';
 import { Button, Textarea, Spinner } from './ui';
 // Note type might not be strictly needed if we use DisplayItem consistently
 // import { Note } from '../types';
@@ -252,8 +253,10 @@ const StudyRoomNotesPanel: React.FC<StudyRoomNotesPanelProps> = ({
                                         placeholder="Start writing shared notes..."
                                     />
                                 ) : (
-                                    // Use prose for better text formatting, ensure whitespace wrapping
-                                    <div className="prose prose-sm prose-invert max-w-none whitespace-pre-wrap">{editedContent || <p className="text-slate-400 italic">Shared notes are empty. Click 'Edit' to start.</p>}</div>
+                                    <div className="prose prose-sm prose-invert max-w-none">
+                                        <ReactMarkdown>{editedContent}</ReactMarkdown>
+                                        {!editedContent && <p className="text-slate-400 italic">Shared notes are empty. Click 'Edit' to start.</p>}
+                                    </div>
                                 )
                             ) : (
                                 // File Display Area

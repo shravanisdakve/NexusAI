@@ -77,7 +77,7 @@ const getGroqClient = () => {
 };
 
 /**
- * Generate text using Groq API
+ * Generate text using Groq API (with Retry for Rate Limits)
  */
 async function generateWithGroq(prompt, options = {}) {
     const client = getGroqClient();
@@ -90,22 +90,35 @@ async function generateWithGroq(prompt, options = {}) {
         : (options.fast ? MODEL_CONFIG[PROVIDERS.GROQ].fast : MODEL_CONFIG[PROVIDERS.GROQ].default);
 
     const messages = [];
-
     if (options.systemInstruction) {
         messages.push({ role: 'system', content: options.systemInstruction });
     }
-
     messages.push({ role: 'user', content: prompt });
 
-    const completion = await client.chat.completions.create({
-        model: model,
-        messages: messages,
-        temperature: options.temperature || 0.7,
-        max_tokens: options.maxTokens || 2048,
-        response_format: options.json ? { type: 'json_object' } : undefined,
-    });
-
-    return completion.choices[0]?.message?.content || '';
+    let attempts = 0;
+    const maxAttempts = 3;
+    
+    while (attempts < maxAttempts) {
+        try {
+            const completion = await client.chat.completions.create({
+                model: model,
+                messages: messages,
+                temperature: options.temperature || 0.7,
+                max_tokens: options.maxTokens || 2048,
+                response_format: options.json ? { type: 'json_object' } : undefined,
+            });
+            return completion.choices[0]?.message?.content || '';
+        } catch (error) {
+            attempts++;
+            if (error.status === 429 && attempts < maxAttempts) {
+                const waitTime = attempts * 2000;
+                console.warn(`[aiProvider] Groq rate limited (429). Waiting ${waitTime}ms and retrying (Attempt ${attempts}/${maxAttempts})...`);
+                await new Promise(r => setTimeout(r, waitTime));
+                continue;
+            }
+            throw error;
+        }
+    }
 }
 
 /**
@@ -144,6 +157,36 @@ async function* streamWithGroq(prompt, options = {}) {
         }
     }
 }
+
+/**
+ * Perform OCR/OCR using Groq Vision Models
+ */
+async function extractTextWithGroqVision(base64Data, mimeType, prompt = "Extract all text from this image as accurately as possible.") {
+    const client = getGroqClient();
+    if (!client) throw new Error('Groq not configured');
+
+    const completion = await client.chat.completions.create({
+        model: "llama-3.2-11b-vision-preview",
+        messages: [
+            {
+                role: "user",
+                content: [
+                    { type: "text", text: prompt },
+                    {
+                        type: "image_url",
+                        image_url: {
+                            url: `data:${mimeType};base64,${base64Data}`,
+                        },
+                    },
+                ],
+            },
+        ],
+        temperature: 0.1,
+    });
+
+    return completion.choices[0]?.message?.content || '';
+}
+
 
 /**
  * Generate text using OpenRouter API
@@ -289,69 +332,91 @@ function getProviderForFeature(feature) {
 }
 
 /**
- * Generate text using Gemini API
+ * Generate text using Gemini API with Key Pool Support
  */
 async function generateWithGemini(prompt, options = {}) {
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-        throw new Error('Gemini API key not configured. Check GEMINI_API_KEY.');
-    }
-
-    const { GoogleGenerativeAI } = require('@google/generative-ai');
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const modelName = options.model || (options.fast ? 'gemini-1.5-flash' : 'gemini-1.5-pro');
-
-    const config = {
-        model: modelName,
-        generationConfig: {
-            temperature: options.temperature || 0.7,
-            maxOutputTokens: options.maxTokens || 2048,
-            responseMimeType: options.json ? "application/json" : "text/plain"
+    const getGeminiKeys = () => {
+        const keys = [process.env.GEMINI_API_KEY];
+        for (let i = 2; i <= 10; i++) {
+            const key = process.env[`GEMINI_API_KEY_${i}`];
+            if (key) keys.push(key);
         }
+        return keys.filter(Boolean);
     };
 
-    if (options.systemInstruction) {
-        config.systemInstruction = options.systemInstruction;
-    }
+    const keys = getGeminiKeys();
+    const { GoogleGenerativeAI } = require('@google/generative-ai');
+    let lastError = null;
 
-    const model = genAI.getGenerativeModel(config);
-    const result = await model.generateContent(prompt);
-    return result.response.text();
+    for (const key of keys) {
+        try {
+            const genAI = new GoogleGenerativeAI(key);
+            const modelName = options.model || (options.fast ? 'gemini-1.5-flash' : 'gemini-1.5-pro');
+            const model = genAI.getGenerativeModel({ model: modelName });
+            
+            const content = options.systemInstruction 
+                ? `${options.systemInstruction}\n\n${prompt}`
+                : prompt;
+
+            const result = await model.generateContent(content);
+            return result.response.text();
+        } catch (error) {
+            lastError = error;
+            if (error.message?.includes('429') || error.message?.toLowerCase().includes('quota')) {
+                console.warn(`[aiProvider] Gemini key rate limit hit locally. Rotating...`);
+                continue;
+            }
+            break;
+        }
+    }
+    throw lastError || new Error('Gemini generation failed');
 }
 
 /**
- * Stream text using Gemini API
+ * Stream text using Gemini API with Key Pool Support
  */
 async function* streamWithGemini(prompt, options = {}) {
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-        throw new Error('Gemini API key not configured.');
-    }
-
-    const { GoogleGenerativeAI } = require('@google/generative-ai');
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const modelName = options.model || (options.fast ? 'gemini-1.5-flash' : 'gemini-1.5-pro');
-
-    const config = {
-        model: modelName,
-        generationConfig: {
-            temperature: options.temperature || 0.7,
-            maxOutputTokens: options.maxTokens || 2048
+    const getGeminiKeys = () => {
+        const keys = [process.env.GEMINI_API_KEY];
+        for (let i = 2; i <= 10; i++) {
+            const key = process.env[`GEMINI_API_KEY_${i}`];
+            if (key) keys.push(key);
         }
+        return keys.filter(Boolean);
     };
 
-    if (options.systemInstruction) {
-        config.systemInstruction = options.systemInstruction;
-    }
+    const keys = getGeminiKeys();
+    const { GoogleGenerativeAI } = require('@google/generative-ai');
+    let lastError = null;
 
-    const model = genAI.getGenerativeModel(config);
-    const result = await model.generateContentStream(prompt);
+    for (const key of keys) {
+        try {
+            const genAI = new GoogleGenerativeAI(key);
+            const modelName = options.model || (options.fast ? 'gemini-1.5-flash' : 'gemini-1.5-pro');
+            const model = genAI.getGenerativeModel({ model: modelName });
 
-    for await (const chunk of result.stream) {
-        const text = chunk.text();
-        if (text) yield text;
+            const content = options.systemInstruction 
+                ? `${options.systemInstruction}\n\n${prompt}`
+                : prompt;
+
+            const result = await model.generateContentStream(content);
+            for await (const chunk of result.stream) {
+                const text = chunk.text();
+                if (text) yield text;
+            }
+            return; // Success
+        } catch (error) {
+            lastError = error;
+            if (error.message?.includes('429') || error.message?.toLowerCase().includes('quota')) {
+                console.warn(`[aiProvider] Gemini stream key rate limit hit. Rotating...`);
+                continue;
+            }
+            break;
+        }
     }
+    throw lastError || new Error('Gemini streaming failed');
 }
+
 
 /**
  * Generate text using local Ollama API
@@ -577,6 +642,8 @@ module.exports = {
     getAvailableProviders,
     generateWithGroq,
     streamWithGroq,
+    extractTextWithGroqVision,
+    /** Gemini Methods **/
     generateWithOpenRouter,
     streamWithOpenRouter,
     generateWithOllama,

@@ -21,9 +21,24 @@ type ModalStep = 'selectMode' | 'selectTechnique' | 'configureRoom';
 type RoomMode = 'Group' | 'College';
 
 const techniques = [
-    { name: 'Pomodoro Technique', description: 'Use a timer to break down work into focused intervals.', icon: Timer },
-    { name: 'Feynman Technique', description: 'Explain it simply to find your knowledge gaps.', icon: MessageSquare },
-    { name: 'Spaced Repetition', description: 'Review at increasing intervals for long-term retention.', icon: Timer }
+    { 
+        name: 'Pomodoro Technique', 
+        meaning: 'A time management method that uses a timer to break work into intervals, traditionally 25 minutes in length, separated by short breaks.',
+        use: 'Enter "Focus Mode" for 25 minutes, then "Break Mode" for 5. Great for maintaining high concentration levels without burnout.',
+        icon: Timer 
+    },
+    { 
+        name: 'Feynman Technique', 
+        meaning: 'A learning method where you explain a concept in simple terms, identifying gaps in your understanding to focus your study.',
+        use: 'Try to explain your topic to the AI Buddy in "Simple Mode". If you can\'t explain it simply, you don\'t understand it well enough.',
+        icon: MessageSquare 
+    },
+    { 
+        name: 'Spaced Repetition', 
+        meaning: 'An evidence-based learning technique that performs review of material at increasing intervals to leverage the spacing effect.',
+        use: 'Generate key points from your notes and schedule them for review. Ideal for long-term retention of large amounts of info.',
+        icon: Brain 
+    }
 ];
 
 const CreateRoomModal: React.FC<CreateRoomModalProps> = ({ isOpen, onClose }) => {
@@ -174,13 +189,38 @@ const CreateRoomModal: React.FC<CreateRoomModalProps> = ({ isOpen, onClose }) =>
                     <button
                         key={tech.name}
                         onClick={() => setSelectedTechnique(tech.name)}
-                        className={`w-full p-3 rounded-lg text-left transition-all duration-200 ring-2 ${selectedTechnique === tech.name ? 'bg-slate-700 ring-violet-500' : 'bg-slate-800 ring-transparent hover:ring-slate-600'}`}
+                        className={`group w-full p-3 rounded-lg text-left transition-all duration-300 ring-2 ${
+                            selectedTechnique === tech.name 
+                                ? 'bg-slate-700 ring-violet-500 shadow-lg shadow-violet-500/10' 
+                                : 'bg-slate-800 ring-transparent hover:ring-slate-700 hover:bg-slate-700/50'
+                        }`}
                     >
-                        <div className="flex items-center gap-2 mb-1">
-                            <tech.icon className="w-4 h-4 text-slate-300" />
-                            <h4 className="font-semibold text-sm text-slate-100">{tech.name}</h4>
+                        <div className="flex items-center gap-2">
+                            <tech.icon className={`w-4 h-4 ${selectedTechnique === tech.name ? 'text-violet-400' : 'text-slate-400 group-hover:text-violet-400'} transition-colors`} />
+                            <h4 className={`font-semibold text-sm ${selectedTechnique === tech.name ? 'text-white' : 'text-slate-200 group-hover:text-white'} transition-colors`}>
+                                {tech.name}
+                            </h4>
                         </div>
-                        <p className="text-xs text-slate-400">{tech.description}</p>
+                        <div className={`overflow-hidden transition-all duration-300 ease-in-out ${
+                            selectedTechnique === tech.name 
+                                ? 'max-h-64 opacity-100 mt-3' 
+                                : 'max-h-0 opacity-0 group-hover:max-h-64 group-hover:opacity-100 group-hover:mt-3'
+                        }`}>
+                            <div className="pl-6 border-l-2 border-violet-500/30 space-y-3">
+                                <div>
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-sky-400 mb-1">MEANING</p>
+                                    <p className="text-xs text-slate-300 leading-relaxed">
+                                        {(tech as any).meaning}
+                                    </p>
+                                </div>
+                                <div>
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-emerald-400 mb-1">USE</p>
+                                    <p className="text-xs text-slate-300 leading-relaxed">
+                                        {(tech as any).use}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
                     </button>
                 ))}
             </div>

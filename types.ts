@@ -102,6 +102,8 @@ export interface StudyRoom {
     technique?: string;
     topic?: string;
     techniqueState?: TechniqueState | null;
+    knowledgeGaps?: string[];
+    trackedConcepts?: string[];
 }
 
 export type TechniqueKey = 'pomodoro' | 'feynman' | 'spaced_repetition';
@@ -198,6 +200,7 @@ export interface GeminiRequest {
     persona?: string;
     count?: number;
     topic?: string;
+    quizHistory?: any[];
 }
 
 export interface GeminiResponse {

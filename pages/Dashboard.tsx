@@ -24,11 +24,11 @@ import {
     Target, Lightbulb, Timer, Zap, BookOpen,
     Play, Pause, RefreshCw, PlusCircle, Trash2, User, Users, Star,
     BarChart, Clock, Brain, TrendingUp, TrendingDown, Repeat, Sparkles, Calculator, Shield, Calendar, CheckCircle2, Circle,
-    Pin, X, Plus, ChevronDown, GraduationCap, Binary, Briefcase
+    Pin, X, Plus, ChevronDown, GraduationCap, Binary, Briefcase, Library
 } from 'lucide-react';
 import { XPBar, StreakCounter, BadgeSmall } from '@/components/gamification/XPComponents';
 import { getUserStats, updateStreak, awardBadge, UserStats } from '@/services/gamificationService';
-import LeaderboardWidget from '@/components/gamification/LeaderboardWidget';
+// import LeaderboardWidget from '@/components/gamification/LeaderboardWidget';
 
 const formatSeconds = (seconds: number) => {
     if (seconds < 60) return `${seconds}s`;
@@ -182,7 +182,7 @@ const ActivePlanWidget: React.FC = () => {
                         </div>
                     ))}
                 </div>
-                <Link to="/notes" state={{ activeTab: 'plan', courseId: plan.courseId }}>
+                <Link to="/notes" state={{ activeTab: 'plan', courseId: plan.courseId, course: plan.courseId }}>
                     <Button className="w-full mt-2 text-sm">
                         {t('dashboard.viewFullPlan')}
                     </Button>
@@ -257,7 +257,7 @@ const MyCourses: React.FC = () => {
                     </div>
                 )}
                 {courses.map(course => (
-                    <Link to="/notes" state={{ courseId: course.id }} key={course.id} className="group flex items-center justify-between bg-slate-800 p-3 rounded-lg hover:bg-slate-700 transition-colors">
+                    <Link to="/notes" state={{ courseId: course.id, course: course.id }} key={course.id} className="group flex items-center justify-between bg-slate-800 p-3 rounded-lg hover:bg-slate-700 transition-colors">
                         <div className="flex items-center overflow-hidden mr-2">
                             <span className="w-3 h-3 rounded-full mr-3 flex-shrink-0" style={{ backgroundColor: course.color }}></span>
                             <span className="font-medium text-slate-300 truncate">{course.name}</span>
@@ -295,18 +295,21 @@ const MyCourses: React.FC = () => {
 
 const tools = [
     { key: 'tutor', name: 'AI Tutor', href: '/tutor', description: 'Practice concepts with your AI tutor.', icon: MessageSquare, color: 'text-sky-400', bgColor: 'bg-sky-900/50' },
-    { key: 'summaries', name: 'Summaries Generator', href: '/notes', description: 'Generate summaries from your notes.', icon: FileText, color: 'text-emerald-400', bgColor: 'bg-emerald-900/50' },
+    // { key: 'summaries', name: 'Summaries Generator', href: '/notes', description: 'Generate summaries from your notes.', icon: FileText, color: 'text-emerald-400', bgColor: 'bg-emerald-900/50' },
     { key: 'quizzes', name: 'Quizzes & Practice', href: '/quizzes', description: 'Test your knowledge with practice quizzes.', icon: Brain, color: 'text-rose-400', bgColor: 'bg-rose-900/50' },
     { key: 'gpa', name: 'GPA Calculator', href: '/gpa-calculator', description: 'Calculate your SGPA/CGPA easily.', icon: Calculator, color: 'text-violet-400', bgColor: 'bg-violet-900/50' },
-    { key: 'project', name: 'Project Ideas', href: '/project-generator', description: 'Get AI-powered project ideas.', icon: Lightbulb, color: 'text-amber-400', bgColor: 'bg-amber-900/50' },
+    // { key: 'project', name: 'Project Ideas', href: '/project-generator', description: 'Get AI-powered project ideas.', icon: Lightbulb, color: 'text-amber-400', bgColor: 'bg-amber-900/50' },
+    // { key: 'insights', name: 'AI Knowledge Map', href: '/insights', description: 'Deep AI analysis of your proficiency.', icon: Zap, color: 'text-violet-400', bgColor: 'bg-violet-900/50' },
     { key: 'curriculum', name: 'MU Curriculum', href: '/curriculum', description: 'Interactive syllabus twin.', icon: GraduationCap, color: 'text-blue-400', bgColor: 'bg-blue-900/50' },
 
-    { key: 'placement', name: 'Placement Arena', href: '/placement', description: 'TCS/Capgemini simulators.', icon: Briefcase, color: 'text-amber-400', bgColor: 'bg-amber-900/50' },
+    // { key: 'placement', name: 'Placement Arena', href: '/placement', description: 'TCS/Capgemini simulators.', icon: Briefcase, color: 'text-amber-400', bgColor: 'bg-amber-900/50' },
     { key: 'kt', name: 'ATKT Navigator', href: '/kt-calculator', description: 'Ordinance & grace calculator.', icon: Shield, color: 'text-rose-400', bgColor: 'bg-rose-900/50' },
     { key: 'paper', name: 'Mock Papers', href: '/mock-paper', description: 'Real MU exam pattern mocks.', icon: FileText, color: 'text-sky-400', bgColor: 'bg-sky-900/50' },
     { key: 'viva', name: 'Viva Bot', href: '/viva-simulator', description: 'Practice with an external bot.', icon: Users, color: 'text-emerald-400', bgColor: 'bg-emerald-900/50' },
-    { key: 'study-plan', name: 'Study Planner', href: '/study-plan', description: 'Get a personalized roadmap.', icon: Calendar, color: 'text-violet-400', bgColor: 'bg-violet-900/50' },
-    { key: 'math', name: 'Speed Math', href: '/speed-math', description: 'Test your calculation speed.', icon: Calculator, color: 'text-pink-400', bgColor: 'bg-pink-900/50' },
+    // { key: 'study-plan', name: 'Study Planner', href: '/study-plan', description: 'Get a personalized roadmap.', icon: Calendar, color: 'text-violet-400', bgColor: 'bg-violet-900/50' },
+    // { key: 'paper-bank', name: 'MU Paper Bank', href: '/paper-bank', description: 'OCR & Ingest past MU papers.', icon: Library, color: 'text-sky-400', bgColor: 'bg-sky-900/50' },
+    // { key: 'predictor', name: 'Topic Predictor', href: '/topic-predictor', description: 'Analyze high-yield exam topics.', icon: Target, color: 'text-amber-400', bgColor: 'bg-amber-900/50' },
+    // { key: 'math', name: 'Speed Math', href: '/speed-math', description: 'Test your calculation speed.', icon: Calculator, color: 'text-pink-400', bgColor: 'bg-pink-900/50' },
 ];
 
 interface ToolCardProps {
@@ -348,7 +351,7 @@ const ToolsGrid: React.FC = () => (
 const SESSION_MOOD_CHECKIN_KEY = 'nexusMoodCheckedInSession';
 
 const Dashboard: React.FC = () => {
-    const { user } = useAuth();
+    const { user, updateMood } = useAuth();
     const navigate = useNavigate();
     const [mostUsedToolKey, setMostUsedToolKey] = useState<string>('tutor');
     const [showMoodCheckin, setShowMoodCheckin] = useState(true);
@@ -467,14 +470,23 @@ const Dashboard: React.FC = () => {
         sessionStorage.setItem(SESSION_MOOD_CHECKIN_KEY, 'true');
         setShowMoodCheckin(false);
         setIsLoadingSuggestion(true);
+        setAiSuggestion(null); // Clear previous if any
         try {
+            await updateMood(mood);
             const suggestion = await getSuggestionForMood(mood, language);
             setAiSuggestion(suggestion);
         } catch (error) {
-            console.error("Error getting mood suggestion:", error);
+            console.error('Mood processing failed:', error);
+            setAiSuggestion("The Nexus AI is briefly offline, but remember: you've got this! Take a deep breath and stay focused.");
         } finally {
             setIsLoadingSuggestion(false);
         }
+    };
+
+    const handleResetMood = () => {
+        sessionStorage.removeItem(SESSION_MOOD_CHECKIN_KEY);
+        setAiSuggestion(null);
+        setShowMoodCheckin(true);
     };
 
     const greeting = getTimeOfDayGreeting(language);
@@ -499,7 +511,7 @@ const Dashboard: React.FC = () => {
                     </h1>
                     <p className="text-slate-400/60 text-lg">{pageSubtitle}</p>
                 </div>
-                {stats && (
+                {/* {stats && (
                     <div className="flex items-center gap-6 bg-slate-800/50 p-4 rounded-2xl border border-white/5 backdrop-blur-sm">
                         <StreakCounter streak={stats.streak} />
                         <div className="flex gap-2">
@@ -510,10 +522,10 @@ const Dashboard: React.FC = () => {
                             ))}
                         </div>
                     </div>
-                )}
+                )} */}
             </div>
 
-            {stats && (
+            {/* {stats && (
                 <div className="max-w-md mb-12">
                     <XPBar
                         xp={stats.xp}
@@ -521,7 +533,7 @@ const Dashboard: React.FC = () => {
                         nextLevelXP={500 * stats.level * (stats.level + 1)}
                     />
                 </div>
-            )}
+            )} */}
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
                 <div className="lg:col-span-2 space-y-10">
@@ -572,12 +584,38 @@ const Dashboard: React.FC = () => {
                         <GoalsWidget />
                         {showMoodCheckin && <MoodCheckin onMoodSelect={handleMoodSelected} />}
                         {(isLoadingSuggestion || aiSuggestion) && (
-                            <div className="bg-slate-800/50 p-4 rounded-xl ring-1 ring-slate-700 flex items-center gap-4">
-                                <Sparkles className="text-sky-400 w-8 h-8 flex-shrink-0" />
-                                <div>
-                                    <h4 className="font-semibold text-lg text-sky-300">{t('dashboard.smartSuggestionTitle')}</h4>
-                                    {isLoadingSuggestion && <p className="text-slate-300">{t('dashboard.thinking')}</p>}
-                                    {aiSuggestion && <p className="text-slate-100">{aiSuggestion}</p>}
+                            <div className="bg-slate-800/50 p-6 rounded-[2rem] ring-1 ring-slate-700/50 backdrop-blur-md relative overflow-hidden group">
+                                <div className="absolute top-0 right-0 p-16 bg-violet-500/5 blur-[50px] rounded-full group-hover:bg-violet-500/10 transition-colors duration-700"></div>
+                                
+                                <div className="flex items-start gap-4 relative z-10">
+                                    <div className="w-10 h-10 rounded-2xl bg-violet-600/20 flex items-center justify-center shrink-0 border border-violet-500/20">
+                                        <Brain className="w-5 h-5 text-violet-400" />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <p className="text-[10px] font-black uppercase text-violet-400 tracking-[0.2em]">{t('dashboard.smartSuggestionTitle')}</p>
+                                            <button 
+                                                onClick={handleResetMood}
+                                                className="text-[10px] font-bold text-slate-500 hover:text-white uppercase tracking-wider bg-slate-700/30 px-2 py-1 rounded-md transition-colors"
+                                            >
+                                                ↻ Re-Check
+                                            </button>
+                                        </div>
+                                        {isLoadingSuggestion ? (
+                                             <div className="flex items-center gap-3">
+                                                 <div className="flex gap-1">
+                                                     <div className="w-1 h-1 bg-violet-400 rounded-full animate-bounce"></div>
+                                                     <div className="w-1 h-1 bg-violet-400 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+                                                     <div className="w-1 h-1 bg-violet-400 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+                                                 </div>
+                                                 <p className="text-sm text-slate-400 italic">{t('dashboard.thinking')}</p>
+                                             </div>
+                                        ) : (
+                                            <p className="text-sm text-slate-100 leading-relaxed font-medium animate-in fade-in slide-in-from-top-2 duration-700">
+                                                {aiSuggestion}
+                                            </p>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         )}
@@ -593,7 +631,7 @@ const Dashboard: React.FC = () => {
                 </div>
 
                 <div className="space-y-10">
-                    <LeaderboardWidget />
+                    {/* <LeaderboardWidget /> */}
                     <div>
                         <div className="flex items-center justify-between mb-6">
                             <h2 className="text-xl font-semibold text-slate-100 flex items-center">
@@ -672,8 +710,16 @@ const Dashboard: React.FC = () => {
                         )}
                     </div>
                     <div>
-                        <h2 className="text-xl font-semibold text-slate-100 mb-6">{t('dashboard.aiToolkitTitle')}</h2>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-5"> {/* Reduced gap for toolkit grid */}
+                        <div className="flex items-center justify-between mb-6">
+                            <h2 className="text-xl font-semibold text-slate-100 flex items-center">
+                                <Sparkles className="w-5 h-5 mr-3 text-sky-400 animate-pulse" /> {t('dashboard.aiToolkitTitle')}
+                            </h2>
+                            <div className="flex items-center gap-2 px-3 py-1 bg-slate-800/80 rounded-full border border-emerald-500/20 shadow-sm shadow-emerald-500/10">
+                                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
+                                <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest">AI Core Linked</span>
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-1 lg:grid-cols-2 gap-5"> {/* Forced 1-col on md to avoid clipping in the side column at 854px */}
                             {tools.map(tool => {
                                 const { key, ...rest } = tool;
                                 return <ToolCard key={key} {...rest} />;

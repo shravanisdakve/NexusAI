@@ -2,7 +2,7 @@ const socketIo = require('socket.io');
 const mongoose = require('mongoose');
 const Message = require('./models/Message');
 const StudyRoom = require('./models/StudyRoom');
-const { analyzeChatContext } = require('./services/geminiService');
+const { analyzeChatContext, analyzeKnowledgeGaps } = require('./services/geminiService');
 const { processModeration } = require('./services/moderatorService');
 
 const roomActivity = new Map(); // Track messages per room for autonomous tips
@@ -11,10 +11,12 @@ const devAllowedOrigins = [
     'http://localhost:3000',
     'http://localhost:5173',
     'http://localhost:5174',
+    'http://localhost:5175',
     'http://localhost:4173',
     'http://127.0.0.1:3000',
     'http://127.0.0.1:5173',
     'http://127.0.0.1:5174',
+    'http://127.0.0.1:5175',
     'http://127.0.0.1:4173'
 ];
 
@@ -89,7 +91,8 @@ const socketHandler = (server) => {
                         .filter(Boolean),
                     technique: room.technique,
                     topic: room.topic,
-                    techniqueState: room.techniqueState || null
+                    techniqueState: room.techniqueState || null,
+                    knowledgeGaps: room.knowledgeGaps?.map(g => g.topic) || []
                 };
 
                 io.to(roomId).emit('room-update', roomData);
@@ -201,17 +204,31 @@ const socketHandler = (server) => {
                                 .sort({ timestamp: -1 })
                                 .limit(10);
                             const intervention = await analyzeChatContext(recentMessages.reverse());
-                            if (!intervention) {
-                                return;
+                            if (intervention) {
+                                io.to(data.roomId).emit('receive-message', {
+                                    id: `mod-${Date.now()}`,
+                                    text: intervention,
+                                    sender: 'AI Moderator',
+                                    userId: 'system-moderator',
+                                    timestamp: new Date()
+                                });
                             }
 
-                            io.to(data.roomId).emit('receive-message', {
-                                id: `mod-${Date.now()}`,
-                                text: intervention,
-                                sender: 'AI Moderator',
-                                userId: 'system-moderator',
-                                timestamp: new Date()
-                            });
+                            // Output Knowledge Gaps tracking
+                            try {
+                                const chatLines = recentMessages.map(m => `${m.senderName}: ${m.content}`);
+                                const roomForGaps = await StudyRoom.findById(data.roomId);
+                                const notes = roomForGaps?.sharedNotes || '';
+                                const newGaps = await analyzeKnowledgeGaps(notes, chatLines);
+                                
+                                if (newGaps && newGaps.length > 0) {
+                                    roomForGaps.knowledgeGaps = newGaps.map(topic => ({ topic }));
+                                    await roomForGaps.save();
+                                    io.to(data.roomId).emit('knowledge-gaps-updated', { roomId: data.roomId, gaps: newGaps });
+                                }
+                            } catch (gapErr) {
+                                console.error("Gap analysis error:", gapErr);
+                            }
                         } catch (err) {
                             console.error("Autonomous AI Error:", err);
                         }

@@ -218,13 +218,12 @@ export const extractTextFromFile = async (base64Data: string, mimeType: string):
         try {
             errorData = await response.json();
         } catch {
-            // Ignore JSON parsing errors and fallback to status-based message.
+            // Ignore
         }
-
         const err: any = new Error(errorData.error || `HTTP error! status: ${response.status}`);
         err.status = response.status;
-        if (errorData.code) err.code = errorData.code;
-        if (typeof errorData.retryAfterSec === 'number') err.retryAfterSec = errorData.retryAfterSec;
+        err.retryAfterSec = errorData.retryAfterSec;
+        err.code = errorData.code;
         throw err;
     }
 
@@ -267,7 +266,7 @@ export const generateQuizSet = async (context: string, count: number = 5, langua
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
-        body: JSON.stringify(requestBody), // 'count' is technically extra but handled by backend
+        body: JSON.stringify(requestBody),
     });
 
     if (!response.ok) {
@@ -306,6 +305,27 @@ export const getStudySuggestions = async (reportJson: string): Promise<string> =
     return data.suggestions;
 };
 
+// --- KNOWLEDGE MAP GENERATOR SERVICE ---
+export const generateKnowledgeMap = async (quizHistory: any[], language?: string): Promise<any[]> => {
+    const requestBody: GeminiRequest = { quizHistory, language };
+    const response = await fetch(`${API_URL}/api/gemini/generateKnowledgeMap`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify(requestBody),
+    });
+
+    if (!response.ok) {
+        const errorData: GeminiResponse = await response.json();
+        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+    }
+
+    const data: any = await response.json();
+    return data.result?.topics || [];
+};
+
 // --- FLASHCARD GENERATION SERVICE ---
 export const generateFlashcards = async (context: string, language?: string): Promise<string> => {
     const requestBody: GeminiRequest = { context, language };
@@ -331,8 +351,6 @@ export const generateFlashcards = async (context: string, language?: string): Pr
 };
 
 export const getSuggestionForMood = async (mood: string, language?: string): Promise<string> => {
-    console.log(`Getting AI suggestion for mood: ${mood} `);
-
     try {
         const requestBody: GeminiRequest = { mood, language };
         const response = await fetch(`${API_URL}/api/gemini/getSuggestionForMood`, {
@@ -384,12 +402,6 @@ export const breakDownGoal = async (goalTitle: string): Promise<string> => {
 // --- PROJECT IDEA GENERATOR SERVICE ---
 export const generateProjectIdeas = async (branch: string, interest: string, difficulty: string, language?: string): Promise<string> => {
     const requestBody: GeminiRequest = { branch, interest, difficulty, language };
-    // Enhanced prompt handled in backend, passing context in request potentially?
-    // Actually, let's update the backend prompt in gemini.js instead as that's where the prompt is constructed.
-    // But for this service, we just pass the params.
-    // Wait, I should verify backend/routes/gemini.js for the prompt update.
-    // Let's assume I will update the backend route.
-
     const response = await fetch(`${API_URL}/api/gemini/generateProjectIdeas`, {
         method: 'POST',
         headers: {
@@ -471,11 +483,9 @@ export const generateStudyPlan = async (goal: string, durationDays: number, note
     }
 
     const data = await response.json();
-    if (!Object.prototype.hasOwnProperty.call(data || {}, 'planJson')) {
-        throw new Error('Study plan not found in response');
-    }
     return normalizeJsonString(data.planJson);
 };
+
 // --- FEYNMAN TECHNIQUE SERVICE ---
 export const streamFeynmanChat = async (message: string, topic: string, notes: string, language?: string): Promise<ReadableStream<Uint8Array> | null> => {
     const requestBody: GeminiRequest = { message, notes, topic, language };
@@ -510,5 +520,64 @@ export const getFeynmanFeedback = async (topic: string, explanation: string, not
         throw new Error(`HTTP error! status: ${response.status}`);
     }
 
+    return response.json();
+};
+
+export const generateHighlights = async (text: string, language?: string): Promise<string[]> => {
+    const response = await fetch(`${API_URL}/api/gemini/generateHighlights`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ text, language }),
+    });
+
+    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+    const data = await response.json();
+    return data.highlights || [];
+};
+
+export const generateMindMap = async (text: string, language?: string): Promise<string> => {
+    const response = await fetch(`${API_URL}/api/gemini/generateMindMap`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ text, language }),
+    });
+
+    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+    const data = await response.json();
+    return data.mindMap || '';
+};
+
+export const simplifyText = async (text: string, language?: string): Promise<string> => {
+    const response = await fetch(`${API_URL}/api/gemini/simplify`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ text, language }),
+    });
+
+    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+    const data = await response.json();
+    return data.simplifiedText || '';
+};
+
+export const generateResumeAnalysis = async (candidateData: any): Promise<{ summary: string; keywords: string[] }> => {
+    const response = await fetch(`${API_URL}/api/gemini/generateResumeAnalysis`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify(candidateData),
+    });
+
+    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
     return response.json();
 };
