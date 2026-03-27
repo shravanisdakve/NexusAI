@@ -57,6 +57,13 @@ const INTERNET_LINKS_BY_SUBJECT_KEYWORD: Array<{ keywords: string[]; tutorial: s
     }
 ];
 
+const MODULE_SPECIFIC_LINKS: Record<string, { tutorial?: string; material?: string }> = {
+    "Complex Numbers": {
+        tutorial: "https://www.khanacademy.org/math/precalculus/x9e81a4f98389efdf:complex",
+        material: "https://tutorial.math.lamar.edu/Classes/Alg/ComplexNumbers.aspx"
+    }
+};
+
 const buildTutorialSearchLink = (subject: string, moduleTitle: string) =>
     `https://www.youtube.com/results?search_query=${encodeURIComponent(`${subject} ${moduleTitle} tutorial`)}`;
 
@@ -129,13 +136,17 @@ const resolveResourceLinks = (subject: Subject, module: Module): { tutorial: str
     const tutorialFromData = normalizeHttpUrl(videoItem?.link) || normalizeHttpUrl(tutorials[0]?.link);
     const materialFromData = normalizeHttpUrl(pdfItem?.link) || normalizeHttpUrl(extraLink);
 
+    const moduleLinks = MODULE_SPECIFIC_LINKS[module.title] || {};
+
     return {
         tutorial:
+            moduleLinks.tutorial ||
             tutorialFromData ||
             curatedByCode.tutorial ||
             curatedByKeyword?.tutorial ||
             buildTutorialSearchLink(subject.name, module.title),
         material:
+            moduleLinks.material ||
             materialFromData ||
             curatedByCode.material ||
             curatedByKeyword?.material ||
@@ -166,8 +177,81 @@ const CurriculumExplorer: React.FC = () => {
     ];
 
     useEffect(() => {
-        fetchCurriculum();
+        let cancelled = false;
+
+        const run = async () => {
+            setLoading(true);
+            setLoadError('');
+            try {
+                const data = await getCurriculum(branch, semester);
+                if (cancelled) return;
+                if (data.success) {
+                    setCurriculum(normalizeCurriculumData(data.curriculum, semester));
+                } else {
+                    setCurriculum(buildEmptySemester(semester));
+                    setLoadError(data?.message || 'No curriculum available for this selection.');
+                }
+            } catch (error: any) {
+                if (cancelled) return;
+                console.error(error);
+                const errorMessage = error.response?.data?.message || error.message || 'Could not load curriculum right now.';
+
+                // Fallback to mock data if backend fails for Sem 1
+                if (semester === 1) {
+                    setCurriculum({
+                        semesterNumber: 1,
+                        subjects: [
+                            {
+                                subjectCode: "BSC101",
+                                name: "Applied Mathematics-I",
+                                credits: 4,
+                                category: "Basic Science Course",
+                                modules: [
+                                    {
+                                        moduleNumber: 1,
+                                        title: "Complex Numbers",
+                                        topics: ["Cartesian, polar and exponential form", "De Moivre's Theorem", "Expansion of sin nθ and cos nθ"],
+                                        technicalRequirements: "Scientific Calculator",
+                                        pedagogyFocus: "Conceptual clarity on imaginary units"
+                                    },
+                                    {
+                                        moduleNumber: 2,
+                                        title: "Partial Differentiation",
+                                        topics: ["Euler's Theorem on Homogeneous functions", "Maxima and Minima of functions of two variables"],
+                                        pedagogyFocus: "Visualization of surfaces and stationary points"
+                                    }
+                                ]
+                            },
+                            {
+                                subjectCode: "ESC101",
+                                name: "Engineering Mechanics",
+                                credits: 3,
+                                category: "Engineering Science Course",
+                                modules: [
+                                    {
+                                        moduleNumber: 1,
+                                        title: "Force Systems",
+                                        topics: ["Classification of force systems", "Varignon's Theorem", "Resultant of coplanar forces"],
+                                        pedagogyFocus: "Vector representation of forces"
+                                    }
+                                ]
+                            }
+                        ]
+                    });
+                    setLoadError('Live curriculum could not be loaded. Showing sample semester data.');
+                } else {
+                    setCurriculum(buildEmptySemester(semester));
+                    setLoadError(errorMessage || 'No curriculum data available for this semester and branch.');
+                }
+            } finally {
+                if (!cancelled) setLoading(false);
+            }
+        };
+
         setExpandedSubject(null);
+        run();
+
+        return () => { cancelled = true; };
     }, [branch, semester]);
 
     useEffect(() => {
@@ -182,80 +266,6 @@ const CurriculumExplorer: React.FC = () => {
         }
     }, [curriculum, searchQuery]);
 
-    const fetchCurriculum = async () => {
-        setLoading(true);
-        setLoadError('');
-        try {
-            const data = await getCurriculum(branch, semester);
-            if (data.success) {
-                setCurriculum(normalizeCurriculumData(data.curriculum, semester));
-            } else {
-                setCurriculum(buildEmptySemester(semester));
-                setLoadError(data?.message || 'No curriculum available for this selection.');
-            }
-        } catch (error: any) {
-            console.error(error);
-            const errorMessage = error.response?.data?.message || error.message || 'Could not load curriculum right now.';
-
-            // Fallback to mock data if backend fails
-            if (branch === 'Common for All Branches' && semester === 1) {
-                setCurriculum({
-                    semesterNumber: 1,
-                    subjects: [
-                        {
-                            subjectCode: "BSC101",
-                            name: "Applied Mathematics-I",
-                            credits: 4,
-                            category: "Basic Science Course",
-                            modules: [
-                                {
-                                    moduleNumber: 1,
-                                    title: "Complex Numbers",
-                                    topics: ["Cartesian, polar and exponential form", "De Moivre’s Theorem", "Expansion of sin nθ and cos nθ"],
-                                    technicalRequirements: "Scientific Calculator",
-                                    pedagogyFocus: "Conceptual clarity on imaginary units"
-                                },
-                                {
-                                    moduleNumber: 2,
-                                    title: "Partial Differentiation",
-                                    topics: ["Euler’s Theorem on Homogeneous functions", "Maxima and Minima of functions of two variables"],
-
-                                    pedagogyFocus: "Visualization of surfaces and stationary points"
-                                }
-                            ]
-                        },
-                        {
-                            subjectCode: "ESC101",
-                            name: "Engineering Mechanics",
-                            credits: 3,
-                            category: "Engineering Science Course",
-                            modules: [
-                                {
-                                    moduleNumber: 1,
-                                    title: "Force Systems",
-                                    topics: ["Classification of force systems", "Varignon’s Theorem", "Resultant of coplanar forces"],
-                                    pedagogyFocus: "Vector representation of forces"
-                                },
-                                {
-                                    moduleNumber: 3,
-                                    title: "Robot Kinematics",
-                                    topics: ["Degrees of Freedom (DOF)", "D-H Parameters", "Introduction to Robotic Links"],
-                                    technicalRequirements: "3D Modeling Visualizer",
-                                    pedagogyFocus: "Modern applications of mechanics"
-                                }
-                            ]
-                        }
-                    ]
-                });
-                setLoadError('Live curriculum could not be loaded. Showing sample semester data.');
-            } else {
-                setCurriculum(buildEmptySemester(semester));
-                setLoadError(errorMessage);
-            }
-        } finally {
-            setLoading(false);
-        }
-    };
 
     const selectedSubject = (curriculum?.subjects || []).find(s => s.subjectCode === expandedSubject);
 
@@ -446,7 +456,10 @@ const CurriculumExplorer: React.FC = () => {
                                                         size="sm"
                                                         variant="primary"
                                                         className="text-[10px] h-8 gap-2 bg-emerald-600 hover:bg-emerald-500 shadow-md shadow-emerald-500/20"
-                                                        onClick={() => navigate(`/tutor?q=${encodeURIComponent(t('curriculum.generateRoadmapFor', { topic: module.title }))}`)}
+                                                        onClick={() => {
+                                                            const query = `Generate a complete study roadmap for: ${module.title} (${selectedSubject?.name})`;
+                                                            navigate(`/tutor?q=${encodeURIComponent(query)}`);
+                                                        }}
                                                     >
                                                         <Brain className="w-3 h-3" /> Generate AI Roadmap
                                                     </Button>

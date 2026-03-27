@@ -182,27 +182,37 @@ const UniversityStatus: React.FC = () => {
                     </div>
 
                     <div className="space-y-4">
-                        {(data?.circulars || []).length === 0 && (
-                            <Card className="p-5 text-sm text-slate-400">{t('university.noCirculars')}</Card>
-                        )}
-                        {(data?.circulars || []).map((item) => (
-                            <Card key={item.id} className={`p-5 border-l-4 ${item.urgent ? 'border-l-rose-500 bg-rose-500/5' : 'border-l-blue-500 bg-slate-800/40'}`}>
-                                <div className="flex justify-between items-start gap-4">
-                                    <div>
-                                        <div className="flex items-center gap-3 mb-1">
-                                            <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded ${item.urgent ? 'bg-rose-500 text-white' : 'bg-blue-500/20 text-blue-400'}`}>
-                                                {item.category}
-                                            </span>
-                                            <span className="text-[10px] font-mono text-slate-500">{item.dateLabel}</span>
+                        {(() => {
+                            const circulars = data?.circulars || [];
+                            const filtered = circulars.filter(c => {
+                                const matchesSearch = c.title.toLowerCase().includes(query.toLowerCase());
+                                const matchesCategory = !category || c.category === category;
+                                return matchesSearch && matchesCategory;
+                            });
+
+                            if (filtered.length === 0) {
+                                return <Card className="p-5 text-sm text-slate-400">{t('university.noCirculars')}</Card>;
+                            }
+
+                            return filtered.map((item) => (
+                                <Card key={item.id} className={`p-5 border-l-4 ${item.urgent ? 'border-l-rose-500 bg-rose-500/5' : 'border-l-blue-500 bg-slate-800/40'}`}>
+                                    <div className="flex justify-between items-start gap-4">
+                                        <div>
+                                            <div className="flex items-center gap-3 mb-1">
+                                                <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded ${item.urgent ? 'bg-rose-500 text-white' : 'bg-blue-500/20 text-blue-400'}`}>
+                                                    {item.category}
+                                                </span>
+                                                <span className="text-[10px] font-mono text-slate-500">{item.dateLabel}</span>
+                                            </div>
+                                            <h4 className="text-lg font-bold text-white leading-tight">{item.title}</h4>
                                         </div>
-                                        <h4 className="text-lg font-bold text-white leading-tight">{item.title}</h4>
+                                        <a href={item.link} target="_blank" rel="noopener noreferrer" className="p-2 rounded-lg bg-slate-900 border border-slate-700 text-slate-400 hover:text-white">
+                                            <ExternalLink className="w-4 h-4" />
+                                        </a>
                                     </div>
-                                    <a href={item.link} target="_blank" rel="noreferrer" className="p-2 rounded-lg bg-slate-900 border border-slate-700 text-slate-400 hover:text-white">
-                                        <ExternalLink className="w-4 h-4" />
-                                    </a>
-                                </div>
-                            </Card>
-                        ))}
+                                </Card>
+                            ));
+                        })()}
                     </div>
 
                     <Card className="p-8 bg-gradient-to-br from-indigo-900/40 to-slate-900 border-indigo-500/30">

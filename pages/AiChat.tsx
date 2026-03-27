@@ -255,6 +255,7 @@ const AiTutor: React.FC = () => {
     }, [location.state, navigate, language]);
 
 
+
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     };
@@ -343,10 +344,10 @@ const AiTutor: React.FC = () => {
         } catch (err: any) {
             console.error("File extraction failed:", err);
             let userFriendlyMsg = 'Could not read this file. Please ensure it is a valid document or image.';
-            
+
             // Check for explicit 429 rate limit errors from our new backend
             const isQuotaError = err?.status === 429 || /quota|busy|capacity|rate limit/i.test(err?.message || '');
-            
+
             if (isQuotaError) {
                 userFriendlyMsg = 'NexusAI File Reader is currently busy due to Google API limits. Please wait 30 seconds and try uploading again.';
             } else if (err?.status === 503) {
@@ -480,6 +481,18 @@ const AiTutor: React.FC = () => {
         }
     }, [input, isLoading, isAutoSpeaking, studyMode, sessionId, language, selectedDocument, uploadedContext, isExtracting]);
 
+    // Bug 9: Read query param 'q' and auto-send it
+    useEffect(() => {
+        const params = new URLSearchParams(location.search);
+        const q = params.get('q');
+        if (q) {
+            const decodedQ = decodeURIComponent(q);
+            handleSend(decodedQ);
+            // Replace URL to clean up the query param
+            navigate(location.pathname, { replace: true });
+        }
+    }, [location.search, handleSend, navigate]);
+
     const handleQuizMe = async () => {
         if (isLoading) return;
         setError(null);
@@ -507,11 +520,11 @@ const AiTutor: React.FC = () => {
         if (!quiz) return;
 
         const isCorrect = selectedIndex === quiz.correctOptionIndex;
-        
+
         // --- DATA PIPELINE: Save Detailed Result ---
         await recordQuizResult(
-            quiz.topic, 
-            isCorrect, 
+            quiz.topic,
+            isCorrect,
             selectedCourse,
             quiz.question,
             quiz.options[selectedIndex],
@@ -639,8 +652,25 @@ const AiTutor: React.FC = () => {
                         </div>
                     )}
                     <div className="flex items-center gap-2">
-                        <input type="file" ref={fileInputRef} onChange={handleImageUpload} accept="image/*,.pdf,.txt,.md,.ppt,.pptx" className="hidden" />
-                        <Button onClick={() => fileInputRef.current?.click()} disabled={isLoading || !!quiz || isExtracting} className="px-4 py-3 bg-slate-700 hover:bg-slate-600"><Paperclip className="w-5 h-5" /></Button>
+                        <input
+                            type="file"
+                            id="file-upload"
+                            ref={fileInputRef}
+                            onChange={handleImageUpload}
+                            accept="image/*,.pdf,.txt,.docx,.md,.ppt,.pptx"
+                            className="hidden"
+                        />
+                        <Button
+                            id="attachment-button"
+                            onClick={() => {
+                                console.log('Attachment button clicked');
+                                fileInputRef.current?.click();
+                            }}
+                            disabled={isLoading || !!quiz || isExtracting}
+                            className="px-4 py-3 bg-slate-700 hover:bg-slate-600"
+                        >
+                            <Paperclip className="w-5 h-5" />
+                        </Button>
                         <Input id="chat-input" name="chatInput" type="text" value={input} onChange={(e) => setInput(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && !isLoading && handleSend()} placeholder={uploadedContextMeta ? "Ask anything from your uploaded file..." : "Ask a question or upload notes/image..."} disabled={isLoading || !!quiz || isExtracting} className="flex-1" autoComplete="off" aria-label="Ask the AI Tutor" />
                         <Button onClick={handleQuizMe} disabled={isLoading || !!quiz || isExtracting} className="px-4 py-3 bg-slate-700 hover:bg-slate-600"><Lightbulb className="w-5 h-5" /></Button>
                         <Button onClick={handleListen} disabled={isLoading || !!quiz || isExtracting} className={`px-4 py-3 ${isListening ? 'bg-red-600 hover:bg-red-700' : 'bg-slate-700 hover:bg-slate-600'}`}><Mic className="w-5 h-5" /></Button>
