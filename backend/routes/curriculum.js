@@ -76,13 +76,10 @@ router.get('/:branch/:semester', async (req, res) => {
         }
 
         if (!semData) {
-            const firstAvailable = (curriculum.semesters || [])[0]
-                || (FALLBACK_CURRICULUM.semesters || [])[0];
-            if (!firstAvailable) {
-                return res.status(404).json({ success: false, message: 'Curriculum not found' });
-            }
-            semData = firstAvailable;
-            fallbackApplied = true;
+            return res.status(404).json({
+                success: false,
+                message: `Curriculum for Semester ${parsedSemester} of ${decodedBranch} is not currently available.`
+            });
         }
 
         res.json({

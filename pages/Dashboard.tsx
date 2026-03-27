@@ -58,6 +58,10 @@ const ProductivityInsights: React.FC = () => {
             }
         };
         fetchReport();
+
+        // Listen for goal updates to refresh stats
+        window.addEventListener('goalUpdated', fetchReport);
+        return () => window.removeEventListener('goalUpdated', fetchReport);
     }, []);
 
     if (isLoading) {
@@ -332,7 +336,7 @@ const ToolCard: React.FC<ToolCardProps> = ({ name, href, description, icon: Icon
                 <div className="w-12 h-12 flex items-center justify-center rounded-lg bg-violet-500/10 group-hover:bg-violet-500/20 transition-colors">
                     <Icon className="w-6 h-6 text-slate-200 group-hover:text-violet-400 transition-colors" />
                 </div>
-                <h3 className="text-lg font-semibold text-slate-100 group-hover:text-violet-400 transition-colors">{name}</h3>
+                <h3 className="text-lg font-semibold text-slate-100 group-hover:text-violet-400 transition-colors truncate">{name}</h3>
             </div>
             <p className="text-sm text-slate-400/80 leading-relaxed mb-6 h-10 overflow-hidden">{description}</p>
             <div className="flex items-center text-sm font-medium text-violet-400 group-hover:text-violet-300">
@@ -507,7 +511,7 @@ const Dashboard: React.FC = () => {
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-12 pt-6">
                 <div>
                     <h1 className="text-4xl font-semibold text-white tracking-tight mb-2">
-                        {greeting}, <span className="text-indigo-400">{user?.displayName?.split(' ')[0] || 'User'}</span>!
+                        {greeting.trim()}, <span className="text-indigo-400">{user?.displayName?.split(' ')[0] || 'User'}</span>!
                     </h1>
                     <p className="text-slate-400/60 text-lg">{pageSubtitle}</p>
                 </div>
@@ -586,7 +590,7 @@ const Dashboard: React.FC = () => {
                         {(isLoadingSuggestion || aiSuggestion) && (
                             <div className="bg-slate-800/50 p-6 rounded-[2rem] ring-1 ring-slate-700/50 backdrop-blur-md relative overflow-hidden group">
                                 <div className="absolute top-0 right-0 p-16 bg-violet-500/5 blur-[50px] rounded-full group-hover:bg-violet-500/10 transition-colors duration-700"></div>
-                                
+
                                 <div className="flex items-start gap-4 relative z-10">
                                     <div className="w-10 h-10 rounded-2xl bg-violet-600/20 flex items-center justify-center shrink-0 border border-violet-500/20">
                                         <Brain className="w-5 h-5 text-violet-400" />
@@ -594,7 +598,7 @@ const Dashboard: React.FC = () => {
                                     <div className="flex-1 min-w-0">
                                         <div className="flex items-center justify-between mb-2">
                                             <p className="text-[10px] font-black uppercase text-violet-400 tracking-[0.2em]">{t('dashboard.smartSuggestionTitle')}</p>
-                                            <button 
+                                            <button
                                                 onClick={handleResetMood}
                                                 className="text-[10px] font-bold text-slate-500 hover:text-white uppercase tracking-wider bg-slate-700/30 px-2 py-1 rounded-md transition-colors"
                                             >
@@ -602,14 +606,14 @@ const Dashboard: React.FC = () => {
                                             </button>
                                         </div>
                                         {isLoadingSuggestion ? (
-                                             <div className="flex items-center gap-3">
-                                                 <div className="flex gap-1">
-                                                     <div className="w-1 h-1 bg-violet-400 rounded-full animate-bounce"></div>
-                                                     <div className="w-1 h-1 bg-violet-400 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
-                                                     <div className="w-1 h-1 bg-violet-400 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
-                                                 </div>
-                                                 <p className="text-sm text-slate-400 italic">{t('dashboard.thinking')}</p>
-                                             </div>
+                                            <div className="flex items-center gap-3">
+                                                <div className="flex gap-1">
+                                                    <div className="w-1 h-1 bg-violet-400 rounded-full animate-bounce"></div>
+                                                    <div className="w-1 h-1 bg-violet-400 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+                                                    <div className="w-1 h-1 bg-violet-400 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+                                                </div>
+                                                <p className="text-sm text-slate-400 italic">{t('dashboard.thinking')}</p>
+                                            </div>
                                         ) : (
                                             <p className="text-sm text-slate-100 leading-relaxed font-medium animate-in fade-in slide-in-from-top-2 duration-700">
                                                 {aiSuggestion}
@@ -719,7 +723,7 @@ const Dashboard: React.FC = () => {
                                 <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest">AI Core Linked</span>
                             </div>
                         </div>
-                        <div className="grid grid-cols-1 md:grid-cols-1 lg:grid-cols-2 gap-5"> {/* Forced 1-col on md to avoid clipping in the side column at 854px */}
+                        <div className="grid grid-cols-1 md:grid-cols-1 lg:grid-cols-1 gap-5"> {/* Forced 1-col in sidebar to avoid clipping card titles like "Quizzes & Practice" */}
                             {tools.map(tool => {
                                 const { key, ...rest } = tool;
                                 return <ToolCard key={key} {...rest} />;

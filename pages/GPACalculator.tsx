@@ -53,7 +53,7 @@ const GPACalculator: React.FC = () => {
 
         subjects.forEach(sub => {
             const credits = parseFloat(sub.credits);
-            const grade = sub.grade.toUpperCase();
+            const grade = sub.grade.trim().toUpperCase();
             const points = gradePoints[grade];
 
             if (isNaN(credits) || points === undefined) {

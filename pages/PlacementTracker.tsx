@@ -479,19 +479,48 @@ const PlacementTracker: React.FC = () => {
         <div className="space-y-6 max-w-7xl mx-auto pb-12">
 
             {/* Video Player Modal */}
-            {playingVideo && (
-                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setPlayingVideo(null)}>
-                    <div className="w-full max-w-3xl" onClick={e => e.stopPropagation()}>
-                        <div className="flex justify-between items-center mb-3">
-                            <h3 className="text-lg font-bold text-white">{playingVideo.title}</h3>
-                            <button onClick={() => setPlayingVideo(null)} className="text-slate-400 hover:text-white"><X size={22} /></button>
-                        </div>
-                        <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
-                            <iframe className="absolute inset-0 w-full h-full rounded-2xl" src={`https://www.youtube.com/embed/${playingVideo.youtubeId}?autoplay=1&rel=0`} title={playingVideo.title} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
+            {playingVideo && (() => {
+                const getEmbedUrl = (idOrUrl: string) => {
+                    if (!idOrUrl) return null;
+                    const match = idOrUrl.match(/(?:v=|youtu\.be\/|embed\/)([^&\s?]+)/);
+                    const id = match ? match[1] : (idOrUrl.includes('://') ? null : idOrUrl);
+                    return id ? `https://www.youtube.com/embed/${id}` : null;
+                };
+                const embedUrl = getEmbedUrl(playingVideo.youtubeId);
+                const watchUrl = playingVideo.youtubeId.includes('://') ? playingVideo.youtubeId : `https://www.youtube.com/watch?v=${playingVideo.youtubeId}`;
+
+                return (
+                    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setPlayingVideo(null)}>
+                        <div className="w-full max-w-3xl" onClick={e => e.stopPropagation()}>
+                            <div className="flex justify-between items-center mb-3">
+                                <h3 className="text-lg font-bold text-white">{playingVideo.title}</h3>
+                                <button onClick={() => setPlayingVideo(null)} className="text-slate-400 hover:text-white"><X size={22} /></button>
+                            </div>
+                            <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
+                                {embedUrl ? (
+                                    <iframe className="absolute inset-0 w-full h-full rounded-2xl" src={`${embedUrl}?autoplay=1&rel=0`} title={playingVideo.title} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
+                                ) : (
+                                    <div className="absolute inset-0 w-full h-full rounded-2xl bg-slate-900 flex flex-col items-center justify-center p-6 text-center border border-slate-700">
+                                        <Zap className="w-10 h-10 text-violet-400 mb-3" />
+                                        <h4 className="text-white font-bold mb-2">Embed Unavailable</h4>
+                                        <p className="text-xs text-slate-500 max-w-sm">This content must be viewed directly on the provider's platform.</p>
+                                    </div>
+                                )}
+                            </div>
+                            <div className="mt-4 flex justify-end">
+                                <a
+                                    href={watchUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs shadow-lg shadow-rose-600/20 transition-all"
+                                >
+                                    <ExternalLink size={16} /> Open in YouTube
+                                </a>
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
+                );
+            })()}
 
             {/* Stats Bar */}
             <div className="grid grid-cols-3 gap-4">

@@ -1,10 +1,12 @@
 import React from 'react';
 import { useMode } from '../contexts/ModeContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import { BookOpen, Briefcase } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const TopBarTabs: React.FC = () => {
     const { mode, setMode } = useMode();
+    const { t } = useLanguage();
     const navigate = useNavigate();
 
     const handleStudyClick = () => {
@@ -23,22 +25,22 @@ const TopBarTabs: React.FC = () => {
                 <button
                     onClick={handleStudyClick}
                     className={`flex-1 flex items-center justify-center py-2.5 px-4 rounded-lg font-medium transition-all duration-200 ${mode === 'study'
-                            ? 'bg-violet-600 text-white shadow-md'
-                            : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50'
+                        ? 'bg-violet-600 text-white shadow-md'
+                        : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50'
                         }`}
                 >
                     <BookOpen className="w-5 h-5 mr-2" />
-                    Study Focus
+                    {t('common.studyFocus', { fallback: 'Study Focus' })}
                 </button>
                 <button
                     onClick={handlePlacementClick}
                     className={`flex-1 flex items-center justify-center py-2.5 px-4 rounded-lg font-medium transition-all duration-200 ${mode === 'placement'
-                            ? 'bg-emerald-600 text-white shadow-md'
-                            : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50'
+                        ? 'bg-emerald-600 text-white shadow-md'
+                        : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50'
                         }`}
                 >
                     <Briefcase className="w-5 h-5 mr-2" />
-                    Placement Prep
+                    {t('common.placementPrep', { fallback: 'Placement Prep' })}
                 </button>
             </div>
         </div>
