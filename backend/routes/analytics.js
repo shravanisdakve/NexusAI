@@ -66,19 +66,33 @@ router.post('/session', auth, async (req, res) => {
 
 // Update Quiz Result & Topic Mastery
 router.post('/quiz', auth, async (req, res) => {
-    const { topic, score, isCorrect } = req.body;
+    const { topic, score, isCorrect, question, userAnswer, correctAnswer } = req.body;
     try {
         let progress = await UserProgress.findOne({ userId: req.user.id });
         if (!progress) progress = new UserProgress({ userId: req.user.id });
 
         progress.quizzesTaken += 1;
 
+        // Save Detailed History
+        progress.quizHistory.push({
+            topic,
+            question,
+            userAnswer,
+            correctAnswer,
+            isCorrect,
+            timestamp: new Date()
+        });
+
+        // Limit quiz history to last 200 for AI context sanity
+        if (progress.quizHistory.length > 200) {
+            progress.quizHistory = progress.quizHistory.slice(-200);
+        }
+
         // Update Topic Mastery
         const existingTopic = progress.topicMastery.find(t => t.topic === topic);
         if (existingTopic) {
-            // Simple moving average for accuracy
             existingTopic.attempts += 1;
-            const weight = 0.3; // Weight for new score
+            const weight = 0.3;
             const newAccuracy = (existingTopic.accuracy * (1 - weight)) + ((isCorrect ? 100 : 0) * weight);
             existingTopic.accuracy = Math.round(newAccuracy);
             existingTopic.lastStudied = new Date();

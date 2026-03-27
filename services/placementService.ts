@@ -128,3 +128,42 @@ export const getRecentPlacementAttempts = async () => {
         return [];
     }
 };
+
+export interface PredictorPayload {
+    college: string;
+    branch: string;
+    cgpa: number;
+    skills: string[];
+    targetCompany: string;
+}
+
+export interface PredictionResult {
+    probability: number;
+    message: string;
+    ctcEstimate: string;
+    matchedSkillsCount: number;
+    expectedSkills: string[];
+    breakdown?: Array<{ label: string; impact: number; type: 'positive' | 'negative' }>;
+    comparisons?: Array<{ company: string; probability: number }>;
+}
+
+export const predictPlacement = async (payload: PredictorPayload): Promise<PredictionResult | null> => {
+    try {
+        const response = await fetch(`${API_URL}/api/placement/predict`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                ...getAuthHeaders(),
+            },
+            body: JSON.stringify(payload),
+        });
+
+        if (!response.ok) return null;
+        const data = await response.json();
+        if (!data?.success) return null;
+        return data.prediction || null;
+    } catch (error) {
+        console.error('Failed fetching prediction:', error);
+        return null;
+    }
+};

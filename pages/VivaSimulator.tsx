@@ -172,7 +172,7 @@ const VivaSimulator: React.FC = () => {
 
                         <div className="space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-slate-400 mb-2">Subject Name</label>
+                                <label htmlFor="viva-subject" className="block text-sm font-medium text-slate-400 mb-2">Subject Name</label>
                                 <Input
                                     id="viva-subject"
                                     name="subject"
@@ -182,7 +182,7 @@ const VivaSimulator: React.FC = () => {
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-slate-400 mb-2">Branch</label>
+                                <label htmlFor="viva-branch" className="block text-sm font-medium text-slate-400 mb-2">Branch</label>
                                 <Input
                                     id="viva-branch"
                                     name="branch"
@@ -242,6 +242,7 @@ const VivaSimulator: React.FC = () => {
                                 placeholder="State your answer clearly..."
                                 className="flex-1 h-12 bg-slate-900/50"
                                 disabled={isLoading}
+                                aria-label="Your Viva Answer"
                             />
                             <Button type="submit" disabled={isLoading || !input.trim()} className="px-6 bg-emerald-600 hover:bg-emerald-500 h-12">
                                 <Send size={20} />

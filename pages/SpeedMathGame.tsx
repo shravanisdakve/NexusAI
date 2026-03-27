@@ -30,10 +30,21 @@ const generateQuestion = (level: Level): Question => {
       question = `${a} - ${b}`;
       break;
     case 'hard':
-      a = Math.floor(Math.random() * 12) + 1;
-      b = Math.floor(Math.random() * 12) + 1;
-      answer = a * b;
-      question = `${a} x ${b}`;
+      const mode = Math.random() > 0.5;
+      if (mode) {
+        // Multiplication with larger numbers
+        a = Math.floor(Math.random() * 15) + 5;
+        b = Math.floor(Math.random() * 15) + 5;
+        answer = a * b;
+        question = `${a} x ${b}`;
+      } else {
+        // Double operator
+        a = Math.floor(Math.random() * 20) + 10;
+        b = Math.floor(Math.random() * 10) + 2;
+        const c = Math.floor(Math.random() * 50) + 1;
+        answer = (a * b) + c;
+        question = `(${a} x ${b}) + ${c}`;
+      }
       break;
   }
 

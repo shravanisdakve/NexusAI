@@ -21,6 +21,7 @@ import {
     Building2,
     ClipboardList,
     Play,
+    Zap,
 } from 'lucide-react';
 
 interface ProfileEditModalProps {
@@ -98,6 +99,7 @@ const studyNavigation = [
     { key: 'sidebar.nav.university', href: '/university-status', icon: Bell },
     { key: 'sidebar.nav.notes', href: '/notes', icon: FileText },
     { key: 'sidebar.nav.tutor', href: '/tutor', icon: MessageSquare },
+    { key: 'AI Insights', href: '/insights', icon: Zap, directTranslation: true },
     { key: 'sidebar.nav.studyRoom', href: '/study-lobby', icon: Users },
 ];
 
@@ -134,7 +136,7 @@ const Sidebar: React.FC = () => {
 
     return (
         <>
-            <aside className="w-[280px] flex-shrink-0 bg-[#0F1117] border-r border-white/5 p-6 flex flex-col">
+            <aside className="w-[280px] flex-shrink-0 bg-[#0F1117] border-r border-white/5 p-6 flex flex-col overflow-y-auto custom-scrollbar">
                 <div className="flex items-center mb-10">
                     <div className="p-2 bg-violet-600 rounded-lg">
                         <BrainCircuit className="w-7 h-7 text-white" />
@@ -144,7 +146,7 @@ const Sidebar: React.FC = () => {
                     </h1>
                 </div>
 
-                <nav className="flex-1 space-y-2">
+                <nav className="space-y-2">
                     {(mode === 'study' ? studyNavigation : placementNavigation).map((item) => (
                         <NavLink
                             key={item.key}
@@ -161,9 +163,32 @@ const Sidebar: React.FC = () => {
                             {(item as any).directTranslation ? item.key : t(item.key)}
                         </NavLink>
                     ))}
+
+                    {/* Neural Pulse Indicator */}
+                    <div className="mx-2 mt-8 p-4 bg-slate-900/80 rounded-2xl border border-white/5 relative overflow-hidden group hover:border-violet-500/30 transition-all">
+                        <div className="absolute top-0 right-0 p-8 bg-violet-500/5 blur-[30px] rounded-full"></div>
+                        <div className="relative z-10">
+                            <div className="flex items-center justify-between mb-2">
+                                <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Neural Pulse</span>
+                                <div className="flex gap-0.5">
+                                    <div className="w-1 h-3 bg-emerald-500/40 rounded-full"></div>
+                                    <div className="w-1 h-2 bg-emerald-500/60 rounded-full mt-1"></div>
+                                    <div className="w-1 h-4 bg-emerald-500 rounded-full mt-[-2px] animate-pulse"></div>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]"></div>
+                                <span className="text-[11px] font-bold text-slate-300">Groq-L3-70B</span>
+                            </div>
+                            <div className="mt-2 flex items-center justify-between">
+                                <span className="text-[9px] text-slate-500 font-mono">Lat: 142ms</span>
+                                <span className="text-[9px] text-emerald-500/80 font-bold uppercase tracking-tighter">Live Sync</span>
+                            </div>
+                        </div>
+                    </div>
                 </nav>
 
-                <div className="mt-auto pt-6 border-t border-white/5">
+                <div className="mt-10 pt-6 border-t border-white/5">
                     <div className="px-3 py-3 rounded-xl bg-surface/50 border border-white/5">
                         {user && (
                             <div className="flex items-center space-x-3 mb-6">

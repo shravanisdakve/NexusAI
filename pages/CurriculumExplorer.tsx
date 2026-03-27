@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { PageHeader, Button, Input, Card, Spinner } from '@/components/ui';
 import {
     Search,
@@ -11,7 +12,8 @@ import {
     Download,
     GraduationCap,
     Grid,
-    BookOpen
+    BookOpen,
+    Brain
 } from 'lucide-react';
 import { getCurriculum, SemesterData, Subject, Module } from '@/services/curriculumService';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -142,7 +144,8 @@ const resolveResourceLinks = (subject: Subject, module: Module): { tutorial: str
 };
 
 const CurriculumExplorer: React.FC = () => {
-    const { t } = useLanguage();
+    const navigate = useNavigate();
+    const { t, language } = useLanguage();
     const [branch, setBranch] = useState('Common for All Branches');
     const [semester, setSemester] = useState(1);
     const [curriculum, setCurriculum] = useState<SemesterData | null>(null);
@@ -430,6 +433,15 @@ const CurriculumExplorer: React.FC = () => {
                                                     onClick={() => openExternalResource(links.material)}
                                                 >
                                                     <Download className="w-3 h-3" /> {t('curriculum.material')}
+                                                </Button>
+                                                <Button
+                                                    type="button"
+                                                    size="sm"
+                                                    variant="primary"
+                                                    className="text-[10px] h-8 gap-2 bg-emerald-600 hover:bg-emerald-500 shadow-md shadow-emerald-500/20"
+                                                    onClick={() => navigate(`/tutor?q=${encodeURIComponent(t('curriculum.generateRoadmapFor', { topic: module.title }))}`)}
+                                                >
+                                                    <Brain className="w-3 h-3" /> Generate AI Roadmap
                                                 </Button>
                                             </div>
                                         </Card>

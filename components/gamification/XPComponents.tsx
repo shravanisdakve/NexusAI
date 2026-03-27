@@ -22,6 +22,7 @@ export const XPBar: React.FC<XPBarProps> = ({ xp, level, nextLevelXP }) => {
                         {level}
                     </div>
                     <span className="text-sm font-bold text-slate-200">Level Explorer</span>
+                    <span className="ml-2 text-xs bg-blue-900 text-blue-300 px-2 py-0.5 rounded-full">PHASE 1</span>
                 </div>
                 <span className="text-[10px] font-mono text-slate-500 uppercase tracking-widest">{xp} / {nextLevelXP} XP</span>
             </div>

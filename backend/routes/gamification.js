@@ -6,12 +6,11 @@ const auth = require('../middleware/auth');
 // Get User Gamification Stats
 router.get('/stats', auth, async (req, res) => {
     try {
-        const user = await User.findById(req.user.id); // auth middleware uses id
+        const user = await User.findById(req.user.id);
         if (!user) {
             return res.status(404).json({ success: false, message: 'User not found' });
         }
 
-        // Return stats matching the frontend interface
         res.json({
             success: true,
             stats: {
@@ -39,26 +38,34 @@ router.post('/update-streak', auth, async (req, res) => {
         const now = new Date();
         const lastActive = user.lastActive ? new Date(user.lastActive) : null;
 
-        if (!lastActive) {
-            user.streak = 1;
-            user.xp = (user.xp || 0) + 10; // First checkin bonus
-        } else {
-            const diffTime = now.getTime() - lastActive.getTime();
-            const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+        // Ensure streak is at least 0
+        if (!user.streak) user.streak = 0;
 
+        if (!lastActive) {
+            // First ever check-in
+            user.streak = 1;
+            user.xp = (user.xp || 0) + 10;
+        } else {
             const isSameDay = now.toDateString() === lastActive.toDateString();
-            const isYesterday = new Date(now.getTime() - 86400000).toDateString() === lastActive.toDateString();
+            
+            const yesterday = new Date(now);
+            yesterday.setDate(now.getDate() - 1);
+            const isYesterday = yesterday.toDateString() === lastActive.toDateString();
 
             if (isSameDay) {
-                // Already updated today
-                return res.json({ success: true, streak: user.streak, message: 'Already updated today' });
+                // If streak is somehow 0 but it's the same day, make it 1 (handles signup edge cases)
+                if (user.streak === 0) {
+                    user.streak = 1;
+                    user.xp = (user.xp || 0) + 10;
+                } else {
+                    return res.json({ success: true, streak: user.streak, message: 'Already updated today' });
+                }
             } else if (isYesterday) {
-                // Streak continues
-                user.streak = (user.streak || 0) + 1;
-                user.xp = (user.xp || 0) + 50; // Streak bonus
+                user.streak += 1;
+                user.xp = (user.xp || 0) + 50; 
                 user.coins = (user.coins || 0) + 5;
             } else {
-                // Streak broken
+                // Reset streak if gap > 1 day
                 user.streak = 1;
                 user.xp = (user.xp || 0) + 10;
             }
@@ -66,15 +73,14 @@ router.post('/update-streak', auth, async (req, res) => {
 
         user.lastActive = now;
 
-        // --- Early Bird Achievement ---
+        // Early Bird Achievement
         const hour = now.getHours();
-        if (hour >= 5 && hour < 9) { // 5 AM to 9 AM
+        if (hour >= 5 && hour < 9) {
             if (!user.badges.includes('Early Bird')) {
                 user.badges.push('Early Bird');
                 user.xp += 100;
             }
         }
-        // ------------------------------
 
         await user.save();
 
@@ -82,7 +88,7 @@ router.post('/update-streak', auth, async (req, res) => {
             success: true,
             streak: user.streak,
             xpEarned: user.xp,
-            message: 'Streak updated successfully'
+            message: 'Streak updated'
         });
 
     } catch (error) {
@@ -143,11 +149,10 @@ router.post('/award-badge', auth, async (req, res) => {
 // Get Leaderboard Data
 router.get('/leaderboard', auth, async (req, res) => {
     try {
-        // Fetch top 10 users sorted by XP (descending)
         const topUsers = await User.find({})
             .sort({ xp: -1 })
             .limit(10)
-            .select('displayName xp level avatar badges'); // Select only necessary fields
+            .select('displayName xp level avatar badges');
 
         const leaderboard = topUsers.map((user, index) => ({
             rank: index + 1,
@@ -170,4 +175,3 @@ router.get('/leaderboard', auth, async (req, res) => {
 });
 
 module.exports = router;
-

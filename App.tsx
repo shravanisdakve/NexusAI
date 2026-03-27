@@ -29,6 +29,8 @@ import MockPaperGenerator from './pages/MockPaperGenerator';
 import ATKTCalculator from './pages/ATKTCalculator';
 import CurriculumExplorer from './pages/CurriculumExplorer';
 import ResumeBuilder from './pages/ResumeBuilder';
+import TopicPredictor from './pages/TopicPredictor';
+import MUPaperBank from './pages/MUPaperBank';
 
 import PlacementArena from './pages/PlacementArena';
 import TCSNQTSimulator from './pages/TCSNQTSimulator';
@@ -43,6 +45,7 @@ import PlacementTracker from './pages/PlacementTracker';
 import PracticeHub from './pages/PracticeHub';
 import CompanyHub from './pages/CompanyHub';
 import LearningResources from './pages/LearningResources';
+import SmartStudy from './pages/SmartStudy';
 import { useAuth } from './contexts/AuthContext';
 import { Spinner } from '@/components/ui';
 import { ModeProvider } from './contexts/ModeContext';
@@ -76,8 +79,8 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
 
 const App: React.FC = () => {
   return (
-    <ModeProvider>
-      <Router>
+    <Router>
+      <ModeProvider>
         <Routes>
           {/* Public Routes */}
           <Route path="/login" element={<Login />} />
@@ -111,6 +114,8 @@ const App: React.FC = () => {
           <Route path="/project-generator" element={<ProtectedRoute><ProjectGenerator /></ProtectedRoute>} />
           <Route path="/kt-calculator" element={<ProtectedRoute><ATKTCalculator /></ProtectedRoute>} />
           <Route path="/mock-paper" element={<ProtectedRoute><MockPaperGenerator /></ProtectedRoute>} />
+          <Route path="/topic-predictor" element={<ProtectedRoute><TopicPredictor /></ProtectedRoute>} />
+          <Route path="/paper-bank" element={<ProtectedRoute><MUPaperBank /></ProtectedRoute>} />
           <Route path="/viva-simulator" element={<ProtectedRoute><VivaSimulator /></ProtectedRoute>} />
           <Route path="/insights" element={<ProtectedRoute><Insights /></ProtectedRoute>} />
           <Route path="/notes" element={<ProtectedRoute><Notes /></ProtectedRoute>} />
@@ -124,12 +129,13 @@ const App: React.FC = () => {
           <Route path="/zip" element={<ProtectedRoute><ZipGame /></ProtectedRoute>} />
           <Route path="/speed-math" element={<ProtectedRoute><SpeedMathGame /></ProtectedRoute>} />
           <Route path="/study-plan" element={<ProtectedRoute><StudyPlan /></ProtectedRoute>} />
+          <Route path="/study-guru" element={<ProtectedRoute><SmartStudy /></ProtectedRoute>} />
 
           {/* Fallback */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
-      </Router>
-    </ModeProvider>
+      </ModeProvider>
+    </Router>
   );
 };
 

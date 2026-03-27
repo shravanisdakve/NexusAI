@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { PageHeader, Card, Input, Textarea, Button } from '@/components/ui';
-import { FileText, Sparkles, Copy, ExternalLink, CheckCircle2, Printer } from 'lucide-react';
+import { FileText, Sparkles, Copy, ExternalLink, CheckCircle2, Printer, AlertTriangle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { trackToolUsage } from '@/services/personalizationService';
+import { generateResumeAnalysis } from '@/services/geminiService';
 
 const ROLE_KEYWORDS: Record<string, string[]> = {
     frontend: ['React', 'TypeScript', 'JavaScript', 'HTML5', 'CSS3', 'Responsive UI', 'REST API', 'Git'],
@@ -55,9 +56,12 @@ const ResumeBuilder: React.FC = () => {
     const [email, setEmail] = useState(user?.email || '');
     const [phone, setPhone] = useState('');
     const [targetRole, setTargetRole] = useState('Software Engineer');
-    const [skillsInput, setSkillsInput] = useState('React, TypeScript, Node.js, MongoDB');
-    const [projectsInput, setProjectsInput] = useState('Built a collaborative study room with real-time chat and AI-assisted quiz generation');
-    const [achievementsInput, setAchievementsInput] = useState('Improved app performance by 30% through lazy-loading and code splitting');
+    const [skillsInput, setSkillsInput] = useState('Data Structures, Algorithms, Advanced Database Management, Java, Web Server Technologies');
+    const [projectsInput, setProjectsInput] = useState('NexusAI (BE Major Project): Engineered a real-time collaborative study platform using Node.js and WebSockets\nMU Notifications Engine: Built an automated Cheerio pipeline to parse Mumbai University circulars');
+    const [achievementsInput, setAchievementsInput] = useState('Maintained distinction (9.1 CGPA) per MU grading standards\nWinner of internal college hackathon');
+    const [isGenerating, setIsGenerating] = useState(false);
+    const [aiAnalysis, setAiAnalysis] = useState<{ summary: string; keywords: string[] } | null>(null);
+    const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
         trackToolUsage('placement');
@@ -87,6 +91,7 @@ const ResumeBuilder: React.FC = () => {
     );
 
     const atsKeywords = useMemo(() => {
+        if (aiAnalysis?.keywords) return aiAnalysis.keywords;
         const bucket = toRoleBucket(targetRole);
         const keywords = dedupeCaseInsensitive([
             ...ROLE_KEYWORDS[bucket],
@@ -94,14 +99,45 @@ const ResumeBuilder: React.FC = () => {
             ...COMMON_INDIAN_HR_KEYWORDS,
         ]);
         return keywords.slice(0, 24);
-    }, [targetRole, skillList]);
+    }, [targetRole, skillList, aiAnalysis]);
 
     const summary = useMemo(() => {
-        const branch = user?.branch ? `${user.branch} student` : 'engineering student';
+        if (aiAnalysis?.summary) return aiAnalysis.summary;
+        const branch = user?.branch ? `Mumbai University ${user.branch} undergraduate` : 'Mumbai University (MU) engineering undergraduate';
         const topSkills = skillList.slice(0, 4).join(', ') || 'modern software development';
         const role = targetRole.trim() || 'Software Engineer';
-        return `Results-focused ${branch} targeting ${role} roles. Hands-on with ${topSkills}. Built practical projects with measurable outcomes and strong collaboration across product-focused teams.`;
-    }, [targetRole, skillList, user?.branch]);
+        return `Results-focused ${branch} targeting ${role} roles. Hands-on with ${topSkills}. Built practical projects with measurable outcomes, leveraging the rigorous MU curriculum to solve real-world problems.`;
+    }, [targetRole, skillList, user?.branch, aiAnalysis]);
+
+    const handleGenerateAI = async () => {
+        if (!skillsInput.trim() || !projectsInput.trim()) {
+            setError('Please provide at least some skills and project descriptions for analysis.');
+            return;
+        }
+
+        setIsGenerating(true);
+        setError(null);
+        try {
+            const result = await generateResumeAnalysis({
+                targetRole,
+                skills: skillsInput,
+                projects: projectsInput,
+                achievements: achievementsInput,
+                branch: user?.branch || 'Engineering'
+            });
+            
+            if (result && (result.summary || result.keywords)) {
+                setAiAnalysis(result);
+            } else {
+                throw new Error('AI returned an empty response.');
+            }
+        } catch (err: any) {
+            console.error('Failed to generate AI resume summary:', err);
+            setError('The AI is currently busy or rate-limited. Using intelligent defaults instead.');
+        } finally {
+            setIsGenerating(false);
+        }
+    };
 
     const contactLine = useMemo(() => {
         const values = [email.trim(), phone.trim()].filter(Boolean);
@@ -141,27 +177,47 @@ const ResumeBuilder: React.FC = () => {
                     </h3>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <Input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Full name" />
-                        <Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" />
+                        <Input id="resume-fullname" name="fullName" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Full name" aria-label="Full Name" />
+                        <Input id="resume-email" name="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" aria-label="Email Address" />
                     </div>
 
-                    <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Phone (optional)" />
-                    <Input value={targetRole} onChange={(e) => setTargetRole(e.target.value)} placeholder="Target role (e.g. Frontend Developer)" />
+                    <Input id="resume-phone" name="phone" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Phone (optional)" aria-label="Phone Number" />
+                    <Input id="resume-target-role" name="targetRole" value={targetRole} onChange={(e) => setTargetRole(e.target.value)} placeholder="Target role (e.g. Frontend Developer)" aria-label="Target Role" />
 
                     <div>
-                        <p className="text-xs text-slate-400 mb-2">Skills (comma separated)</p>
-                        <Textarea rows={3} value={skillsInput} onChange={(e) => setSkillsInput(e.target.value)} />
-                    </div>
-
-                    <div>
-                        <p className="text-xs text-slate-400 mb-2">Projects (one per line)</p>
-                        <Textarea rows={4} value={projectsInput} onChange={(e) => setProjectsInput(e.target.value)} />
+                        <label htmlFor="resume-skills" className="block text-xs text-slate-400 mb-2">Skills (comma separated)</label>
+                        <Textarea id="resume-skills" name="skills" rows={3} value={skillsInput} onChange={(e) => setSkillsInput(e.target.value)} />
                     </div>
 
                     <div>
-                        <p className="text-xs text-slate-400 mb-2">Achievements (one per line)</p>
-                        <Textarea rows={3} value={achievementsInput} onChange={(e) => setAchievementsInput(e.target.value)} />
+                        <label htmlFor="resume-projects" className="block text-xs text-slate-400 mb-2">Projects (one per line)</label>
+                        <Textarea id="resume-projects" name="projects" rows={4} value={projectsInput} onChange={(e) => setProjectsInput(e.target.value)} />
                     </div>
+
+                    <div>
+                        <label htmlFor="resume-achievements" className="block text-xs text-slate-400 mb-2">Achievements (one per line)</label>
+                        <Textarea id="resume-achievements" name="achievements" rows={3} value={achievementsInput} onChange={(e) => setAchievementsInput(e.target.value)} />
+                    </div>
+
+                    {error && (
+                        <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl flex items-center gap-2 text-[11px] text-red-400 animate-in fade-in slide-in-from-top-1">
+                            <AlertTriangle size={14} className="shrink-0" />
+                            {error}
+                        </div>
+                    )}
+
+                    <Button 
+                        onClick={handleGenerateAI} 
+                        disabled={isGenerating} 
+                        className="w-full gap-2 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 shadow-lg shadow-indigo-500/20"
+                    >
+                        {isGenerating ? (
+                            <>
+                                <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                Analyzing patterns...
+                            </>
+                        ) : 'Optimize with AI ✨'}
+                    </Button>
                 </Card>
 
                 <Card className="xl:col-span-3 p-6 border-indigo-500/30 bg-gradient-to-br from-indigo-950/40 via-slate-900 to-slate-900 resume-print-area">

@@ -1,5 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { motion } from 'framer-motion';
+import { Brain } from 'lucide-react';
 
 interface TopicData {
     name: string;
@@ -31,8 +32,9 @@ const KnowledgeMap: React.FC<KnowledgeMapProps> = ({ topics }) => {
 
     return (
         <div ref={containerRef} className="bg-slate-900/50 rounded-3xl p-6 ring-1 ring-slate-700 overflow-hidden relative border border-slate-700/50">
-            <h4 className="text-lg font-bold text-slate-100 mb-6 flex items-center gap-2">
-                Knowledge Map
+            <h4 className="text-sm uppercase tracking-widest font-black text-slate-400 mb-6 flex items-center gap-2">
+                <Brain className="w-4 h-4 text-violet-400" />
+                AI Semantic Proficiency Mapping
             </h4>
 
             <svg width="100%" height="400" viewBox={`0 0 ${width} ${height}`} className="mx-auto">

@@ -1,15 +1,17 @@
 import React, { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Building2, ClipboardList } from 'lucide-react';
+import { Building2, ClipboardList, Target } from 'lucide-react';
 
 import CompanyProfiles from './CompanyProfiles';
 import PlacementTracker from './PlacementTracker';
+import PlacementPredictor from './PlacementPredictor';
 
-type Tab = 'companies' | 'tracker';
+type Tab = 'companies' | 'tracker' | 'predictor';
 
 const TABS: { id: Tab; label: string; icon: React.ReactNode; color: string; activeColor: string }[] = [
     { id: 'companies', label: 'Company Profiles', icon: <Building2 className="w-4 h-4" />, color: 'text-slate-400 hover:text-amber-400', activeColor: 'text-amber-400 bg-amber-500/15 border-amber-500/40' },
     { id: 'tracker', label: 'My Applications', icon: <ClipboardList className="w-4 h-4" />, color: 'text-slate-400 hover:text-rose-400', activeColor: 'text-rose-400 bg-rose-500/15 border-rose-500/40' },
+    { id: 'predictor', label: 'Placement Predictor', icon: <Target className="w-4 h-4" />, color: 'text-slate-400 hover:text-emerald-400', activeColor: 'text-emerald-400 bg-emerald-500/15 border-emerald-500/40' },
 ];
 
 const CompanyHub: React.FC = () => {
@@ -45,6 +47,7 @@ const CompanyHub: React.FC = () => {
             <div className="min-h-[600px]">
                 {activeTab === 'companies' && <CompanyProfiles />}
                 {activeTab === 'tracker' && <PlacementTracker />}
+                {activeTab === 'predictor' && <PlacementPredictor />}
             </div>
         </div>
     );

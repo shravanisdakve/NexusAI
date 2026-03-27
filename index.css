@@ -1,5 +1,9 @@
-/* Import Design Tokens */
 @import './styles/design-tokens.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 
 /* Custom scrollbar for a better look in dark mode */
 ::-webkit-scrollbar {
@@ -57,3 +61,52 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+
+/* Smart Study Guru Styles */
+.guru-glass {
+  background: rgba(15, 17, 23, 0.7);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+mark {
+  background: rgba(99, 102, 241, 0.25);
+  color: white;
+  border-radius: 4px;
+  padding: 0 4px;
+  box-shadow: 0 0 10px rgba(99, 102, 241, 0.2);
+  transition: all 0.3s ease;
+}
+
+mark:hover {
+  background: rgba(99, 102, 241, 0.5);
+  box-shadow: 0 0 20px rgba(99, 102, 241, 0.4);
+}
+
+.mermaid {
+  background: transparent !important;
+}
+
+.mermaid svg {
+  max-width: 100%;
+  height: auto;
+}
+
+/* 3D Flip Effects */
+.perspective-1000 {
+  perspective: 1000px;
+  -webkit-perspective: 1000px;
+}
+
+.backface-hidden {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.rotate-y-180 {
+  transform: rotateY(180deg);
+}
+
+.transform-style-3d {
+  transform-style: preserve-3d;
+}

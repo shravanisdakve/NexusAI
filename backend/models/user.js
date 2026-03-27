@@ -44,7 +44,7 @@ const UserSchema = new mongoose.Schema({
   },
   lastActive: {
     type: Date,
-    default: Date.now,
+    default: null,
   },
   // Gamification Fields
   xp: {
@@ -98,6 +98,14 @@ const UserSchema = new mongoose.Schema({
     default: {}
   },
   lastSamarthSyncAt: {
+    type: Date,
+    default: null
+  },
+  currentMood: {
+    type: String, // 'happy', 'stressed', 'bored', etc.
+    default: null
+  },
+  lastMoodUpdate: {
     type: Date,
     default: null
   },

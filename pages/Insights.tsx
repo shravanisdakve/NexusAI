@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { PageHeader, Spinner } from '../components/ui';
-import { Clock, Gamepad2, Activity, Zap, Brain, Target, ShieldAlert } from 'lucide-react';
+import { Clock, Gamepad2, Activity, Zap, Brain, Target, ShieldAlert, Sparkles } from 'lucide-react';
 import { getProductivityReport } from '../services/analyticsService';
 import KnowledgeMap from '../components/KnowledgeMap';
 import { useLanguage } from '../contexts/LanguageContext';
+import { generateKnowledgeMap } from '../services/geminiService';
 
 // -------------------- TYPES --------------------
 interface ProductivityData {
@@ -14,6 +15,7 @@ interface ProductivityData {
   strengths: { topic: string; accuracy: number; count: number }[];
   weaknesses: { topic: string; accuracy: number; count: number }[];
   completedPomodoros: number;
+  quizHistory?: any[];
 }
 
 // -------------------- SMALL UI CARDS --------------------
@@ -27,9 +29,11 @@ const StatCard = ({ title, value, icon: Icon, colorClass = 'text-slate-400' }: a
 );
 
 const Insights: React.FC = () => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [report, setReport] = useState<ProductivityData | null>(null);
+  const [aiMapData, setAiMapData] = useState<{ name: string; strength: number }[]>([]);
   const [loading, setLoading] = useState(true);
+  const [aiLoading, setAiLoading] = useState(false);
 
   const formatTime = (seconds: number): string => {
     if (!seconds || isNaN(seconds)) return t('insights.zeroSeconds');
@@ -41,12 +45,25 @@ const Insights: React.FC = () => {
 
   useEffect(() => {
     const fetchReport = async () => {
-      const data = await getProductivityReport();
-      setReport(data as any);
+      setLoading(true);
+      const data: any = await getProductivityReport();
+      setReport(data);
       setLoading(false);
+
+      if (data && data.quizHistory && data.quizHistory.length > 0) {
+        setAiLoading(true);
+        try {
+          const aiTopics = await generateKnowledgeMap(data.quizHistory, language);
+          setAiMapData(aiTopics);
+        } catch (err) {
+          console.error("AI Map generation failed:", err);
+        } finally {
+          setAiLoading(false);
+        }
+      }
     };
     fetchReport();
-  }, []);
+  }, [language]);
 
   if (loading || !report) {
     return (
@@ -56,20 +73,20 @@ const Insights: React.FC = () => {
     );
   }
 
-  // Prepare map data
-  const mapData = [...report.strengths, ...report.weaknesses].map(t => ({
-    name: t.topic,
-    strength: t.accuracy / 100
-  }));
-
-  // If no data, show placeholder topics for demo
-  const finalMapData = mapData.length > 0 ? mapData : [
-      { name: 'Linked Lists', strength: 0.85 },
-      { name: 'Trees', strength: 0.45 },
-      { name: 'Recursion', strength: 0.92 },
-      { name: 'Dynamic Programming', strength: 0.30 },
-      { name: 'Greedy Algorithms', strength: 0.65 }
-  ];
+  // Final Map Data: AI Data > Strengths/Weaknesses > Placeholder
+  let finalMapData = aiMapData;
+  
+  if (finalMapData.length === 0) {
+    const fallbackData = [...report.strengths, ...report.weaknesses].map(t => ({
+      name: t.topic,
+      strength: t.accuracy / 100
+    }));
+    finalMapData = fallbackData.length > 0 ? fallbackData : [
+      { name: 'Applied Mathematics', strength: 0.72 },
+      { name: 'Engineering Physics', strength: 0.68 },
+      { name: 'Basic Electrical Eng', strength: 0.64 },
+    ];
+  }
 
   return (
     <div className="space-y-8 pb-12">
@@ -78,14 +95,6 @@ const Insights: React.FC = () => {
         subtitle={t('insights.subtitle')}
       />
 
-      {mapData.length === 0 && (
-        <div className="bg-amber-900/30 border border-amber-600/50 rounded-lg p-3 flex items-center gap-3 text-amber-200 mb-6">
-          <ShieldAlert size={20} className="flex-shrink-0" />
-          <p className="text-sm">
-            <strong>{t('insights.sampleDataTitle')}</strong> {t('insights.sampleDataSubtitle')}
-          </p>
-        </div>
-      )}
 
       {/* SUMMARY CARDS */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -97,7 +106,7 @@ const Insights: React.FC = () => {
         />
         <StatCard
           title={t('insights.quizAccuracy')}
-          value={`${report.quizAccuracy}%`}
+          value={report.totalQuizzes > 0 ? `${report.quizAccuracy}%` : '0%'}
           icon={Brain}
           colorClass="text-rose-400"
         />
@@ -116,8 +125,22 @@ const Insights: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2">
-          <KnowledgeMap topics={finalMapData} />
+        <div className="lg:col-span-2 relative group">
+          {(aiMapData.length > 0 || aiLoading) && (
+            <div className={`absolute -top-4 -right-4 bg-violet-600 text-white text-[10px] px-2 py-1 rounded-full font-bold z-10 shadow-lg shadow-violet-500/50 flex items-center gap-1 ${aiLoading ? 'animate-pulse' : ''}`}>
+              <Sparkles size={10} /> {aiLoading ? 'ANALYZING...' : 'AI GENERATED'}
+            </div>
+          )}
+          <div className={aiLoading ? 'opacity-50 blur-sm transition-all duration-1000' : 'transition-all duration-1000'}>
+            <KnowledgeMap topics={finalMapData} />
+          </div>
+          {aiLoading && (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="bg-slate-900/80 backdrop-blur px-4 py-2 rounded-full border border-violet-500/50 text-violet-400 text-sm font-bold flex items-center gap-2">
+                <Brain size={16} className="animate-bounce" /> Analyzing Quiz Patterns...
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="space-y-6">

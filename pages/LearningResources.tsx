@@ -4,8 +4,9 @@ import { Button, Card } from '../components/ui';
 import {
     Play, BookOpen, Code2, Calculator, MessageCircle, UserCheck,
     Briefcase, Star, Clock, ChevronRight, ExternalLink, X,
-    Brain, FileText, Lightbulb, GraduationCap, TrendingUp
+    Brain, FileText, Lightbulb, GraduationCap, TrendingUp, Zap, Settings, Globe
 } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
 import { trackToolUsage } from '../services/personalizationService';
 
 interface VideoResource {
@@ -29,6 +30,7 @@ interface ResourceCategory {
     gradient: string;
     description: string;
     videos: VideoResource[];
+    branches: string[]; // Supported branches: ['CS', 'IT', 'MECH', 'CIVIL', 'EXTC', 'ELEX', 'ELECT', 'all']
 }
 
 const RESOURCE_CATEGORIES: ResourceCategory[] = [
@@ -40,6 +42,7 @@ const RESOURCE_CATEGORIES: ResourceCategory[] = [
         color: 'text-violet-400',
         gradient: 'from-violet-600/20 to-indigo-600/10',
         description: 'Master Data Structures & Algorithms for coding rounds',
+        branches: ['Computer Engineering', 'Information Technology', 'CS', 'IT'],
         videos: [
             {
                 id: 'dsa-1', title: 'Complete DSA Roadmap for Beginners', channel: 'Striver (takeUforward)',
@@ -94,6 +97,60 @@ const RESOURCE_CATEGORIES: ResourceCategory[] = [
         ],
     },
     {
+        id: 'electronics',
+        label: 'Electronics Core',
+        emoji: '⚡',
+        icon: <Zap className="w-5 h-5" />, // Note: Need to import Zap if not there
+        color: 'text-yellow-400',
+        gradient: 'from-yellow-600/20 to-amber-600/10',
+        description: 'Core concepts for EXTC, ELEX and Electrical students',
+        branches: ['Electronics & Telecommunication', 'Electronics Engineering', 'Electrical Engineering', 'EXTC', 'ELEX', 'ELECT'],
+        videos: [
+            {
+                id: 'elec-1', title: 'Digital Electronics Full Course', channel: 'Neso Academy',
+                description: 'Complete series on number systems, logic gates, K-maps, combinational & sequential circuits — fundamental for all ECE exams.',
+                youtubeId: 'vR40S8nU9c0', duration: '12 hr', tags: ['Digital', 'Gates'], difficulty: 'Beginner', recommended: true,
+            },
+            {
+                id: 'elec-2', title: 'Signals & Systems for Beginners', channel: 'Anis Sir',
+                description: 'Master Fourier transforms, Z-transforms, and LTI systems with exam-oriented shortcuts and visualization.',
+                youtubeId: '3uFzH8fL-28', duration: '1 hr 15 min', tags: ['Signals', 'Shortcuts'], difficulty: 'Intermediate',
+            },
+            {
+                id: 'elec-3', title: 'Microprocessors (8085/8086) Explained', channel: 'Knowledge Gate',
+                description: 'Complete architecture and instruction set explanation for core electronics and CS students.',
+                youtubeId: 'ii7V_QG6Plo', duration: '55 min', tags: ['Microprocessor', 'Arch'], difficulty: 'Intermediate',
+            },
+        ],
+    },
+    {
+        id: 'mechanical',
+        label: 'Mechanical & Civil',
+        emoji: '⚙️',
+        icon: <Settings className="w-5 h-5" />, // Note: Need to import Settings if not there
+        color: 'text-orange-400',
+        gradient: 'from-orange-600/20 to-red-600/10',
+        description: 'Thermodynamics, Mechanics and Core fundamental courses',
+        branches: ['Mechanical Engineering', 'Civil Engineering', 'MECH', 'CIVIL'],
+        videos: [
+            {
+                id: 'mech-1', title: 'Thermodynamics - Laws & Concepts', channel: 'Magic Marks',
+                description: 'Visual explanation of First and Second law of thermodynamics, entropy, and heat engines for core mechanical preparation.',
+                youtubeId: 'z0_fIPN4q_o', duration: '40 min', tags: ['Thermodynamics', 'Laws'], difficulty: 'Beginner', recommended: true,
+            },
+            {
+                id: 'mech-2', title: 'Engineering Mechanics - Truss & Frames', channel: 'The Engineering Mindset',
+                description: 'In-depth guide to solving trusses and frames using method of joints and sections — critical for Civil and Mech students.',
+                youtubeId: 'y-mXnO1W-gU', duration: '35 min', tags: ['Mechanics', 'Truss'], difficulty: 'Intermediate',
+            },
+            {
+                id: 'mech-3', title: 'Fluid Mechanics - Properties & Equations', channel: 'GATE Academy',
+                description: 'Viscosity, surface tension, and Bernoulli’s equation — placement specific questions and core concepts.',
+                youtubeId: 'wR9E0V9XoV8', duration: '1 hr', tags: ['Fluid', 'Bernoulli'], difficulty: 'Intermediate',
+            },
+        ],
+    },
+    {
         id: 'aptitude',
         label: 'Aptitude & Reasoning',
         emoji: '🧮',
@@ -101,36 +158,37 @@ const RESOURCE_CATEGORIES: ResourceCategory[] = [
         color: 'text-blue-400',
         gradient: 'from-blue-600/20 to-cyan-600/10',
         description: 'Crack quantitative, logical, and verbal sections',
+        branches: ['all'],
         videos: [
             {
                 id: 'apt-1', title: 'Quantitative Aptitude - Complete Course', channel: 'CareerRide',
                 description: 'Full aptitude course covering percentages, ratio, time & work, speed-distance, probability — everything for TCS/Infosys tests.',
-                youtubeId: 'MKkJYazWJ_U', duration: '2 hr', tags: ['Quant', 'Percentages'], difficulty: 'Beginner', recommended: true,
+                youtubeId: 'zX38n2W8y8s', duration: '2 hr', tags: ['Quant', 'Percentages'], difficulty: 'Beginner', recommended: true,
             },
             {
                 id: 'apt-2', title: 'Logical Reasoning - Tricks & Shortcuts', channel: 'Placement Season',
                 description: 'Quick tricks for solving logical reasoning problems — coding-decoding, blood relations, seating arrangements, and series.',
-                youtubeId: 'hR39lxCbQeo', duration: '45 min', tags: ['Logical', 'Shortcuts'], difficulty: 'Beginner',
+                youtubeId: 'yV-37C_J8E0', duration: '45 min', tags: ['Logical', 'Shortcuts'], difficulty: 'Beginner',
             },
             {
                 id: 'apt-3', title: 'Verbal Ability for Placement Exams', channel: 'Unacademy',
                 description: 'Master reading comprehension, para jumbles, sentence correction, and vocabulary for placement verbal sections.',
-                youtubeId: 'T7mcL_-YxjQ', duration: '1 hr', tags: ['Verbal', 'English'], difficulty: 'Beginner',
+                youtubeId: 'v7L6_v911pU', duration: '1 hr', tags: ['Verbal', 'English'], difficulty: 'Beginner',
             },
             {
                 id: 'apt-4', title: 'Data Interpretation Made Easy', channel: 'CareerRide',
                 description: 'Learn to quickly solve DI problems — tables, bar charts, pie charts, and line graphs with speed techniques.',
-                youtubeId: 'D-_pNW5XPBY', duration: '50 min', tags: ['DI', 'Charts'], difficulty: 'Intermediate',
+                youtubeId: 'f_A8iF-J_gU', duration: '50 min', tags: ['DI', 'Charts'], difficulty: 'Intermediate',
             },
             {
                 id: 'apt-5', title: 'Time & Work - All Types Solved', channel: 'Adda247',
                 description: 'Every type of Time & Work problem with shortcuts — pipes & cisterns, efficiency, alternate days work patterns.',
-                youtubeId: 'AHZNVoBcmvU', duration: '35 min', tags: ['Time & Work', 'Quant'], difficulty: 'Intermediate',
+                youtubeId: 'XmE7pS_X0uY', duration: '35 min', tags: ['Time & Work', 'Quant'], difficulty: 'Intermediate',
             },
             {
                 id: 'apt-6', title: 'Probability & Permutation Combo', channel: 'Wifistudy',
                 description: 'Clear concepts of probability, permutations and combinations with placement-level practice problems.',
-                youtubeId: 'eH4TIJPGJtk', duration: '55 min', tags: ['Probability', 'P&C'], difficulty: 'Intermediate', recommended: true,
+                youtubeId: 'fD3Zq8mC87Y', duration: '55 min', tags: ['Probability', 'P&C'], difficulty: 'Intermediate', recommended: true,
             },
         ],
     },
@@ -142,6 +200,7 @@ const RESOURCE_CATEGORIES: ResourceCategory[] = [
         color: 'text-emerald-400',
         gradient: 'from-emerald-600/20 to-teal-600/10',
         description: 'Ace HR, technical, and behavioral interview rounds',
+        branches: ['all'],
         videos: [
             {
                 id: 'int-1', title: 'Top 10 HR Interview Questions & Answers', channel: 'Interview Tips',
@@ -151,12 +210,12 @@ const RESOURCE_CATEGORIES: ResourceCategory[] = [
             {
                 id: 'int-2', title: 'STAR Method for Behavioral Interviews', channel: 'Career Vidz',
                 description: 'Master the STAR technique (Situation, Task, Action, Result) to structure your behavioral interview answers perfectly.',
-                youtubeId: 'xfF27IbpSjU', duration: '15 min', tags: ['STAR Method', 'Behavioral'], difficulty: 'Beginner',
+                youtubeId: 'Z190u8v_p7k', duration: '15 min', tags: ['STAR Method', 'Behavioral'], difficulty: 'Beginner',
             },
             {
                 id: 'int-3', title: 'Technical Interview Tips for Freshers', channel: 'TechLead Show',
                 description: 'What to expect in technical rounds — how to approach problems, communicate your thought process, and handle pressure.',
-                youtubeId: 'ftONRF624BQ', duration: '25 min', tags: ['Technical', 'Tips'], difficulty: 'Intermediate',
+                youtubeId: 'p7-9Uf-l5b4', duration: '25 min', tags: ['Technical', 'Tips'], difficulty: 'Intermediate',
             },
             {
                 id: 'int-4', title: 'Body Language in Interviews', channel: 'Placement Season',
@@ -166,12 +225,12 @@ const RESOURCE_CATEGORIES: ResourceCategory[] = [
             {
                 id: 'int-5', title: 'Stress Interview - How to Handle It', channel: 'Interview Tips',
                 description: 'How to stay calm and respond professionally during stress rounds — handling trick questions, pressure, and rapid-fire.',
-                youtubeId: 'eIrZdRSAHjk', duration: '18 min', tags: ['Stress Round', 'Pressure'], difficulty: 'Advanced',
+                youtubeId: 'G1p0m7B9m8A', duration: '18 min', tags: ['Stress Round', 'Pressure'], difficulty: 'Advanced',
             },
             {
                 id: 'int-6', title: 'Self Introduction That Impresses', channel: 'Leverage Edu',
                 description: 'Craft the perfect self-introduction for interviews — structure, what to include, what to avoid, and real examples.',
-                youtubeId: 'sA7MdoXHJHo', duration: '10 min', tags: ['Introduction', 'First Impression'], difficulty: 'Beginner', recommended: true,
+                youtubeId: 'K0Z2X_a2tqU', duration: '10 min', tags: ['Introduction', 'First Impression'], difficulty: 'Beginner', recommended: true,
             },
         ],
     },
@@ -183,6 +242,7 @@ const RESOURCE_CATEGORIES: ResourceCategory[] = [
         color: 'text-cyan-400',
         gradient: 'from-cyan-600/20 to-sky-600/10',
         description: 'Learn GD strategies, topics, and dos/don\'ts',
+        branches: ['all'],
         videos: [
             {
                 id: 'gd-1', title: 'How to Win a Group Discussion', channel: 'TalentSprint',
@@ -202,7 +262,7 @@ const RESOURCE_CATEGORIES: ResourceCategory[] = [
             {
                 id: 'gd-4', title: 'How to Structure GD Arguments', channel: 'CareerRide',
                 description: 'Learn to build structured arguments using frameworks — pros/cons, stakeholder analysis, and data-driven points.',
-                youtubeId: 'lzTqylmCBXs', duration: '18 min', tags: ['Arguments', 'Structure'], difficulty: 'Intermediate',
+                youtubeId: 'HGdbuvNjm-U', duration: '18 min', tags: ['Arguments', 'Structure'], difficulty: 'Intermediate',
             },
         ],
     },
@@ -214,6 +274,7 @@ const RESOURCE_CATEGORIES: ResourceCategory[] = [
         color: 'text-amber-400',
         gradient: 'from-amber-600/20 to-orange-600/10',
         description: 'Build a resume that gets shortlisted',
+        branches: ['all'],
         videos: [
             {
                 id: 'res-1', title: 'How to Write a Perfect Resume for Freshers', channel: 'Placement Season',
@@ -245,51 +306,113 @@ const RESOURCE_CATEGORIES: ResourceCategory[] = [
         color: 'text-rose-400',
         gradient: 'from-rose-600/20 to-pink-600/10',
         description: 'Targeted prep for specific company tests',
+        branches: ['all'],
         videos: [
             {
                 id: 'comp-1', title: 'TCS NQT 2025 - Complete Preparation', channel: 'Placement Season',
                 description: 'Everything about TCS NQT — exam pattern, syllabus, important topics, practice questions, and scoring strategy.',
-                youtubeId: 'rfCRaeOCQ8U', duration: '45 min', tags: ['TCS', 'NQT'], difficulty: 'Beginner', recommended: true,
+                youtubeId: 'eP08W29jGGo', duration: '45 min', tags: ['TCS', 'NQT'], difficulty: 'Beginner', recommended: true,
             },
             {
-                id: 'comp-2', title: 'Infosys InfyTQ Preparation Guide', channel: 'Adda247',
-                description: 'Complete guide for Infosys InfyTQ — certification, exam pattern, pseudocode section, and interview preparation.',
-                youtubeId: 'ZT24mTIEkSI', duration: '35 min', tags: ['Infosys', 'InfyTQ'], difficulty: 'Beginner',
+                id: 'comp-2', title: 'Infosys Placement Preparation Guide', channel: 'Adda247',
+                description: 'Complete guide for Infosys — certification, exam pattern, pseudocode section, and interview preparation.',
+                youtubeId: '0W6H3l9Uf50', duration: '35 min', tags: ['Infosys', 'Placement'], difficulty: 'Beginner',
             },
             {
-                id: 'comp-3', title: 'Wipro NLTH Exam Strategy', channel: 'CareerRide',
-                description: 'Wipro NLTH (National Level Talent Hunt) — pattern, essay writing tips, coding practice, and time management.',
-                youtubeId: 'Rq7VEdpGXoA', duration: '30 min', tags: ['Wipro', 'NLTH'], difficulty: 'Beginner',
+                id: 'comp-3', title: 'Wipro Elite NTH Exam Strategy', channel: 'CareerRide',
+                description: 'Wipro ELITE (National Level Talent Hunt) — pattern, essay writing tips, coding practice, and time management.',
+                youtubeId: 'I9l_v1X_oZk', duration: '30 min', tags: ['Wipro', 'ELITE'], difficulty: 'Beginner',
             },
             {
                 id: 'comp-4', title: 'Accenture Assessment Preparation', channel: 'Placement Season',
                 description: 'Accenture cognitive, technical, and coding assessment — what to expect, game-based rounds, and communication test tips.',
-                youtubeId: 'UysgBTnw1aE', duration: '28 min', tags: ['Accenture', 'Cognitive'], difficulty: 'Intermediate',
+                youtubeId: 'S_G_f_V_V_I', duration: '28 min', tags: ['Accenture', 'Cognitive'], difficulty: 'Intermediate',
             },
             {
                 id: 'comp-5', title: 'Cognizant GenC Preparation', channel: 'Unacademy',
                 description: 'Cognizant GenC, GenC Next, and GenC Elevate — understand tiers, AMCAT-based test, Automata Fix section prep.',
-                youtubeId: 'T37BKEN9Z2M', duration: '40 min', tags: ['Cognizant', 'GenC'], difficulty: 'Intermediate',
+                youtubeId: 'M9n7U2d906A', duration: '40 min', tags: ['Cognizant', 'GenC'], difficulty: 'Intermediate',
             },
             {
                 id: 'comp-6', title: 'Capgemini Exceller Drive Prep', channel: 'CareerRide',
                 description: 'Capgemini game-based aptitude, pseudocode, essay writing, and coding round — what makes it unique and how to crack each section.',
-                youtubeId: 'V_6Iu1j5Kak', duration: '25 min', tags: ['Capgemini', 'Exceller'], difficulty: 'Intermediate',
+                youtubeId: '9mR9_n4yKjg', duration: '25 min', tags: ['Capgemini', 'Exceller'], difficulty: 'Intermediate',
             },
         ],
     },
 ];
 
+const VideoThumbnail: React.FC<{ youtubeId: string, title: string, duration?: string }> = ({ youtubeId, title, duration }) => {
+    const [error, setError] = React.useState(false);
+    // Use hqdefault as primary because it's higher quality and more reliable for newer videos
+    const [thumbUrl, setThumbUrl] = React.useState(`https://img.youtube.com/vi/${youtubeId}/hqdefault.jpg`);
+
+    return (
+        <div className="relative aspect-video bg-slate-900 overflow-hidden">
+            {!error ? (
+                <img
+                    src={thumbUrl}
+                    alt={title}
+                    className="w-full aspect-video object-cover transition-transform duration-500 group-hover:scale-110"
+                    onError={() => {
+                        if (thumbUrl.includes('hqdefault')) {
+                            setThumbUrl(`https://img.youtube.com/vi/${youtubeId}/mqdefault.jpg`);
+                        } else if (thumbUrl.includes('mqdefault')) {
+                             setThumbUrl(`https://img.youtube.com/vi/${youtubeId}/0.jpg`);
+                        } else {
+                            setError(true);
+                        }
+                    }}
+                />
+            ) : (
+                <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-slate-800 to-slate-900 border-b border-slate-700">
+                    <div className="w-12 h-12 rounded-full bg-violet-500/10 flex items-center justify-center mb-2">
+                        <Play size={24} className="text-violet-400 ml-1" />
+                    </div>
+                    <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest px-4 text-center line-clamp-1">{title}</span>
+                </div>
+            )}
+            <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="w-14 h-14 rounded-full bg-white/90 flex items-center justify-center shadow-xl transform scale-90 group-hover:scale-100 transition-transform">
+                    <Play size={24} className="text-slate-900 ml-1" />
+                </div>
+            </div>
+            {duration && (
+                <div className="absolute bottom-2 right-2 px-2 py-0.5 rounded bg-black/80 text-[10px] text-white font-mono z-10">{duration}</div>
+            )}
+        </div>
+    );
+};
+
+
 const LearningResources: React.FC = () => {
+    const { user } = useAuth();
     const [searchParams, setSearchParams] = useSearchParams();
-    const initialCategory = searchParams.get('category') || 'dsa';
+
+    // Determine user's primary domain focus
+    const userBranch = user?.branch || '';
+    const isCSBranch = ['Computer Engineering', 'Information Technology', 'CS', 'IT'].includes(userBranch);
+    const isCoreBranch = ['Mechanical Engineering', 'Civil Engineering', 'Electronics & Telecommunication', 'Electronics Engineering', 'Electrical Engineering', 'MECH', 'CIVIL', 'EXTC', 'ELEX', 'ELECT'].includes(userBranch);
+
+    const initialCategory = searchParams.get('category') || (isCoreBranch && !isCSBranch ? 'electronics' : 'dsa');
+
     const [selectedCategory, setSelectedCategory] = useState(initialCategory);
     const [playingVideo, setPlayingVideo] = useState<VideoResource | null>(null);
     const [filterDifficulty, setFilterDifficulty] = useState<string>('all');
+    const [showAllBranches, setShowAllBranches] = useState(!userBranch || userBranch === 'General');
 
     React.useEffect(() => { trackToolUsage('placement'); }, []);
 
-    const category = RESOURCE_CATEGORIES.find(c => c.id === selectedCategory) || RESOURCE_CATEGORIES[0];
+    // Filter categories based on branch relevance or "Show All" toggle
+    const visibleCategories = RESOURCE_CATEGORIES.filter(cat =>
+        showAllBranches ||
+        cat.branches.includes('all') ||
+        cat.branches.includes(userBranch) ||
+        (isCSBranch && (cat.id === 'dsa')) ||
+        (isCoreBranch && (cat.id === 'electronics' || cat.id === 'mechanical'))
+    );
+
+    const category = RESOURCE_CATEGORIES.find(c => c.id === selectedCategory) || visibleCategories[0] || RESOURCE_CATEGORIES[0];
 
     const filteredVideos = category.videos.filter(v =>
         filterDifficulty === 'all' || v.difficulty === filterDifficulty
@@ -304,6 +427,35 @@ const LearningResources: React.FC = () => {
 
     return (
         <div className="space-y-6 max-w-7xl mx-auto pb-12">
+            {/* Personalization Banner */}
+            {userBranch && (
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-800/80 p-4 rounded-2xl border border-slate-700">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-violet-500/10 flex items-center justify-center">
+                            <GraduationCap className="text-violet-400 w-5 h-5" />
+                        </div>
+                        <div>
+                            <p className="text-xs text-slate-500 font-bold uppercase tracking-wider">Academic Profile</p>
+                            <p className="text-sm text-slate-200 font-semibold">{userBranch} Student</p>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 bg-slate-900/50 p-1.5 rounded-xl border border-slate-700/50">
+                        <button
+                            onClick={() => setShowAllBranches(false)}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${!showAllBranches ? 'bg-violet-500 text-white shadow-lg shadow-violet-500/20' : 'text-slate-400 hover:text-white'}`}
+                        >
+                            🎯 Targeted
+                        </button>
+                        <button
+                            onClick={() => setShowAllBranches(true)}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${showAllBranches ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-white'}`}
+                        >
+                            🌐 Explore All
+                        </button>
+                    </div>
+                </div>
+            )}
             {/* Video Player Modal */}
             {playingVideo && (
                 <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setPlayingVideo(null)}>
@@ -340,7 +492,7 @@ const LearningResources: React.FC = () => {
 
             {/* Category Tabs */}
             <div className="flex items-center gap-2 flex-wrap bg-slate-800/50 p-1.5 rounded-2xl border border-slate-700/50 overflow-x-auto">
-                {RESOURCE_CATEGORIES.map(cat => (
+                {visibleCategories.map(cat => (
                     <button
                         key={cat.id}
                         onClick={() => handleCategoryChange(cat.id)}
@@ -400,18 +552,8 @@ const LearningResources: React.FC = () => {
                                 className="group text-left rounded-2xl overflow-hidden border border-amber-500/20 bg-amber-500/5 hover:border-amber-500/40 transition-all hover:scale-[1.02]"
                             >
                                 <div className="relative">
-                                    <img
-                                        src={`https://img.youtube.com/vi/${video.youtubeId}/mqdefault.jpg`}
-                                        alt={video.title}
-                                        className="w-full aspect-video object-cover"
-                                    />
-                                    <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <div className="w-14 h-14 rounded-full bg-white/90 flex items-center justify-center">
-                                            <Play size={24} className="text-slate-900 ml-1" />
-                                        </div>
-                                    </div>
-                                    <div className="absolute bottom-2 right-2 px-2 py-0.5 rounded bg-black/80 text-[10px] text-white font-mono">{video.duration}</div>
-                                    <div className="absolute top-2 left-2 px-2 py-0.5 rounded bg-amber-500 text-[10px] text-white font-bold">⭐ Recommended</div>
+                                    <VideoThumbnail youtubeId={video.youtubeId} title={video.title} duration={video.duration} />
+                                    <div className="absolute top-2 left-2 px-2 py-0.5 rounded bg-amber-500 text-[10px] text-white font-bold z-10">⭐ Recommended</div>
                                 </div>
                                 <div className="p-4">
                                     <h4 className="font-bold text-white text-sm line-clamp-2 group-hover:text-amber-300 transition-colors">{video.title}</h4>
@@ -437,19 +579,9 @@ const LearningResources: React.FC = () => {
                             className="group text-left rounded-2xl overflow-hidden border border-slate-700/50 bg-slate-800/30 hover:border-slate-500 transition-all hover:scale-[1.02]"
                         >
                             <div className="relative">
-                                <img
-                                    src={`https://img.youtube.com/vi/${video.youtubeId}/mqdefault.jpg`}
-                                    alt={video.title}
-                                    className="w-full aspect-video object-cover"
-                                />
-                                <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <div className="w-14 h-14 rounded-full bg-white/90 flex items-center justify-center">
-                                        <Play size={24} className="text-slate-900 ml-1" />
-                                    </div>
-                                </div>
-                                <div className="absolute bottom-2 right-2 px-2 py-0.5 rounded bg-black/80 text-[10px] text-white font-mono">{video.duration}</div>
+                                <VideoThumbnail youtubeId={video.youtubeId} title={video.title} duration={video.duration} />
                                 {video.difficulty && (
-                                    <div className={`absolute top-2 left-2 px-2 py-0.5 rounded text-[10px] font-bold ${video.difficulty === 'Beginner' ? 'bg-emerald-600 text-white' :
+                                    <div className={`absolute top-2 left-2 px-2 py-0.5 rounded text-[10px] font-bold z-10 ${video.difficulty === 'Beginner' ? 'bg-emerald-600 text-white' :
                                             video.difficulty === 'Intermediate' ? 'bg-amber-600 text-white' :
                                                 'bg-rose-600 text-white'
                                         }`}>{video.difficulty}</div>

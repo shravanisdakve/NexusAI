@@ -9,6 +9,8 @@ const generatedCoverageKeys: Dictionary = {
     'atk.credits': 'Credits',
     'atk.cumulativeCredits': 'Cumulative credits',
     'atk.currentSemester': 'Current semester',
+    'atk.engineeringRule': 'Mumbai University Engineering Ordinance',
+    'atk.engineeringRuleText': 'Under Mumbai University regulations, you need 40% combined in IA and End-Sem, and at least 40% in theory paper. Grace marks are applied as per O.5042 and O.5044 rules.',
     'atk.disclaimer': 'Disclaimer: This report is based on Mumbai University ordinances and NEP progression rules. Final outcomes depend on official university decisions and eligibility.',
     'atk.eligibilityReport': 'Eligibility report',
     'atk.eligible': 'Eligible',
@@ -330,7 +332,7 @@ export const translations: Record<SupportedLanguage, Dictionary> = {
         'placement.averageShown': 'Average (shown)',
 
         'university.title': 'MU Hub Command Center',
-        'university.subtitle': 'Real-time dashboard for Mumbai University engineering administration.',
+        'university.subtitle': 'A centralized dashboard for Mumbai University engineering administration and circulars.',
         'university.circularFeed': 'Official Circular Feed',
         'university.timeline': 'University Timeline',
         'university.forecast': 'AI Result Forecaster',
@@ -429,7 +431,7 @@ export const translations: Record<SupportedLanguage, Dictionary> = {
         'reset.resetPassword': 'Reset Password',
 
         'signup.title': 'Create your Account',
-        'signup.subtitle': 'Join the #1 platform for Engineering Students.',
+        'signup.subtitle': 'Personalized Learning Platform for Engineering Students.',
         'signup.personalizedSettings': 'Applying your personalized settings',
         'signup.edit': 'Edit',
         'signup.fullName': 'Full Name',
@@ -635,7 +637,7 @@ export const translations: Record<SupportedLanguage, Dictionary> = {
         'placement.averageShown': 'Dakhavlela average',
 
         'university.title': 'MU Hub Command Center',
-        'university.subtitle': 'Mumbai University sathi real-time dashboard.',
+        'university.subtitle': 'Mumbai University sathi engineering administration ani circulars cha dashboard.',
         'university.circularFeed': 'Official Circular Feed',
         'university.timeline': 'University Timeline',
         'university.forecast': 'AI Result Forecaster',
@@ -734,7 +736,7 @@ export const translations: Record<SupportedLanguage, Dictionary> = {
         'reset.resetPassword': 'Password reset kara',
 
         'signup.title': 'Tumcha account tayar kara',
-        'signup.subtitle': 'Engineering students sathi #1 platform join kara.',
+        'signup.subtitle': 'Engineering students sathi personalized learning platform.',
         'signup.personalizedSettings': 'Tumche personalized settings apply hot ahet',
         'signup.edit': 'Edit',
         'signup.fullName': 'Purna nav',
@@ -1039,7 +1041,7 @@ export const translations: Record<SupportedLanguage, Dictionary> = {
         'reset.resetPassword': 'Password reset karein',
 
         'signup.title': 'Apna account banayein',
-        'signup.subtitle': 'Engineering students ke liye #1 platform join karein.',
+        'signup.subtitle': 'Engineering students ke liye personalized learning platform.',
         'signup.personalizedSettings': 'Aapke personalized settings apply ho rahe hain',
         'signup.edit': 'Edit',
         'signup.fullName': 'Full Name',

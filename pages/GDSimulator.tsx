@@ -53,8 +53,11 @@ const GDSimulator: React.FC = () => {
     const [round, setRound] = useState(0);
     const [result, setResult] = useState<GDResult | null>(null);
     const [isEvaluating, setIsEvaluating] = useState(false);
+    const [typingParticipant, setTypingParticipant] = useState<string | null>(null);
     const scrollRef = useRef<HTMLDivElement>(null);
     const MAX_ROUNDS = 4;
+
+    const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
     useEffect(() => {
         trackToolUsage('placement');
@@ -96,11 +99,10 @@ const GDSimulator: React.FC = () => {
         setMessages([]);
         setResult(null);
         setIsFinished(false);
-
         try {
             const prompt = `You are simulating a Group Discussion (GD) for placement preparation. The topic is: "${topic}". 
 
-You are playing the role of 3 participants. Start the discussion with opening statements from each participant with different viewpoints. Format your response as:
+You are playing the role of 3 participants. Start the discussion with opening statements from each participant with different viewpoints. Format your response exactly as:
 
 **Participant A (Analytical):** [their opening statement - 2-3 sentences]
 
@@ -114,13 +116,13 @@ Keep each statement concise and thought-provoking. End with a question or point 
             const text = await readStreamToText(stream);
 
             const segments = text.split(/\*\*Participant\s+([ABC])\s*\([^)]*\):\*\*/g).filter(Boolean);
-            const newMessages: Message[] = [];
+            const rawMessages: Message[] = [];
             for (let i = 0; i < segments.length; i += 2) {
                 const label = segments[i]?.trim();
                 const content = segments[i + 1]?.trim();
                 if (label && content) {
                     const pIdx = label === 'A' ? 0 : label === 'B' ? 1 : 2;
-                    newMessages.push({
+                    rawMessages.push({
                         sender: PARTICIPANTS[pIdx].name,
                         text: content,
                         isUser: false,
@@ -129,20 +131,29 @@ Keep each statement concise and thought-provoking. End with a question or point 
                 }
             }
 
-            if (newMessages.length === 0) {
-                newMessages.push({
+            if (rawMessages.length === 0) {
+                setMessages([{
                     sender: 'Moderator',
                     text: text,
                     isUser: false,
                     avatar: '🎙️',
-                });
+                }]);
+            } else {
+                // Sequentially add messages with delays to feel natural
+                for (const msg of rawMessages) {
+                    setTypingParticipant(msg.sender);
+                    await sleep(1500 + Math.random() * 2000); // Simulate reading/thinking
+                    setMessages(prev => [...prev, msg]);
+                    setTypingParticipant(null);
+                    await sleep(500); // Small gap between speakers
+                }
             }
 
-            setMessages(newMessages);
         } catch (error) {
             console.error('GD start error:', error);
         } finally {
             setIsLoading(false);
+            setTypingParticipant(null);
         }
     };
 
@@ -177,13 +188,13 @@ ${round + 1 >= MAX_ROUNDS ? 'This is the final round. Each participant should gi
             const text = await readStreamToText(stream);
 
             const segments = text.split(/\*\*Participant\s+([ABC]):\*\*/g).filter(Boolean);
-            const newMessages: Message[] = [];
+            const rawMessages: Message[] = [];
             for (let i = 0; i < segments.length; i += 2) {
                 const label = segments[i]?.trim();
                 const content = segments[i + 1]?.trim();
                 if (label && content) {
                     const pIdx = label === 'A' ? 0 : label === 'B' ? 1 : 2;
-                    newMessages.push({
+                    rawMessages.push({
                         sender: PARTICIPANTS[pIdx].name,
                         text: content,
                         isUser: false,
@@ -192,16 +203,26 @@ ${round + 1 >= MAX_ROUNDS ? 'This is the final round. Each participant should gi
                 }
             }
 
-            if (newMessages.length === 0) {
-                newMessages.push({
+            if (rawMessages.length === 0) {
+                setMessages(prev => [...prev, {
                     sender: 'Participants',
                     text: text,
                     isUser: false,
                     avatar: '🎙️',
-                });
+                }]);
+            } else {
+                // Randomize response order to make it look like a real discussion
+                const shuffled = [...rawMessages].sort(() => Math.random() - 0.5);
+                
+                for (const msg of shuffled) {
+                    setTypingParticipant(msg.sender);
+                    // Longer delay to simulate processing the student's message
+                    await sleep(2000 + Math.random() * 3000); 
+                    setMessages(prev => [...prev, msg]);
+                    setTypingParticipant(null);
+                    await sleep(800); // Brief pause before next speaker
+                }
             }
-
-            setMessages(prev => [...prev, ...newMessages]);
 
             if (round + 1 >= MAX_ROUNDS) {
                 setIsFinished(true);
@@ -210,6 +231,7 @@ ${round + 1 >= MAX_ROUNDS ? 'This is the final round. Each participant should gi
             console.error('GD response error:', error);
         } finally {
             setIsLoading(false);
+            setTypingParticipant(null);
         }
     };
 
@@ -398,10 +420,21 @@ Return ONLY valid JSON:
                                 </div>
                             </div>
                         ))}
-                        {isLoading && (
+                        {(isLoading || typingParticipant) && (
                             <div className="flex gap-2">
-                                <div className="w-8 h-8 rounded-full bg-slate-700 animate-pulse flex items-center justify-center text-sm">🎙️</div>
-                                <div className="bg-slate-700 rounded-2xl p-4"><p className="text-sm text-slate-400">Participants are responding...</p></div>
+                                <div className="w-8 h-8 rounded-full bg-slate-700 animate-bounce flex items-center justify-center text-sm">
+                                    {typingParticipant ? PARTICIPANTS.find(p => p.name === typingParticipant)?.avatar : '🎙️'}
+                                </div>
+                                <div className="bg-slate-700/50 rounded-2xl p-4 border border-slate-600/50">
+                                    <p className="text-sm text-slate-400 italic">
+                                        {typingParticipant ? `${typingParticipant} is responding...` : 'Participants are thinking...'}
+                                    </p>
+                                    <div className="flex gap-1 mt-2">
+                                        <div className="w-1 h-1 rounded-full bg-slate-500 animate-bounce"></div>
+                                        <div className="w-1 h-1 rounded-full bg-slate-500 animate-bounce [animation-delay:0.2s]"></div>
+                                        <div className="w-1 h-1 rounded-full bg-slate-500 animate-bounce [animation-delay:0.4s]"></div>
+                                    </div>
+                                </div>
                             </div>
                         )}
                     </div>
