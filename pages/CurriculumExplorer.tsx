@@ -136,7 +136,8 @@ const resolveResourceLinks = (subject: Subject, module: Module): { tutorial: str
     const tutorialFromData = normalizeHttpUrl(videoItem?.link) || normalizeHttpUrl(tutorials[0]?.link);
     const materialFromData = normalizeHttpUrl(pdfItem?.link) || normalizeHttpUrl(extraLink);
 
-    const moduleLinks = MODULE_SPECIFIC_LINKS[module.title] || {};
+    const normalizedTitle = String(module.title || '').trim().toLowerCase();
+    const moduleLinks = Object.entries(MODULE_SPECIFIC_LINKS).find(([key]) => key.toLowerCase() === normalizedTitle)?.[1] || {};
 
     return {
         tutorial:
@@ -249,6 +250,7 @@ const CurriculumExplorer: React.FC = () => {
         };
 
         setExpandedSubject(null);
+        setCurriculum(null);
         run();
 
         return () => { cancelled = true; };

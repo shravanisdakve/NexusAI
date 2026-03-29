@@ -4,6 +4,7 @@ import { Brain, Home, Sparkles, AlertCircle, CheckCircle2, XCircle, ArrowRight }
 import { PageHeader, Input, Button } from '../components/ui';
 import { generateQuizQuestion } from '../services/geminiService';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useToast } from '../contexts/ToastContext';
 
 type Question = {
   question: string;
@@ -22,6 +23,7 @@ const TOTAL_QUESTIONS = 5;
 const InterviewQuiz: React.FC = () => {
   const navigate = useNavigate();
   const { t } = useLanguage();
+  const { showToast } = useToast();
 
   const [topic, setTopic] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);

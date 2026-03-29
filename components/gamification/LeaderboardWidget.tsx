@@ -36,7 +36,7 @@ const LeaderboardWidget: React.FC = () => {
                     <p className="text-slate-400 text-center py-4">Be the first to join the leaderboard!</p>
                 ) : (
                     leaderboard.slice(0, 5).map((entry, index) => {
-                        const isCurrentUser = currentUser?.id === entry.id || currentUser?._id === entry.id;
+                        const isCurrentUser = currentUser?.id === entry.id;
                         return (
                             <div key={entry.id} className={`flex items-center justify-between p-3 rounded-lg border gap-2 transition-all ${
                                 isCurrentUser 

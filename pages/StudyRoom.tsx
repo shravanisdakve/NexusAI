@@ -37,8 +37,10 @@ import {
 import { streamStudyBuddyChat, generateQuizQuestion, extractTextFromFile, summarizeText, generateQuizSet } from '../services/geminiService';
 import { startSession, endSession, recordQuizResult } from '../services/analyticsService';
 // --- REMOVED Clock import here ---
-import { Bot, User, Send, MessageSquare, Users, Brain, UploadCloud, Lightbulb, FileText, Paperclip, FolderOpen, AlertTriangle, Info, Palette, Briefcase, X, Play, Pause, SkipForward, RotateCcw } from 'lucide-react';
-import { Input, Button, Textarea, Spinner } from '../components/ui';
+import { Bot, User, Send, MessageSquare, Users, Brain, UploadCloud, Lightbulb, FileText, Paperclip, FolderOpen, AlertTriangle, Info, Palette, Briefcase, X, Play, Pause, SkipForward, RotateCcw, Plus } from 'lucide-react';
+import { Input, Button, Textarea, Spinner, Modal } from '../components/ui';
+import { useToast } from '../contexts/ToastContext';
+import PdfUpload from '../components/quiz/PdfUpload';
 import RoomControls from '../components/RoomControls'; //
 import VideoTile from '../components/VideoTile';
 import Reactions, { type Reaction } from '../components/Reactions';
@@ -89,6 +91,7 @@ const StudyRoom: React.FC = () => {
     const navigate = useNavigate();
     const { user: currentUser } = useAuth();
     const { language } = useLanguage();
+    const { showToast } = useToast();
     const [room, setRoom] = useState<StudyRoomType | null>(null);
     const [participants, setParticipants] = useState<{ id?: string; email: string; displayName: string }[]>([]);
     const [localStream, setLocalStream] = useState<MediaStream | null>(null);
@@ -97,6 +100,8 @@ const StudyRoom: React.FC = () => {
     const [isCameraOn, setIsCameraOn] = useState(true);
     const [isScreenSharing, setIsScreenSharing] = useState(false);
     const [activeTab, setActiveTab] = useState<ActiveTab>('chat');
+    const [showPdfUpload, setShowPdfUpload] = useState(false);
+    const [isGeneratingCustomQuiz, setIsGeneratingCustomQuiz] = useState(false);
     const [isMobilePanelOpen, setIsMobilePanelOpen] = useState(false);
     const [isSavingSharedNote, setIsSavingSharedNote] = useState(false); // NEW: Loading state for saving shared note
     const [resources, setResources] = useState<any[]>([]);
@@ -869,14 +874,14 @@ const StudyRoom: React.FC = () => {
     };
 
     const handleRemoveMember = async (member: { email: string; displayName: string }) => {
-        const confirmed = window.confirm(`Remove ${member.displayName} from this room?`);
-        if (!confirmed) return;
+        // High-end feedback for member removal
+        showToast(`Removing ${member.displayName} from the session...`, 'info');
         await handleModerateMember(member, 'remove');
     };
 
     const handleTransferHost = async (member: { email: string; displayName: string }) => {
-        const confirmed = window.confirm(`Transfer room host privileges to ${member.displayName}?`);
-        if (!confirmed) return;
+        // High-end feedback for host transfer
+        showToast(`Transferring host privileges to ${member.displayName}...`, 'info');
         await handleModerateMember(member, 'transfer_host');
     };
 
@@ -1055,6 +1060,34 @@ const StudyRoom: React.FC = () => {
             setAiMessages(prev => [...prev, { role: 'model', parts: [{ text: `Error: ${errorText}` }] }]);
         } finally {
             setIsAiLoading(false);
+        }
+    };
+
+    const handleHandleCustomQuizGeneration = async (text: string) => {
+        if (!roomId || !text || isGeneratingCustomQuiz) return;
+        setIsGeneratingCustomQuiz(true);
+        postSystemMessage(`${currentUser?.displayName} is analyzing a custom document to generate a group quiz! \u{1F4D1}\u{2728}`);
+        
+        try {
+            const quizJson = await generateQuizSet(text, 10, language);
+            const quizSet = JSON.parse(quizJson);
+            const multiQuiz = {
+                id: Date.now().toString(),
+                topic: 'Custom Document Review',
+                questions: quizSet.questions || [],
+                isMulti: true,
+                currentIndex: 0,
+                completed: false,
+                answers: []
+            };
+            await saveQuiz(roomId, multiQuiz);
+            postSystemMessage(`${currentUser?.displayName} successfully generated a custom 10-question quiz! \u{1F9E0}\u{1F525}`);
+            setShowPdfUpload(false);
+        } catch (err) {
+            console.error("Failed to generate custom quiz:", err);
+            postSystemMessage("Sorry, I couldn't generate a quiz from that document. Please check the file format.");
+        } finally {
+            setIsGeneratingCustomQuiz(false);
         }
     };
 
@@ -1239,9 +1272,16 @@ const StudyRoom: React.FC = () => {
                                 </div>
 
                                 {effectiveTechniqueLabel === 'Spaced Repetition' && (
-                                    <div className="hidden sm:flex flex-col items-center justify-center px-4 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-xl animate-in zoom-in duration-300">
+                                    <div className="hidden sm:flex flex-col items-center justify-center px-4 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-xl animate-in zoom-in duration-300 relative group/tracking">
                                         <div className="flex items-center gap-1.5">
                                             <span className="text-xl font-black text-emerald-400 leading-none">{trackedConcepts.length}</span>
+                                            <button 
+                                                onClick={() => setShowPdfUpload(true)}
+                                                className="p-1 hover:bg-emerald-500/20 rounded-full transition-all hover:scale-110 active:scale-95"
+                                                title="Upload PDF/Image for Custom Quiz"
+                                            >
+                                                <Plus size={14} className="text-emerald-400" />
+                                            </button>
                                             <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.8)]" />
                                         </div>
                                         <span className="text-[8px] font-black tracking-[0.15em] uppercase text-emerald-300/60 mt-1 whitespace-nowrap">Concepts Tracked</span>
@@ -1460,6 +1500,17 @@ const StudyRoom: React.FC = () => {
                     accept=".txt,.md,.pdf,.pptx,.ppt,.png,.jpg,.jpeg"
                     style={{ display: 'none' }}
                 />
+
+                <Modal 
+                    isOpen={showPdfUpload} 
+                    onClose={() => !isGeneratingCustomQuiz && setShowPdfUpload(false)}
+                    title="Generate Room Quiz from Document"
+                >
+                    <PdfUpload 
+                        onTextExtracted={handleHandleCustomQuizGeneration} 
+                        isProcessing={isGeneratingCustomQuiz} 
+                    />
+                </Modal>
 
                 <RoomControls
                     mediaReady={!!localStream}

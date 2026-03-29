@@ -34,47 +34,57 @@ const SIMULATOR_QUESTIONS = {
         { id: 10, section: 'Numerical', text: 'If the radius of a circle is increased by 50%, by what percentage does the area increase?', options: ['100%', '125%', '150%', '225%'], correctIndex: 1 },
         { id: 13, section: 'Numerical', text: 'The ratio of ages of A and B is 3:4. After 5 years, the ratio becomes 4:5. What is the current age of A?', options: ['10', '12', '15', '18'], correctIndex: 2 },
         
-        // Verbal (6-9)
+        // Verbal (6-10)
         { id: 3, section: 'Verbal', text: 'Choose the correct sentence.', options: ['Each of the students were present.', 'Each of the students was present.', 'Each students was present.', 'Each students were present.'], correctIndex: 1 },
         { id: 8, section: 'Verbal', text: 'Identify the synonym for "DILIGENT".', options: ['Lazy', 'Hardworking', 'Smart', 'Quick'], correctIndex: 1 },
         { id: 11, section: 'Verbal', text: 'Choose the antonym for "OBSCURE".', options: ['Hidden', 'Clear', 'Dark', 'Vague'], correctIndex: 1 },
         { id: 14, section: 'Verbal', text: 'Fill in: The CEO ______ the invitation to speak at the summit.', options: ['declined', 'rejects', 'refused to', 'was declined'], correctIndex: 0 },
+        { id: 19, section: 'Verbal', text: 'Identify the part of speech for "ELEGANTLY" in: "She danced elegantly during the gala."', options: ['Adjective', 'Adverb', 'Noun', 'Verb'], correctIndex: 1 },
         
-        // Reasoning (10-13)
+        // Reasoning (11-15)
         { id: 4, section: 'Reasoning', text: 'If all coders are problem solvers and some problem solvers are musicians, which statement is true?', options: ['All coders are musicians.', 'Some coders are musicians.', 'No coder is a musician.', 'No definite conclusion about coders being musicians.'], correctIndex: 3 },
         { id: 5, section: 'Reasoning', text: 'In a certain code, MUMBAI is written as NVNCBJ. How is DELHI written?', options: ['EFMIJ', 'EFMII', 'EFMHI', 'DEMIJ'], correctIndex: 0 },
         { id: 9, section: 'Reasoning', text: 'Complete the series: 2, 6, 12, 20, 30, ?', options: ['36', '40', '42', '48'], correctIndex: 2 },
         { id: 12, section: 'Reasoning', text: 'Pointing to a man, a woman says: "He is the only son of my mother\'s father." How is the man related to the woman?', options: ['Brother', 'Father', 'Uncle', 'Grandfather'], correctIndex: 2 },
+        { id: 20, section: 'Reasoning', text: 'Statement: All mangoes are golden-colored. No golden-colored things are cheap. Conclusion: I. All mangoes are cheap. II. Golden-colored mangoes are not cheap.', options: ['Only I follows', 'Only II follows', 'Both follow', 'Neither follows'], correctIndex: 1 },
         
-        // Technical & Psychometric (14-17)
+        // Technical (16-18)
         { id: 15, section: 'Technical', text: 'In C++, which of the following is used for dynamic memory allocation?', options: ['malloc', 'new', 'alloc', 'create'], correctIndex: 1 },
         { id: 16, section: 'Technical', text: 'What is the primary role of a Load Balancer in system design?', options: ['Database backup', 'Traffic distribution', 'Encryption', 'Cache management'], correctIndex: 1 },
+        { id: 21, section: 'Technical', text: 'Which of the following sorting algorithms has the best worst-case time complexity?', options: ['Bubble Sort', 'Insertion Sort', 'Merge Sort', 'Quick Sort'], correctIndex: 2 },
+        
+        // Psychometric (19-20)
         { id: 17, section: 'Psychometric', text: 'You are leading a project and a teammate consistently misses deadlines. Your first action is:', options: ['Report to Manager', 'Publicly warn them', 'Private discussion to understand root cause', 'Assign their work to someone else'], correctIndex: 2 },
         { id: 18, section: 'Psychometric', text: 'If a client asks for a feature that would slightly compromise security but vastly improve speed, you:', options: ['Say yes immediately', 'Say no bluntly', 'Explain risks and suggest a balanced alternative', 'Ignore the request'], correctIndex: 2 }
     ],
-    capgemini: [
-        // Quant & Logic (1-6)
+    'capgemini': [
+        // Quant & Logic (1-8)
         { id: 1, section: 'Quant', text: 'A and B complete a task in 12 days and 18 days respectively. Working together, they finish in:', options: ['6.8 days', '7.2 days', '7.5 days', '8 days'], correctIndex: 1 },
         { id: 2, section: 'Quant', text: 'What is the simple interest on Rs. 15,000 at 8% p.a. for 2 years?', options: ['Rs. 2,000', 'Rs. 2,200', 'Rs. 2,400', 'Rs. 2,600'], correctIndex: 2 },
         { id: 7, section: 'Quant', text: 'A motorboat whose speed is 15 km/hr in still water goes 30 km downstream and comes back in a total of 4.5 hours. What is the speed of the stream?', options: ['4 km/hr', '5 km/hr', '6 km/hr', '10 km/hr'], correctIndex: 1 },
+        { id: 19, section: 'Quant', text: 'The length of a rectangle is twice its breadth. If its perimeter is 60 cm, what is its area?', options: ['150 sq cm', '200 sq cm', '225 sq cm', '300 sq cm'], correctIndex: 1 },
         { id: 3, section: 'Logical', text: 'Find the odd one out: 3, 5, 11, 14, 17', options: ['3', '5', '11', '14'], correctIndex: 3 },
         { id: 4, section: 'Logical', text: 'If SOUTH is coded as 71328 and NORTH as 46528, what is the code for SOUTHNORTH?', options: ['7132846528', '4652871328', '7132846582', '7132465288'], correctIndex: 0 },
         { id: 8, section: 'Logical', text: 'Look at this series: 7, 10, 8, 11, 9, 12, ... What number should come next?', options: ['7', '10', '12', '13'], correctIndex: 1 },
+        { id: 20, section: 'Logical', text: 'Six people (A, B, C, D, E, F) are sitting in a circle. A is facing B, B is to the right of E and left of C. C is to the left of D. F is to the right of A. Who is to the left of F?', options: ['E', 'D', 'C', 'B'], correctIndex: 1 },
         
-        // Verbal (New section for Capgemini 7-10)
+        // Verbal (9-12)
         { id: 13, section: 'Verbal', text: 'Find the correctly spelled word.', options: ['Necessary', 'Neccessary', 'Nessessary', 'Necesary'], correctIndex: 0 },
         { id: 14, section: 'Verbal', text: 'Convert to Passive: "The chef prepared a delicious meal."', options: ['A delicious meal prepares the chef.', 'A delicious meal was prepared by the chef.', 'Meal was delicious and prepared.', 'Chef has prepared the meal.'], correctIndex: 1 },
         { id: 15, section: 'Verbal', text: 'Identify the error: "He don\'t know the answer to the question."', options: ['He', "don't", 'the answer', 'no error'], correctIndex: 1 },
+        { id: 21, section: 'Verbal', text: 'Fill in: Neither the teacher nor the students ______ aware of the schedule change.', options: ['was', 'were', 'is', 'has been'], correctIndex: 1 },
         
-        // Technical / Pseudo-code (11-14)
+        // Technical (13-17)
         { id: 5, section: 'Technical', text: 'Which data structure is best suited for implementing recursion call stack?', options: ['Queue', 'Stack', 'Linked List', 'Tree'], correctIndex: 1 },
         { id: 6, section: 'Technical', text: 'Which SQL clause is used to filter grouped rows?', options: ['WHERE', 'GROUP BY', 'HAVING', 'ORDER BY'], correctIndex: 2 },
         { id: 9, section: 'Technical', text: 'Which of the following is not a pillar of OOPS?', options: ['Encapsulation', 'Polymorphism', 'Compilation', 'Abstraction'], correctIndex: 2 },
         { id: 16, section: 'Technical', text: 'What is the output of: x = 5; y = x++; print y;?', options: ['4', '5', '6', 'Error'], correctIndex: 1 },
+        { id: 22, section: 'Technical', text: 'Which protocol is used for sending emails?', options: ['HTTP', 'FTP', 'SMTP', 'SSH'], correctIndex: 2 },
         
-        // Behavioral / Game-based Logic (15-18)
+        // Behavioral (18-20)
         { id: 17, section: 'Behavioral', text: 'When faced with a complex task you\'ve never done before, you:', options: ['Panic', 'Wait for instructions', 'Research, break it down, and start learning', 'Ask someone else to do it'], correctIndex: 2 },
-        { id: 18, section: 'Behavioral', text: 'Teammates are arguing over a design choice. You:', options: ['Pick a side', 'Leave them to it', 'Listen to both and facilitate a consensus', 'Complain to HR'], correctIndex: 2 }
+        { id: 18, section: 'Behavioral', text: 'Teammates are arguing over a design choice. You:', options: ['Pick a side', 'Leave them to it', 'Listen to both and facilitate a consensus', 'Complain to HR'], correctIndex: 2 },
+        { id: 23, section: 'Behavioral', text: 'You notice a colleague taking office supplies for personal use. What do you do?', options: ['Join them', 'Ignore it', 'Informally talk to them about ethics', 'Report them to the police'], correctIndex: 2 }
     ],
 };
 

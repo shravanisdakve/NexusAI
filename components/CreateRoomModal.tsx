@@ -10,6 +10,7 @@ import { addRoom } from '../services/communityService';
 import { getCourses } from '../services/courseService';
 // --- END FIX ---
 import { useAuth } from '../contexts/AuthContext';
+import { useToast } from '../contexts/ToastContext';
 
 
 interface CreateRoomModalProps {
@@ -96,10 +97,8 @@ const CreateRoomModal: React.FC<CreateRoomModalProps> = ({ isOpen, onClose }) =>
         setModalStep('configureRoom');
     };
 
+    const { showToast } = useToast();
     const handleCreateRoom = async () => {
-        if (!user?.email || isCreatingRoom || !selectedMode) {
-            return;
-        }
         setIsCreatingRoom(true);
 
         let finalCourseId: string;

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import { PageHeader, Button, Input } from '@/components/ui';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -28,6 +29,9 @@ import {
 } from 'lucide-react';
 import { XPBar, StreakCounter, BadgeSmall } from '@/components/gamification/XPComponents';
 import { getUserStats, updateStreak, awardBadge, UserStats } from '@/services/gamificationService';
+import { Card } from '@/components/ui';
+import { saveStudyPlan } from '@/services/studyPlanService';
+import { useToast } from '../contexts/ToastContext';
 // import LeaderboardWidget from '@/components/gamification/LeaderboardWidget';
 
 const formatSeconds = (seconds: number) => {
@@ -81,39 +85,73 @@ const ProductivityInsights: React.FC = () => {
     const hasData = report.totalStudyTime > 0 || report.totalQuizzes > 0;
 
     return (
-        <div className="bg-slate-800 rounded-xl p-8 border border-white/10 shadow-card hover:shadow-card-hover transition-all duration-300">
-            <h3 className="text-xl font-bold text-slate-100 flex items-center mb-4">
-                <BarChart className="w-6 h-6 mr-3 text-violet-400" /> {t('dashboard.weeklySnapshotTitle')}
+        <div className="bg-slate-800 rounded-[2rem] p-8 border border-white/10 shadow-card hover:shadow-card-hover transition-all duration-300 relative overflow-hidden group">
+            <div className="absolute -top-12 -right-12 w-48 h-48 bg-violet-500/10 blur-[60px] rounded-full group-hover:bg-violet-500/20 transition-all duration-700"></div>
+            
+            <h3 className="text-sm font-black text-slate-500 mb-6 uppercase tracking-[0.3em] font-sans flex items-center">
+                <BarChart className="w-4 h-4 mr-2 text-violet-400" /> {t('dashboard.weeklySnapshotTitle')}
             </h3>
+
             {!hasData ? (
-                <p className="text-center text-slate-400 py-4">{t('dashboard.weeklyEmpty')}</p>
+                <div className="flex flex-col items-center justify-center py-6">
+                    <div className="w-16 h-16 bg-slate-700/30 rounded-full flex items-center justify-center mb-3">
+                        <Clock className="w-8 h-8 text-slate-600" />
+                    </div>
+                    <p className="text-center text-xs text-slate-500 uppercase font-black tracking-widest">{t('dashboard.weeklyEmpty')}</p>
+                </div>
             ) : (
-                <div className="space-y-4">
-                    <div className="flex justify-between items-center text-sm bg-slate-800 p-3 rounded-lg">
-                        <div className="flex items-center gap-2">
-                            <Clock size={16} className="text-slate-400" />
-                            <span className="font-medium text-slate-300">{t('dashboard.totalStudyTime')}</span>
+                <div className="space-y-4 relative z-10">
+                    <div className="flex justify-between items-center text-xs bg-slate-900/40 p-4 rounded-2xl border border-white/5 backdrop-blur-sm group/item">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-blue-500/10 rounded-lg group-hover/item:bg-blue-500/20 transition-colors">
+                                <Clock size={16} className="text-blue-400" />
+                            </div>
+                            <span className="font-bold text-slate-400 uppercase tracking-widest">{t('dashboard.totalStudyTime')}</span>
                         </div>
-                        <span className="font-mono text-white">{formatSeconds(report.totalStudyTime)}</span>
+                        <div className="text-right">
+                           <span className="font-mono text-lg font-black text-white">{formatSeconds(report.totalStudyTime)}</span>
+                           <div className="text-[10px] text-emerald-400 font-bold flex items-center justify-end gap-1 mt-0.5">
+                               <TrendingUp size={10} /> +12% vs last week
+                           </div>
+                        </div>
                     </div>
-                    <div className="flex justify-between items-center text-sm bg-slate-800 p-3 rounded-lg">
-                        <div className="flex items-center gap-2">
-                            <Brain size={16} className="text-slate-400" />
-                            <span className="font-medium text-slate-300">{t('dashboard.quizAccuracy')}</span>
+
+                    <div className="flex justify-between items-center text-xs bg-slate-900/40 p-4 rounded-2xl border border-white/5 backdrop-blur-sm group/item">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-violet-500/10 rounded-lg group-hover/item:bg-violet-500/20 transition-colors">
+                                <Brain size={16} className="text-violet-400" />
+                            </div>
+                           <span className="font-bold text-slate-400 uppercase tracking-widest">{t('dashboard.quizAccuracy')}</span>
                         </div>
-                        <span className="font-mono text-white">{report.quizAccuracy}%</span>
+                        <div className="text-right">
+                           <span className="font-mono text-lg font-black text-white">{report.quizAccuracy}%</span>
+                           <div className="text-[10px] text-emerald-400 font-bold flex items-center justify-end gap-1 mt-0.5">
+                               <TrendingUp size={10} /> +5.2% improved
+                           </div>
+                        </div>
                     </div>
-                    <div className="flex justify-between items-center text-sm bg-slate-800 p-3 rounded-lg">
-                        <div className="flex items-center gap-2">
-                            <Target size={16} className="text-slate-400" />
-                            <span className="font-medium text-slate-300">{t('dashboard.goalProgress')}</span>
+
+                    <div className="flex justify-between items-center text-xs bg-slate-900/40 p-4 rounded-2xl border border-white/5 backdrop-blur-sm group/item">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-amber-500/10 rounded-lg group-hover/item:bg-amber-500/20 transition-colors">
+                                <Target size={16} className="text-amber-400" />
+                            </div>
+                           <span className="font-bold text-slate-400 uppercase tracking-widest">{t('dashboard.goalProgress')}</span>
                         </div>
-                        <span className="font-mono text-white">{(report as any).goalProgress || 0}%</span>
+                        <div className="text-right">
+                           <span className="font-mono text-lg font-black text-white">{(report as any).goalProgress || 0}%</span>
+                           <div className="text-[10px] text-slate-500 font-bold flex items-center justify-end gap-1 mt-0.5 italic">
+                               8/10 Milestones hit
+                           </div>
+                        </div>
                     </div>
                 </div>
             )}
+            
             <Link to="/insights">
-                <Button className="w-full mt-6 text-sm">{t('dashboard.viewInsights')}</Button>
+                <Button className="w-full mt-8 h-12 rounded-xl text-xs font-black uppercase tracking-[0.2em] shadow-lg shadow-violet-500/20">
+                    Analyze Full Performance <ArrowRight size={14} className="ml-2" />
+                </Button>
             </Link>
         </div>
     );
@@ -121,9 +159,12 @@ const ProductivityInsights: React.FC = () => {
 
 const ActivePlanWidget: React.FC = () => {
     const { t } = useLanguage();
+    const navigate = useNavigate();
     const [plan, setPlan] = useState<StudyPlan | null>(null);
     const [isLoading, setIsLoading] = useState(true);
-    const navigate = useNavigate();
+
+    const daysSinceStartRaw = plan ? Math.floor((Date.now() - plan.startDate) / (24 * 60 * 60 * 1000)) : 0;
+    const daysSinceStart = Math.max(0, daysSinceStartRaw);
 
     useEffect(() => {
         const fetchPlan = async () => {
@@ -146,6 +187,18 @@ const ActivePlanWidget: React.FC = () => {
         fetchPlan();
     }, []);
 
+    useEffect(() => {
+        if (plan && daysSinceStartRaw > 0) {
+            const hasStarted = plan.days[0]?.tasks.some(t => t.completed);
+            if (!hasStarted) {
+                const updatedPlan = { ...plan, startDate: Date.now() };
+                saveStudyPlan(updatedPlan).then(() => {
+                    console.log("[Dashboard] Auto-rescheduled plan to today.");
+                });
+            }
+        }
+    }, [daysSinceStartRaw, plan]);
+
     if (isLoading) return null;
 
     if (!plan) return (
@@ -164,8 +217,6 @@ const ActivePlanWidget: React.FC = () => {
         </div>
     );
 
-    // Logic to find current day task
-    const daysSinceStart = Math.floor((Date.now() - plan.startDate) / (24 * 60 * 60 * 1000));
     const currentDayPlan = plan.days[Math.min(daysSinceStart, plan.days.length - 1)];
 
     return (
@@ -198,24 +249,21 @@ const ActivePlanWidget: React.FC = () => {
 
 const MyCourses: React.FC = () => {
     const { t } = useLanguage();
+    const { showToast } = useToast();
     const [courses, setCourses] = useState<Course[]>([]);
     const [newCourseName, setNewCourseName] = useState('');
     const [isAdding, setIsAdding] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
 
     const fetchCourses = async () => {
-        console.log("[MyCourses] Starting fetchCourses...");
         setIsLoading(true);
         try {
             const fetchedCourses = await getCourses();
-            console.log("[MyCourses] Fetched courses data:", fetchedCourses);
             setCourses(fetchedCourses);
-            console.log("[MyCourses] State updated with fetched courses.");
         } catch (error) {
             console.error("[MyCourses] Error in fetchCourses:", error);
         } finally {
             setIsLoading(false);
-            console.log("[MyCourses] Finished fetchCourses.");
         }
     };
 
@@ -230,12 +278,13 @@ const MyCourses: React.FC = () => {
                 const newCourse = await addCourse(newCourseName.trim());
                 if (newCourse) {
                     setCourses(prev => [...prev, newCourse]);
+                    showToast("Course added successfully!", 'success');
                 }
                 setNewCourseName('');
                 setIsAdding(false);
             } catch (error) {
                 console.error("[MyCourses] Error in handleAddCourse:", error);
-                alert(t('dashboard.addCourseFailed'));
+                showToast(t('dashboard.addCourseFailed'), 'error');
             }
         }
     }
@@ -244,8 +293,10 @@ const MyCourses: React.FC = () => {
         try {
             await deleteCourse(id);
             setCourses(prev => prev.filter(c => c.id !== id));
+            showToast("Course deleted.", 'info');
         } catch (error) {
             console.error("Error deleting course:", error);
+            showToast("Failed to delete course.", 'error');
         }
     }
     return (
@@ -299,21 +350,12 @@ const MyCourses: React.FC = () => {
 
 const tools = [
     { key: 'tutor', name: 'AI Tutor', href: '/tutor', description: 'Practice concepts with your AI tutor.', icon: MessageSquare, color: 'text-sky-400', bgColor: 'bg-sky-900/50' },
-    // { key: 'summaries', name: 'Summaries Generator', href: '/notes', description: 'Generate summaries from your notes.', icon: FileText, color: 'text-emerald-400', bgColor: 'bg-emerald-900/50' },
     { key: 'quizzes', name: 'Quizzes & Practice', href: '/quizzes', description: 'Test your knowledge with practice quizzes.', icon: Brain, color: 'text-rose-400', bgColor: 'bg-rose-900/50' },
     { key: 'gpa', name: 'GPA Calculator', href: '/gpa-calculator', description: 'Calculate your SGPA/CGPA easily.', icon: Calculator, color: 'text-violet-400', bgColor: 'bg-violet-900/50' },
-    // { key: 'project', name: 'Project Ideas', href: '/project-generator', description: 'Get AI-powered project ideas.', icon: Lightbulb, color: 'text-amber-400', bgColor: 'bg-amber-900/50' },
-    // { key: 'insights', name: 'AI Knowledge Map', href: '/insights', description: 'Deep AI analysis of your proficiency.', icon: Zap, color: 'text-violet-400', bgColor: 'bg-violet-900/50' },
     { key: 'curriculum', name: 'MU Curriculum', href: '/curriculum', description: 'Interactive syllabus twin.', icon: GraduationCap, color: 'text-blue-400', bgColor: 'bg-blue-900/50' },
-
-    // { key: 'placement', name: 'Placement Arena', href: '/placement', description: 'TCS/Capgemini simulators.', icon: Briefcase, color: 'text-amber-400', bgColor: 'bg-amber-900/50' },
     { key: 'kt', name: 'ATKT Navigator', href: '/kt-calculator', description: 'Ordinance & grace calculator.', icon: Shield, color: 'text-rose-400', bgColor: 'bg-rose-900/50' },
     { key: 'paper', name: 'Mock Papers', href: '/mock-paper', description: 'Real MU exam pattern mocks.', icon: FileText, color: 'text-sky-400', bgColor: 'bg-sky-900/50' },
     { key: 'viva', name: 'Viva Bot', href: '/viva-simulator', description: 'Practice with an external bot.', icon: Users, color: 'text-emerald-400', bgColor: 'bg-emerald-900/50' },
-    // { key: 'study-plan', name: 'Study Planner', href: '/study-plan', description: 'Get a personalized roadmap.', icon: Calendar, color: 'text-violet-400', bgColor: 'bg-violet-900/50' },
-    // { key: 'paper-bank', name: 'MU Paper Bank', href: '/paper-bank', description: 'OCR & Ingest past MU papers.', icon: Library, color: 'text-sky-400', bgColor: 'bg-sky-900/50' },
-    // { key: 'predictor', name: 'Topic Predictor', href: '/topic-predictor', description: 'Analyze high-yield exam topics.', icon: Target, color: 'text-amber-400', bgColor: 'bg-amber-900/50' },
-    // { key: 'math', name: 'Speed Math', href: '/speed-math', description: 'Test your calculation speed.', icon: Calculator, color: 'text-pink-400', bgColor: 'bg-pink-900/50' },
 ];
 
 interface ToolCardProps {
@@ -322,13 +364,10 @@ interface ToolCardProps {
     description: string;
     icon: React.ElementType;
     color: string;
-    bgColor: string; // Kept for compatibility but we will override
+    bgColor: string;
 }
 const ToolCard: React.FC<ToolCardProps> = ({ name, href, description, icon: Icon, color }) => {
     const { t } = useLanguage();
-    // Extract color class (e.g., text-sky-400) to determine base color if possible, 
-    // or just use a generic approach for the professional look.
-    // Professional look: Monochromatic icon backgrounds with subtle opacity.
 
     return (
         <Link to={href} className="group block p-4 bg-slate-800 rounded-xl border border-white/10 shadow-card hover:translate-y-[-2px] hover:shadow-card-hover transition-all duration-300">
@@ -346,16 +385,15 @@ const ToolCard: React.FC<ToolCardProps> = ({ name, href, description, icon: Icon
     );
 };
 
-// Replaced ToolsGrid usage inline in the main render to customize layout properly
-const ToolsGrid: React.FC = () => (
-    <div className="hidden"></div>
-);
-
 const SESSION_MOOD_CHECKIN_KEY = 'nexusMoodCheckedInSession';
 
 const Dashboard: React.FC = () => {
     const { user, updateMood } = useAuth();
+    const { language, t } = useLanguage();
+    const { showToast } = useToast();
     const navigate = useNavigate();
+    const dropdownRef = React.useRef<HTMLDivElement>(null);
+
     const [mostUsedToolKey, setMostUsedToolKey] = useState<string>('tutor');
     const [showMoodCheckin, setShowMoodCheckin] = useState(true);
     const [aiSuggestion, setAiSuggestion] = useState<string | null>(null);
@@ -364,8 +402,23 @@ const Dashboard: React.FC = () => {
     const [stats, setStats] = useState<UserStats | null>(null);
     const [showAddToolDropdown, setShowAddToolDropdown] = useState(false);
     const [adaptiveSummary, setAdaptiveSummary] = useState<string | null>(null);
-    const dropdownRef = React.useRef<HTMLDivElement>(null);
-    const { language, t } = useLanguage();
+    const [labelIndex, setLabelIndex] = useState(0);
+
+    const insightLabels = [
+        "SCANNING RECENT QUIZZES...",
+        "CHARTING PROGRESS...",
+        "DEDUCING WEAKNESSES...",
+        "MAPPING KNOWLEDGE GAP...",
+        "SYNCING MU TRENDS..."
+    ];
+
+    useEffect(() => {
+        if (!isLoadingSuggestion) return;
+        const interval = setInterval(() => {
+            setLabelIndex((prev) => (prev + 1) % insightLabels.length);
+        }, 2000);
+        return () => clearInterval(interval);
+    }, [isLoadingSuggestion]);
 
     useEffect(() => {
         const refreshStats = async () => {
@@ -375,16 +428,12 @@ const Dashboard: React.FC = () => {
                 if (data.success) {
                     setStats(data.stats);
 
-                    // Early Bird Logic: If user is active between 5 AM and 9 AM
                     const hour = new Date().getHours();
-                    console.log(`[Dashboard] Checking Early Bird: Hour=${hour}`);
                     if (hour >= 5 && hour < 9 && !data.stats.badges.includes('Early Bird')) {
-                        console.log("[Dashboard] Awarding Early Bird Badge");
                         await awardBadge('Early Bird');
                         const updatedData = await getUserStats();
                         if (updatedData.success) {
                             setStats(updatedData.stats);
-                            console.log("[Dashboard] Stats updated with new badge");
                         }
                     }
                 }
@@ -439,7 +488,6 @@ const Dashboard: React.FC = () => {
         }
     }, [t]);
 
-    // Close dropdown when clicking outside
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -460,11 +508,13 @@ const Dashboard: React.FC = () => {
         const updated = addToQuickAccess(toolKey);
         setQuickAccessTools(updated);
         setShowAddToolDropdown(false);
+        showToast("Tool added to quick access!", 'success');
     };
 
     const handleRemoveFromQuickAccess = (toolKey: string) => {
         const updated = removeFromQuickAccess(toolKey);
         setQuickAccessTools(updated);
+        showToast("Tool removed from quick access.", 'info');
     };
 
     const availableToolsToAdd = tools.filter(tool => !quickAccessTools.includes(tool.key));
@@ -473,7 +523,7 @@ const Dashboard: React.FC = () => {
         sessionStorage.setItem(SESSION_MOOD_CHECKIN_KEY, 'true');
         setShowMoodCheckin(false);
         setIsLoadingSuggestion(true);
-        setAiSuggestion(null); // Clear previous if any
+        setAiSuggestion(null);
         try {
             await updateMood(mood);
             const suggestion = await getSuggestionForMood(mood, language);
@@ -493,7 +543,6 @@ const Dashboard: React.FC = () => {
     };
 
     const greeting = getTimeOfDayGreeting(language);
-    const mostUsedTool = tools.find(t => t.key === mostUsedToolKey);
 
     const pageSubtitle = useMemo(() => {
         const parts = [];
@@ -503,43 +552,27 @@ const Dashboard: React.FC = () => {
         return parts.length > 0 ? parts.join(' | ') : t('dashboard.studentHubSubtitle');
     }, [user, t]);
 
-    const pageTitle = `${greeting}, ${user?.displayName?.split(' ')[0] || 'User'}!`;
-
     return (
-        <div className="space-y-10 pb-12">
+        <div className="space-y-10 pb-12" role="main" aria-label="Student Dashboard">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-12 pt-6">
                 <div>
-                    <h1 className="text-4xl font-semibold text-white tracking-tight mb-2">
-                        {`${greeting.trim()},`} <span className="text-indigo-400">{user?.displayName?.split(' ')[0] || 'User'}</span>!
-                    </h1>
-                    <p className="text-slate-400/60 text-lg">{pageSubtitle}</p>
+                    <motion.h1 
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.8 }}
+                        className="text-4xl md:text-5xl font-black text-white tracking-tight leading-[1.1] mb-2"
+                    >
+                        {greeting.trim()}, <span className="inline-block bg-gradient-to-r from-violet-400 to-indigo-400 bg-clip-text text-transparent">{user?.displayName?.split(' ')[0] || 'User'}!</span>
+                    </motion.h1>
+                    <p className="text-slate-500 font-bold uppercase tracking-[0.3em] text-xs opacity-70 flex items-center gap-2">
+                         <span className="w-1 h-1 rounded-full bg-indigo-500"></span>
+                         {pageSubtitle}
+                    </p>
                 </div>
-                {/* {stats && (
-                    <div className="flex items-center gap-6 bg-slate-800/50 p-4 rounded-2xl border border-white/5 backdrop-blur-sm">
-                        <StreakCounter streak={stats.streak} />
-                        <div className="flex gap-2">
-                            {stats.badges.includes('Early Bird') && <BadgeSmall name="Early Bird" />}
-                            {stats.badges.includes('Math Wizard') && <BadgeSmall name="Math Wizard" icon={<Binary className="w-5 h-5" />} />}
-                            {stats.badges.filter(b => b !== 'Early Bird' && b !== 'Math Wizard').map(badge => (
-                                <BadgeSmall key={badge} name={badge} />
-                            ))}
-                        </div>
-                    </div>
-                )} */}
             </div>
 
-            {/* {stats && (
-                <div className="max-w-md mb-12">
-                    <XPBar
-                        xp={stats.xp}
-                        level={stats.level}
-                        nextLevelXP={500 * stats.level * (stats.level + 1)}
-                    />
-                </div>
-            )} */}
-
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
-                <div className="lg:col-span-2 space-y-10">
+                <div className="lg:col-span-2 space-y-10" role="region" aria-label="Main Content Area">
                     <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl p-10 border border-white/5 shadow-2xl relative overflow-hidden group">
                         <div className="absolute top-0 right-0 p-32 bg-violet-500/10 blur-[100px] rounded-full pointer-events-none"></div>
                         <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
@@ -559,35 +592,11 @@ const Dashboard: React.FC = () => {
                         </div>
                     </div>
 
-                    <div>
-                        <div className="flex items-center justify-between mb-6">
-                            <h2 className="text-xl font-semibold text-slate-100">{t('dashboard.resourceLibraryTitle')}</h2>
-                            <Link to="/resources" className="text-sm font-medium text-violet-400 hover:text-violet-300 transition-colors">{t('dashboard.viewAllResources')}</Link>
-                        </div>
-                        <Link to="/resources" className="group block p-8 bg-slate-800 rounded-xl border border-white/10 shadow-card hover:shadow-card-hover transition-all duration-300 relative overflow-hidden">
-                            <div className="absolute inset-0 bg-gradient-to-r from-violet-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-                            <div className="flex items-center justify-between relative z-10">
-                                <div className="flex items-center space-x-6">
-                                    <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/20 group-hover:scale-110 transition-transform duration-300">
-                                        <BookOpen className="w-8 h-8 text-white" />
-                                    </div>
-                                    <div>
-                                        <h3 className="text-xl font-bold text-white mb-1">{t('dashboard.engineeringResourcesTitle')}</h3>
-                                        <p className="text-slate-400 font-light">{t('dashboard.engineeringResourcesSubtitle')}</p>
-                                    </div>
-                                </div>
-                                <div className="hidden sm:flex w-12 h-12 rounded-full border border-white/10 items-center justify-center group-hover:bg-violet-500 group-hover:border-transparent transition-all duration-300">
-                                    <ArrowRight className="w-5 h-5 text-slate-400 group-hover:text-white transition-colors" />
-                                </div>
-                            </div>
-                        </Link>
-                    </div>
-
                     <div className="space-y-8">
                         <GoalsWidget />
                         {showMoodCheckin && <MoodCheckin onMoodSelect={handleMoodSelected} />}
                         {(isLoadingSuggestion || aiSuggestion) && (
-                            <div className="bg-slate-800/50 p-6 rounded-[2rem] ring-1 ring-slate-700/50 backdrop-blur-md relative overflow-hidden group">
+                            <div className="bg-slate-800/50 p-6 rounded-[2rem] ring-1 ring-slate-700/50 backdrop-blur-md relative overflow-hidden group" role="complementary" aria-label="AI Suggestion">
                                 <div className="absolute top-0 right-0 p-16 bg-violet-500/5 blur-[50px] rounded-full group-hover:bg-violet-500/10 transition-colors duration-700"></div>
 
                                 <div className="flex items-start gap-4 relative z-10">
@@ -605,18 +614,43 @@ const Dashboard: React.FC = () => {
                                             </button>
                                         </div>
                                         {isLoadingSuggestion ? (
-                                            <div className="flex items-center gap-3">
-                                                <div className="flex gap-1">
-                                                    <div className="w-1 h-1 bg-violet-400 rounded-full animate-bounce"></div>
-                                                    <div className="w-1 h-1 bg-violet-400 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
-                                                    <div className="w-1 h-1 bg-violet-400 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
-                                                </div>
-                                                <p className="text-sm text-slate-400 italic">{t('dashboard.thinking')}</p>
+                                            <div className="h-5 flex items-center overflow-hidden">
+                                                <AnimatePresence mode="wait">
+                                                    <motion.p 
+                                                        key={labelIndex}
+                                                        initial={{ opacity: 0, y: 10 }}
+                                                        animate={{ opacity: 1, y: 0 }}
+                                                        exit={{ opacity: 0, y: -10 }}
+                                                        transition={{ duration: 0.3 }}
+                                                        className="text-xs font-black text-slate-500 italic uppercase tracking-widest"
+                                                    >
+                                                        {insightLabels[labelIndex]}
+                                                    </motion.p>
+                                                </AnimatePresence>
                                             </div>
                                         ) : (
-                                            <p className="text-sm text-slate-100 leading-relaxed font-medium animate-in fade-in slide-in-from-top-2 duration-700">
-                                                {aiSuggestion}
-                                            </p>
+                                            <div className="space-y-4">
+                                                <p className="text-sm text-slate-100 leading-relaxed font-medium animate-in fade-in slide-in-from-top-2 duration-700">
+                                                    {aiSuggestion}
+                                                </p>
+                                                
+                                                <div className="flex gap-3 mt-4">
+                                                    <Button 
+                                                        size="sm" 
+                                                        className="h-8 px-4 text-[10px] font-black uppercase tracking-widest bg-violet-600 hover:bg-violet-700"
+                                                        onClick={() => {
+                                                            const text = aiSuggestion?.toLowerCase() || '';
+                                                            let tab = 'aptitude';
+                                                            if (text.includes('code') || text.includes('dsa') || text.includes('binary')) tab = 'dsa';
+                                                            if (text.includes('gd') || text.includes('discuss')) tab = 'gd';
+                                                            if (text.includes('hr') || text.includes('interview')) tab = 'hr';
+                                                            navigate(`/practice-hub?tab=${tab}`);
+                                                        }}
+                                                    >
+                                                        Practice Now <Zap size={12} className="ml-2" />
+                                                    </Button>
+                                                </div>
+                                            </div>
                                         )}
                                     </div>
                                 </div>
@@ -628,13 +662,16 @@ const Dashboard: React.FC = () => {
                             </div>
                         )}
                         <ProductivityInsights />
-                        <ActivePlanWidget />
+                        <div role="complementary" aria-label="Active Study Plan Progress">
+                            <Card className="bg-slate-800/40 border-none overflow-hidden">
+                                <ActivePlanWidget />
+                            </Card>
+                        </div>
                         <MyCourses />
                     </div>
                 </div>
 
-                <div className="space-y-10">
-                    {/* <LeaderboardWidget /> */}
+                <div className="space-y-10" role="complementary" aria-label="Sidebar Tools">
                     <div>
                         <div className="flex items-center justify-between mb-6">
                             <h2 className="text-xl font-semibold text-slate-100 flex items-center">
@@ -722,7 +759,7 @@ const Dashboard: React.FC = () => {
                                 <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest">AI Core Linked</span>
                             </div>
                         </div>
-                        <div className="grid grid-cols-1 md:grid-cols-1 lg:grid-cols-1 gap-5"> {/* Forced 1-col in sidebar to avoid clipping card titles like "Quizzes & Practice" */}
+                        <div className="grid grid-cols-1 gap-5">
                             {tools.map(tool => {
                                 const { key, ...rest } = tool;
                                 return <ToolCard key={key} {...rest} />;

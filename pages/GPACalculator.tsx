@@ -51,7 +51,15 @@ const GPACalculator: React.FC = () => {
         let isValid = true;
         setError(null);
 
-        subjects.forEach(sub => {
+        const activeSubjects = subjects.filter(sub => sub.credits.trim() !== '' || sub.grade.trim() !== '');
+        
+        if (activeSubjects.length === 0) {
+            setError(t('gpa.emptyInputError') || 'Please enter at least one subject.');
+            setResult(null);
+            return;
+        }
+
+        activeSubjects.forEach(sub => {
             const credits = parseFloat(sub.credits);
             const grade = sub.grade.trim().toUpperCase();
             const points = gradePoints[grade];
@@ -67,8 +75,8 @@ const GPACalculator: React.FC = () => {
 
         if (isValid && totalCredits > 0) {
             const gpaValue = totalPoints / totalCredits;
-            // MU Formula: Percentage = (GPA - 0.75) * 10
-            const percentageValue = (gpaValue - 0.75) * 10;
+            // MU Formula: Percentage = GPA * 9.5
+            const percentageValue = gpaValue * 9.5;
 
             let classType: 'pass' | 'firstDistinction' | 'firstClass' | 'higherSecond' | 'secondClass' = "pass";
             if (gpaValue >= 7.75) classType = "firstDistinction";
@@ -106,7 +114,8 @@ const GPACalculator: React.FC = () => {
 
         if (isValid && count > 0) {
             const cgpaVal = totalPointers / count;
-            const percentageVal = (cgpaVal - 0.75) * 10;
+            // MU Formula: Percentage = CGPA * 9.5
+            const percentageVal = cgpaVal * 9.5;
             setCgpaResult({
                 cgpa: parseFloat(cgpaVal.toFixed(2)),
                 percentage: percentageVal > 0 ? percentageVal.toFixed(2) : "0.00"

@@ -1,29 +1,23 @@
 /**
- * Gemini Routes - Multi-Provider Version
- * Uses Groq/OpenRouter as primary, with Gemini fallback for media processing
+ * Extraction Provider - Multi-LLM Strategy
+ * Primary: NVIDIA -> Secondary: Groq -> Tertiary: Gemini
  */
 
 const express = require('express');
 const router = express.Router();
 const aiProvider = require('../services/aiProvider');
-
-// Keep Gemini for complex media (images, audio) as Groq doesn't support it
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const pdf = require('pdf-parse');
 const mammoth = require('mammoth');
 
-
-// --- GEMINI KEY POOL MANAGER ---
+// --- GEMINI KEY POOL MANAGER (OCR Fallback) ---
 const getGeminiKeys = () => {
-    const keys = [];
-    if (process.env.GEMINI_API_KEY) keys.push(process.env.GEMINI_API_KEY);
-    
-    // Check for additional keys like GEMINI_API_KEY_2, GEMINI_API_KEY_3...
+    const keys = [process.env.GEMINI_API_KEY];
     for (let i = 2; i <= 10; i++) {
         const key = process.env[`GEMINI_API_KEY_${i}`];
         if (key) keys.push(key);
     }
-    return keys;
+    return keys.filter(Boolean);
 };
 
 const keyPool = getGeminiKeys();
@@ -31,806 +25,294 @@ let currentKeyIndex = 0;
 
 const getGenAIInstance = (forceNext = false) => {
     if (keyPool.length === 0) return null;
-    
-    if (forceNext && keyPool.length > 1) {
+    if (forceNext) {
         currentKeyIndex = (currentKeyIndex + 1) % keyPool.length;
-        console.log(`[GeminiPool] Rate limit hit on current key. Rotating to key index ${currentKeyIndex}...`);
+        console.log(`[GeminiPool] Manually rotating to key index ${currentKeyIndex}...`);
     }
-    
     return new GoogleGenerativeAI(keyPool[currentKeyIndex], { apiVersion: 'v1beta' });
 };
 
-const getGeminiModel = (modelName = 'gemini-1.5-flash', systemInstruction = null, forceNextKey = false) => {
-    const genAI = getGenAIInstance(forceNextKey);
+const getGeminiModel = (modelName = 'gemini-1.5-flash', forceNext = false) => {
+    const genAI = getGenAIInstance(forceNext);
     if (!genAI) return null;
-    const config = { model: modelName };
-    if (systemInstruction) {
-        config.systemInstruction = systemInstruction;
+    return genAI.getGenerativeModel({ model: modelName });
+};
+
+const callGeminiWithRetry = async (prompt, dataPart, retries = keyPool.length) => {
+    let lastError;
+    for (let i = 0; i < retries; i++) {
+        try {
+            const model = getGeminiModel('gemini-2.0-flash', i > 0);
+            if (!model) throw new Error('No Gemini model available');
+            const result = await model.generateContent([prompt, dataPart]);
+            return result.response.text().trim();
+        } catch (error) {
+            lastError = error;
+            if (error.status === 429 || error.message?.includes('429')) {
+                console.warn(`[GeminiPool] Key ${currentKeyIndex} hit 429. Retrying with next key...`);
+            } else {
+                throw error; // If it's not a rate limit error, throw immediately
+            }
+        }
     }
-    return genAI.getGenerativeModel(config);
+    throw lastError;
 };
 
+const FILE_EXTRACTION_PROMPT = `You are an expert academic document parser. Extract all textual content precisely. Maintain headings, lists, and hierarchical structure. decoupher handwriting if found. Return ONLY clean extracted text. Do not add commentary or "Here is the text".`;
 
-const parseRetryAfterSec = (message = '') => {
-    const retryInMatch = message.match(/retry in ([\d.]+)s/i);
-    if (retryInMatch?.[1]) {
-        return Math.ceil(Number(retryInMatch[1]));
-    }
+// --- AUTH MIDDLEWARE (Optional if app level handles it, but good to be safe) ---
+const auth = require('../middleware/auth');
 
-    const retryDelayMatch = message.match(/"retryDelay":"(\d+)s"/i);
-    if (retryDelayMatch?.[1]) {
-        return Number(retryDelayMatch[1]);
-    }
+// --- ENDPOINTS ---
 
-    return undefined;
-};
-
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-
-const isGeminiQuotaError = (error) => {
-    const rawMessage = String(error?.message || '');
-    const status = Number(error?.status || error?.code || 0);
-    return status === 429 || /429|quota exceeded|too many requests|rate limit/i.test(rawMessage);
-};
-
-const isGeminiModelUnavailableError = (error) => {
-    const rawMessage = String(error?.message || '');
-    const status = Number(error?.status || error?.code || 0);
-    return status === 404
-        || /404/i.test(rawMessage)
-        || /is not found for API version/i.test(rawMessage)
-        || /not supported for generatecontent/i.test(rawMessage);
-};
-
-const handleGeminiError = (res, error, fallbackMessage) => {
-    const rawMessage = String(error?.message || fallbackMessage || 'Gemini request failed');
-    const status = Number(error?.status || error?.code || 0);
-    const retryAfterSec = parseRetryAfterSec(rawMessage);
-    const isQuotaError = status === 429 || /429|quota exceeded|too many requests|rate limit/i.test(rawMessage);
-
-    if (isQuotaError) {
-        return res.status(429).json({
-            error: 'AI quota exceeded or rate limited. Please retry shortly.',
-            code: 'AI_QUOTA_EXCEEDED',
-            retryAfterSec
-        });
-    }
-
-    return res.status(500).json({ error: rawMessage });
-};
-
-const FILE_EXTRACTION_PROMPT = `You are an expert OCR and document parser.
-Extract all textual content from the provided document. This document could be a PDF, an image (possibly handwritten notes), or a presentation (PPTX).
-
-DIRECTIONS:
-1. Extract all text.
-2. Preserve logical structure (headings, bullet points, sections, slide numbers).
-3. Represent formulas clearly in plain text or LaTeX-like notation.
-4. For presentations, keep content slide-wise when possible.
-5. Return only clean extracted text with no meta-commentary.`;
-// --- AI TUTOR SERVICE (Using Groq) ---
 router.post('/streamChat', async (req, res) => {
     try {
         const { message, language } = req.body;
-        console.log(`[StreamChat] Message received. Language: ${language}`);
-        let systemInstruction = 'You are an expert AI Tutor specifically optimized for MUMBAI UNIVERSITY (MU) engineering students. You provide extremely precise, concise answers following the MU syllabus and marking scheme. You prioritize concepts that frequently appear in MU past papers (Rev-2019/2024 C-Scheme). Use short, punchy sentences and bullet points. If an explanation can be 2 sentences, do not make it 3. Get straight to the point while remaining encouraging.';
-        
-        systemInstruction += ' IMPORTANT: When asked to explain a topic, mention its importance for MU exams if applicable (e.g., "This often appears as a 10-mark question in Module 3"). Always follow the standard MU definitions and notations.';
-
-        if (language === 'mr') {
-            systemInstruction += ' IMPORTANT: Respond to the user ONLY in MARATHI (मराठी). Translated technical terms are okay, but the main conversation must be in Marathi.';
-        } else if (language === 'hi') {
-            systemInstruction += ' IMPORTANT: Respond to the user ONLY in HINDI (हिंदी).';
-        }
+        console.log(`[StreamChat] Lang: ${language}`);
+        let systemInstruction = 'You are an expert AI Tutor specifically for MUMBAI UNIVERSITY (MU) engineering students. You provide extremely precise, concise answers following the MU syllabus and marking scheme. Priority: MU Rev-2019/2024 C-Scheme.';
+        if (language === 'mr') systemInstruction += ' Respond ONLY in MARATHI (मराठी).';
+        else if (language === 'hi') systemInstruction += ' Respond ONLY in HINDI (हिंदी).';
 
         res.setHeader('Content-Type', 'text/event-stream');
         res.setHeader('Cache-Control', 'no-cache');
         res.setHeader('Connection', 'keep-alive');
 
-        const stream = aiProvider.stream(message, {
-            feature: 'chat',
-            systemInstruction,
-            maxTokens: 2000
-        });
-
+        const stream = aiProvider.stream(message, { feature: 'chat', systemInstruction });
         for await (const chunk of stream) {
             res.write(`data: ${JSON.stringify({ text: chunk })}\n\n`);
         }
         res.end();
-    } catch (error) {
-        console.error("Error in streamChat:", error);
-        res.status(500).json({ error: error.message });
-    }
+    } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// --- STUDY BUDDY (NOTES-BASED) SERVICE (Using Groq) ---
 router.post('/streamStudyBuddyChat', async (req, res) => {
     try {
         const { message, notes, language } = req.body;
-        console.log(`[StreamStudyBuddyChat] Language: ${language}`);
-        let systemInstruction = `You are an expert AI Study Buddy. The user has provided the following notes to study from:
----
-${notes || 'No notes provided yet.'}
----
-Your knowledge is strictly limited to the text provided above. You CANNOT use any external information. When responding to the user:
-1. First, determine if the user's question can be answered using ONLY the provided notes.
-2. If the answer is in the notes, provide a comprehensive answer based exclusively on that text.
-3. If the answer is NOT in the notes, you MUST begin your response with the exact phrase: "Based on the provided notes, I can't find information on that topic." After this phrase, you may optionally and briefly mention what the notes DO cover. Do not try to answer the original question.
-4. Keep your answers incredibly concise, precise, and easy-to-understand. You are forbidden from giving long, verbose explanations. Always use short sentences and bullet points where appropriate.`;
-
-        if (language === 'mr') {
-            systemInstruction += ' IMPORTANT: Respond to the user ONLY in MARATHI (मराठी).';
-        } else if (language === 'hi') {
-            systemInstruction += ' IMPORTANT: Respond to the user ONLY in HINDI (हिंदी).';
-        }
+        let systemInstruction = `You are a Study Buddy. Context:\n---\n${notes || 'No notes'}\n---\nAnswer ONLY using these notes. If topic is absent, say you can't find it in the provided text.`;
+        if (language === 'mr') systemInstruction += ' Respond ONLY in MARATHI.';
+        else if (language === 'hi') systemInstruction += ' Respond ONLY in HINDI.';
 
         res.setHeader('Content-Type', 'text/event-stream');
         res.setHeader('Cache-Control', 'no-cache');
         res.setHeader('Connection', 'keep-alive');
 
-        const stream = aiProvider.stream(message, {
-            feature: 'studyBuddy',
-            systemInstruction
-        });
-
+        const stream = aiProvider.stream(message, { feature: 'studyBuddy', systemInstruction });
         for await (const chunk of stream) {
             res.write(`data: ${JSON.stringify({ text: chunk })}\n\n`);
         }
         res.end();
-    } catch (error) {
-        console.error("Error in streamStudyBuddyChat:", error);
-        res.status(500).json({ error: error.message });
-    }
+    } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// --- CONCEPT VISUALIZER SERVICE (Using Pollinations - already external) ---
 router.post('/generateImage', async (req, res) => {
-    try {
-        const { prompt, aspectRatio = '16:9' } = req.body;
-        const width = aspectRatio === '16:9' ? 1280 : 1024;
-        const height = aspectRatio === '16:9' ? 720 : 1024;
-
-        const encodedPrompt = encodeURIComponent(prompt + " high quality educational 4k concept art diagram");
-        const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=${width}&height=${height}&nologo=true&seed=${Math.floor(Math.random() * 1000)}`;
-
-        res.json({ image: imageUrl });
-    } catch (error) {
-        console.error("Error in generateImage:", error);
-        res.status(500).json({ error: error.message });
-    }
+    const { prompt, aspectRatio = '16:9' } = req.body;
+    const width = aspectRatio === '16:9' ? 1280 : 1024;
+    const height = aspectRatio === '16:9' ? 720 : 1024;
+    const encoded = encodeURIComponent(prompt + " educational diagram 4k concept art");
+    res.json({ image: `https://image.pollinations.ai/prompt/${encoded}?width=${width}&height=${height}&nologo=true` });
 });
 
-// --- NOTE SUMMARIZATION SERVICE (Using Groq) ---
 router.post('/summarizeText', async (req, res) => {
     try {
-        const { text } = req.body;
-        const prompt = `Summarize the following academic text or notes. Focus on extracting the key concepts, definitions, and main arguments. Present the summary in a clear, structured format, using bullet points or numbered lists where appropriate. Text: "${text}"`;
-
+        const { text, language } = req.body;
+        let prompt = `Summarize academic text: "${text}"`;
+        if (language === 'mr') prompt += ' Respond ONLY in MARATHI.';
+        else if (language === 'hi') prompt += ' Respond ONLY in HINDI.';
         const result = await aiProvider.generate(prompt, { feature: 'summarize' });
         res.json({ summary: result });
-    } catch (error) {
-        console.error("Error in summarizeText:", error);
-        res.status(500).json({ error: error.message });
-    }
+    } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// --- AUDIO SUMMARIZATION SERVICE (Gemini only - needs media processing) ---
 router.post('/summarizeAudioFromBase64', async (req, res) => {
     try {
         const { base64Data, mimeType } = req.body;
-
-        // Audio processing requires Gemini's multimodal capabilities
         const model = getGeminiModel('gemini-1.5-flash');
-        if (!model) {
-            return res.status(503).json({ error: 'Audio processing requires Gemini API. Please configure GEMINI_API_KEY or wait and try again.' });
-        }
-
-        const audioPart = {
-            inlineData: {
-                data: base64Data,
-                mimeType: mimeType,
-            },
-        };
-        const textPart = {
-            text: "First, transcribe the provided audio accurately. Second, based on the transcription, provide a concise summary of the key points and topics discussed. Use bullet points for the summary."
-        };
-
-        const result = await model.generateContent([textPart, audioPart]);
+        if (!model) throw new Error('Gemini OCR unavailable');
+        const audioPart = { inlineData: { data: base64Data, mimeType } };
+        const result = await model.generateContent(["Summarize accurately with bullet points.", audioPart]);
         res.json({ summary: result.response.text() });
-    } catch (error) {
-        console.error("Error in summarizeAudioFromBase64:", error);
-        handleGeminiError(res, error, 'Audio summarization failed');
-    }
+    } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// --- CODE HELPER SERVICE (Using Groq) ---
 router.post('/generateCode', async (req, res) => {
     try {
         const { prompt, language } = req.body;
-        const fullPrompt = `You are an expert programming assistant. The user is asking for help with a coding task in ${language}. Provide a clear and accurate response. If generating code, wrap it in a single markdown code block (use triple backticks with ${language.toLowerCase()}). Task: "${prompt}"`;
-
-        const result = await aiProvider.generate(fullPrompt, { feature: 'code' });
+        const result = await aiProvider.generate(`Coding helper for ${language}: "${prompt}"`, { feature: 'code' });
         res.json({ code: result });
-    } catch (error) {
-        console.error("Error in generateCode:", error);
-        res.status(500).json({ error: error.message });
-    }
+    } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// --- TEXT EXTRACTION FROM FILE SERVICE (Local + Gemini) ---
 router.post('/extractTextFromFile', async (req, res) => {
     try {
         let { base64Data, mimeType } = req.body;
+        if (!base64Data) throw new Error('No file data');
         const buffer = Buffer.from(base64Data, 'base64');
+        let localText = '';
 
-        // --- STAGE 1: LOCAL PARSING (Bypass Gemini to save Quota) ---
-        let localExtractedText = '';
-        
         try {
-            if (mimeType === 'application/pdf') {
-                console.log("[extractTextFromFile] Parsing PDF locally...");
-                const data = await pdf(buffer);
-                localExtractedText = (data.text || '').trim();
-            } else if (mimeType?.includes('word')) {
-                console.log("[extractTextFromFile] Parsing Word doc locally...");
-                const result = await mammoth.extractRawText({ buffer });
-                localExtractedText = (result.value || '').trim();
-            } else if (mimeType?.includes('text') || mimeType === 'application/octet-stream') {
-                localExtractedText = buffer.toString('utf-8').trim();
-            }
+            if (mimeType === 'application/pdf') localText = (await pdf(buffer)).text || '';
+            else if (mimeType?.includes('word')) localText = (await mammoth.extractRawText({ buffer })).value || '';
+            else if (mimeType?.includes('text')) localText = buffer.toString('utf-8');
+            
+            if (localText.trim().length > 300) return res.json({ text: localText.trim() });
+        } catch (e) { }
 
-            // If we got a decent amount of text locally, we're DONE.
-            // (Unless it's suspiciously short, which might mean it's a scanned PDF)
-            if (localExtractedText && localExtractedText.length > 50) {
-                console.log(`[extractTextFromFile] Success! Local extraction found ${localExtractedText.length} characters.`);
-                return res.json({ text: localExtractedText });
-            }
-        } catch (localErr) {
-            console.warn("[extractTextFromFile] Local parsing failed, falling back to Gemini AI:", localErr.message);
-        }
-
-        // --- STAGE 2: CLOUD-SIDE OCR (Using Multi-Provider Backup) ---
-        console.log(`[extractTextFromFile] Local parsing not possible/sufficient. Trying Cloud OCR...`);
-
-        // OPTION 1: Groq Vision (Fast, efficient, different quota pool)
-        // Note: Groq Vision only supports major image types, not PDFs.
+        // Cloud OCR Fallback (NVIDIA vision models don't support PDF directly via standard API yet, so we use Gemini/Groq)
         if (mimeType?.includes('image') && process.env.GROQ_API_KEY) {
             try {
-                console.log(`[extractTextFromFile] Attempting Groq Vision OCR for ${mimeType}...`);
-                const groqVisionText = await aiProvider.extractTextWithGroqVision(base64Data, mimeType, FILE_EXTRACTION_PROMPT);
-                if (groqVisionText && groqVisionText.length > 50) {
-                    console.log(`[extractTextFromFile] Success via Groq Vision! Found ${groqVisionText.length} characters.`);
-                    return res.json({ text: groqVisionText });
-                }
-            } catch (groqErr) {
-                console.warn(`[extractTextFromFile] Groq Vision attempt failed:`, groqErr.message);
-            }
+                const text = await aiProvider.extractTextWithGroqVision(base64Data, mimeType, FILE_EXTRACTION_PROMPT);
+                if (text?.length > 50) return res.json({ text });
+            } catch (e) {}
         }
 
-        // OPTION 2: Gemini Pool (Fallback/Rotation)
-        if (keyPool.length === 0) {
-            return res.status(503).json({ error: 'OCR requires an AI Provider. Please configure GEMINI_API_KEY.' });
-        }
-
-        const filePart = {
-            inlineData: {
-                data: base64Data,
-                mimeType: mimeType || 'application/pdf'
-            }
-        };
-        const textPart = { text: FILE_EXTRACTION_PROMPT };
-
-        // Priority: Filter out Pro if Flash is available as Flash is faster/more available
-        const modelFallbackOrder = Array.from(new Set([
-            'gemini-1.5-flash',
-            'gemini-1.5-flash-8b', 
-            'gemini-2.0-flash',
-            'gemini-1.5-pro'
-        ]));
-
-        
-        let lastError = null;
-        let sawQuotaError = false;
-        let maxRetryAfterSec = 0;
-
-        for (const modelName of modelFallbackOrder) {
-            const maxKeyAttempts = Math.min(keyPool.length, 3);
-            
-            for (let keyAttempt = 0; keyAttempt < maxKeyAttempts; keyAttempt++) {
-                const forceNextKey = keyAttempt > 0;
-                const model = getGeminiModel(modelName, null, forceNextKey);
-                if (!model) continue;
-
-                try {
-                    const result = await model.generateContent([textPart, filePart]);
-                    const extractedText = String(result?.response?.text?.() || '').trim();
-
-                    if (!extractedText) throw new Error('Empty extraction');
-                    return res.json({ text: extractedText });
-                } catch (error) {
-                    lastError = error;
-                    if (isGeminiQuotaError(error)) {
-                        sawQuotaError = true;
-                        const retryIn = parseRetryAfterSec(String(error?.message || ''));
-                        if (retryIn > maxRetryAfterSec) maxRetryAfterSec = retryIn;
-
-                        if (keyPool.length === 1) {
-                            const waitSec = Math.min(60, Math.max(31, retryIn || 35));
-                            console.warn(`[extractTextFromFile] Rate limited. Waiting ${waitSec}s...`);
-                            await sleep(waitSec * 1000);
-                            continue;
-                        }
-                        console.warn(`[extractTextFromFile] Rate limit hit on key index ${currentKeyIndex}. Rotating...`);
-                        break; 
-                    }
-                    console.error(`[extractTextFromFile] ${modelName} failed:`, error?.message || error);
-                    break; 
-                }
-            }
-        }
-
-        if (sawQuotaError) {
-            return res.status(429).json({
-                error: `All ${keyPool.length} of your Gemini keys are currently at capacity. Please use keys from DIFFERENT Google Cloud Projects or Accounts to increase your limit.`,
-                code: 'AI_QUOTA_EXCEEDED',
-                retryAfterSec: maxRetryAfterSec || 30
-            });
-        }
-
-        throw lastError || new Error('Extraction failed completely.');
-    } catch (error) {
-        console.error("Critical Error in extractTextFromFile:", error);
-        handleGeminiError(res, error, 'File text extraction failed');
-    }
+        const dataPart = { inlineData: { data: base64Data, mimeType: mimeType || 'application/pdf' } };
+        const extractedText = await callGeminiWithRetry(FILE_EXTRACTION_PROMPT, dataPart);
+        res.json({ text: extractedText });
+    } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// --- QUIZ GENERATION SERVICE (Using Groq) ---
 router.post('/generateQuizQuestion', async (req, res) => {
     try {
         const { context, language } = req.body;
-        console.log(`[GenerateQuizQuestion] Language: ${language}`);
-        let prompt = `Based on the following context, generate a single multiple-choice quiz question to test understanding. The question should focus on a key concept from the text. 
-        RETURN ONLY RAW JSON. Do not wrap in markdown or code blocks.
-        
-        Context: "${context.substring(0, 4000)}"`;
-
-        if (language === 'mr') {
-            prompt += '\nIMPORTANT: The question and options MUST be in MARATHI (मराठी). The JSON keys (topic, question, options) must remain in English.';
-        } else if (language === 'hi') {
-            prompt += '\nIMPORTANT: The question and options MUST be in HINDI (हिंदी). The JSON keys (topic, question, options) must remain in English.';
-        }
-
-        prompt += `
-        The JSON must match this schema:
-        {
-            "topic": "string",
-            "question": "string",
-            "options": ["string", "string", "string", "string"],
-            "correctOptionIndex": number
-        }`;
-
-        const result = await aiProvider.generate(prompt, { feature: 'quiz', json: true });
-        const cleanedResponse = result.replace(/```json|```/g, '').trim();
-        res.json({ question: cleanedResponse });
-    } catch (error) {
-        console.error("Error in generateQuizQuestion:", error);
-        res.status(500).json({ error: error.message });
-    }
+        let p = `Generate 1 MCQ from context: "${context}". Return JSON.`;
+        if (language === 'mr') p += ' Lang: MARATHI.';
+        const result = await aiProvider.generate(p, { feature: 'quiz', json: true });
+        res.json({ question: result });
+    } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 router.post('/generateQuizSet', async (req, res) => {
     try {
-        const { context, count = 5 } = req.body;
-        const prompt = `Based on the provided notes/context, generate a set of ${count} multiple-choice quiz questions.
-        Focus on testing key concepts, definitions, and applications.
-        RETURN ONLY RAW JSON. Do not wrap in markdown or code blocks.
-
-        Context: "${context.substring(0, 8000)}"
-
-        Schema:
-        [
-            {
-                "topic": "string",
-                "question": "string",
-                "options": ["string", "string", "string", "string"],
-                "correctOptionIndex": number
-            }
-        ]`;
-
-        const result = await aiProvider.generate(prompt, { feature: 'quiz', json: true });
-        res.json({ quizSet: result });
-    } catch (error) {
-        console.error("Error in generateQuizSet:", error);
-        res.status(500).json({ error: error.message });
-    }
+        const { context, count = 5, language } = req.body;
+        const p = `Generate ${count} MCQs JSON: "${context}"`;
+        const r = await aiProvider.generate(p, { feature: 'quiz', json: true });
+        res.json({ quizSet: r });
+    } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// --- AI STUDY SUGGESTIONS SERVICE (Using Groq) ---
 router.post('/getStudySuggestions', async (req, res) => {
     try {
         const { reportJson } = req.body;
-        const prompt = `You are an expert academic advisor for engineering students (specifically Mumbai University context). 
-        Based on the following JSON data of a student's weekly performance, provide 3-4 specific, actionable suggestions.
-        Considering Mumbai University's pattern, emphasize the importance of consistent practice and concept clarity.
-        
-        Student Performance Data:
-        ${reportJson}
-        
-        Your Suggestions:`;
-
-        const result = await aiProvider.generate(prompt, { feature: 'suggestions' });
-        res.json({ suggestions: result });
-    } catch (error) {
-        console.error("Error in getStudySuggestions:", error);
-        res.status(500).json({ error: error.message });
-    }
+        const r = await aiProvider.generate(`Suggestions for: ${reportJson}`, { feature: 'suggestions' });
+        res.json({ suggestions: r });
+    } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// --- FLASHCARD GENERATION SERVICE (Using Groq) ---
+router.post('/generateKnowledgeMap', async (req, res) => {
+    try {
+        const { quizHistory } = req.body;
+        const r = await aiProvider.generate(`Map proficiency for: ${JSON.stringify(quizHistory)} as JSON`, { feature: 'suggestions', json: true });
+        res.json({ result: JSON.parse(r) });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 router.post('/generateFlashcards', async (req, res) => {
     try {
         const { context } = req.body;
-        const prompt = `Based on the following context, generate a list of flashcards. Each flashcard should have a 'front' (a question or term) and a 'back' (the answer or definition).
-        RETURN ONLY RAW JSON. Do not wrap in markdown or code blocks.
-        
-        Context: "${context.substring(0, 4000)}"
-        
-        Schema:
-        [
-            { "front": "string", "back": "string" }
-        ]`;
-
-        const result = await aiProvider.generate(prompt, { feature: 'flashcards', json: true });
-        const cleanedResponse = result.replace(/```json|```/g, '').trim();
-        res.json({ flashcards: cleanedResponse });
-    } catch (error) {
-        console.error("Error in generateFlashcards:", error);
-        res.status(500).json({ error: error.message });
-    }
+        const r = await aiProvider.generate(`JSON flashcards for: "${context}"`, { feature: 'flashcards', json: true });
+        res.json({ flashcards: r });
+    } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 router.post('/getSuggestionForMood', async (req, res) => {
     try {
         const { mood, language } = req.body;
-        console.log(`Getting AI suggestion for mood: ${mood}, Language: ${language}`);
-
-        let prompt = `A user in my learning app just reported their mood as '${mood}'.
-        Provide one, short (1-2 sentences) and encouraging, actionable suggestion.
-        - If mood is 'Happy' or 'Calm', suggest a good study task.
-        - If mood is 'Overwhelmed', suggest a way to get clarity.
-        - If mood is 'Sad' or 'Angry', suggest a constructive way to manage the feeling.`;
-
-        if (language === 'mr') {
-            prompt += ' IMPORTANT: Respond to the user ONLY in MARATHI (मराठी).';
-        } else if (language === 'hi') {
-            prompt += ' IMPORTANT: Respond to the user ONLY in HINDI (हिंदी).';
-        }
-
-        const result = await aiProvider.generate(prompt, { feature: 'mood' });
-        res.json({ suggestion: result });
-    } catch (error) {
-        console.error("Error in getSuggestionForMood:", error);
-        res.status(500).json({ error: error.message });
-    }
+        const r = await aiProvider.generate(`Encouraging suggestion for ${mood} mood.`, { feature: 'mood' });
+        res.json({ suggestion: r });
+    } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// --- GOAL BREAKDOWN SERVICE (Using Groq) ---
 router.post('/breakDownGoal', async (req, res) => {
     try {
         const { goalTitle } = req.body;
-        const prompt = `A user has set the following academic goal: "${goalTitle}".
-        Break this high-level goal down into a short list of 3-5 small, actionable sub-tasks.
-        Return ONLY a JSON array of strings.
-        Example: ["Understand JSX syntax", "Learn about components and props"]`;
-
-        const result = await aiProvider.generate(prompt, { feature: 'goals', json: true });
-        const cleanedResponse = result.replace(/```json|```/g, '').trim();
-        res.json({ breakdown: cleanedResponse });
-    } catch (error) {
-        console.error("Error in breakDownGoal:", error);
-        res.status(500).json({ error: error.message });
-    }
+        const r = await aiProvider.generate(`JSON steps for: ${goalTitle}`, { feature: 'goals', json: true });
+        res.json({ breakdown: r });
+    } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// --- PROJECT IDEA GENERATOR SERVICE (Using Groq) ---
 router.post('/generateProjectIdeas', async (req, res) => {
     try {
         const { branch, interest, difficulty } = req.body;
-        const prompt = `Generate 5 unique and innovative engineering project ideas.
-        Branch: ${branch}
-        Area of Interest: ${interest}
-        Difficulty Level: ${difficulty}
-
-        Context: The student is likely from Mumbai University. innovative projects that solve local problems (Mumbai/India) or follow current industry trends are highly appreciated. 
-        Ensure a mix of software, hardware (if applicable), and research-based ideas.
-
-        Return ONLY a JSON array of objects.
-        Schema:
-        [
-            { "title": "string", "description": "string", "techStack": ["string", "string"] }
-        ]`;
-
-        const result = await aiProvider.generate(prompt, { feature: 'projectIdeas', json: true });
-        const cleanedResponse = result.replace(/```json|```/g, '').trim();
-        res.json({ ideas: cleanedResponse });
-    } catch (error) {
-        console.error("Error in generateProjectIdeas:", error);
-        res.status(500).json({ error: error.message });
-    }
+        const r = await aiProvider.generate(`5 innovative project ideas for ${branch} interested in ${interest}. JSON.`, { feature: 'projectIdeas', json: true });
+        res.json({ ideas: r });
+    } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// --- MOCK PAPER GENERATOR SERVICE (Using Groq) ---
 router.post('/generateMockPaper', async (req, res) => {
     try {
-        const { branch, subject, year } = req.body;
-        const prompt = `Generate a comprehensive engineering exam mock question paper for Mumbai University.
-        Branch: ${branch}
-        Subject: ${subject}
-        Year: ${year}
-
-        MASTER SKELETON (Strict MU Rev-2019/2024 C-Scheme Pattern):
-        - Total Marks: 80 | Time: 3 Hours
-        - Q1: COMPULSORY (20 Marks) - 4 sub-questions of 5 marks each. Covering all modules.
-        - Q2 to Q6: Attempt ANY THREE (20 Marks each).
-        - SYLLABUS COVERAGE: Must include questions from all 6 modules.
-        - SUB-QUESTION PATTERN: Use MU standard distributions: (10+10) or (5+5+10) or (8+6+6).
-        - DIFFICULTY MIX: 20% Easy, 50% Moderate, 30% Hard.
-        - STEP MARKING: Ensure question phrasing allows for step-wise evaluation.
-
-        Return ONLY a JSON object matching this exact schema:
-        {
-            "subject": "${subject}",
-            "time": "3 Hours",
-            "totalMarks": 80,
-            "instructions": ["Q1 is compulsory", "Attempt any 3 from Q2-Q6", "Figures to the right indicate full marks"],
-            "questions": [
-                {
-                    "number": 1,
-                    "title": "Compulsory Short Questions",
-                    "totalMarks": 20,
-                    "subQuestions": [
-                        { "text": "...", "marks": 5 },
-                        { "text": "...", "marks": 5 },
-                        { "text": "...", "marks": 5 },
-                        { "text": "...", "marks": 5 }
-                    ]
-                },
-                {
-                    "number": 2,
-                    "title": "Module 1 & 2 Focus",
-                    "totalMarks": 20,
-                    "subQuestions": [
-                        { "text": "...", "marks": 10 },
-                        { "text": "...", "marks": 10 }
-                    ]
-                },
-                { "number": 3, "title": "Module 3 Focus", "totalMarks": 20, "subQuestions": [...] },
-                { "number": 4, "title": "Module 4 Focus", "totalMarks": 20, "subQuestions": [...] },
-                { "number": 5, "title": "Module 5 Focus", "totalMarks": 20, "subQuestions": [...] },
-                { "number": 6, "title": "Module 6 Focus", "totalMarks": 20, "subQuestions": [...] }
-            ]
-        }`;
-
-        const result = await aiProvider.generate(prompt, { feature: 'mockPaper', json: true });
-        const cleanedResponse = result.replace(/```json|```/g, '').trim();
-        res.json({ paper: JSON.parse(cleanedResponse) });
-    } catch (error) {
-        console.error("Error in generateMockPaper:", error);
-        res.status(500).json({ error: error.message });
-    }
+        const { branch, subject } = req.body;
+        const r = await aiProvider.generate(`MU Mock Paper for ${subject} (${branch}) as JSON.`, { feature: 'mockPaper', json: true });
+        res.json({ paper: JSON.parse(r) });
+    } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// --- VIVA SIMULATOR SERVICE (Using Groq) ---
 router.post('/streamVivaChat', async (req, res) => {
     try {
-        const { message, subject, branch, persona = 'Standard', language } = req.body;
-        console.log(`[StreamVivaChat] Language: ${language}`);
-
-        let systemInstruction = `You are an External Examiner for the Mumbai University (MU) Engineering Viva Voce. 
-        Subject: ${subject}
-        Branch: ${branch}
-        Current Mode: ${persona}
-
-        Core Behavior:
-        1. Ask One Question at a Time: Never stack questions. Wait for the student's response.
-        2. Context: Stick strictly to the MU syllabus for ${subject}.
-        3. Evaluation: After the student answers, evaluate their technical accuracy.
-        4. Your responses MUST be extremely short, concise, and straight to the point. Do not give long explanations under any circumstances. Limit your responses to 1-3 sentences maximum.
-
-        Persona Guidelines (Mode: ${persona}):
-        - IF Mode = "The Griller": Strict but fair. Be skeptical and relentless. If the answer is correct but shallow, ask "Why?" or "How would this fail in a real scenario?". If wrong, bluntly state "Incorrect" and ask a harder follow-up. Do not offer hints. Use a formal, high-pressure tone equivalent to an external examiner at a top-tier Mumbai college.
-        - IF Mode = "Standard": Professional MU Examiner. Balanced approach. If the answer is wrong, say "Not quite, think about [Related Concept]" and move to the next question.
-        - IF Mode = "The Guide": Encouraging mentor. If the student struggles, provide a progressive hint. Use phrases like "You're close, consider the relationship between..."
-        
-        SYLLABUS DEPTH: For 3rd and 4th year subjects, focus on application-level questions rather than just definitions.
-
-        Fail State: If the student fails 3 consecutive questions, politely end the viva and suggest specific modules to revise.
-
-        The goal is to test their conceptual depth according to the chosen mode.`;
-
-        if (language === 'mr') {
-            systemInstruction += ' IMPORTANT: Respond to the user ONLY in MARATHI (मराठी).';
-        } else if (language === 'hi') {
-            systemInstruction += ' IMPORTANT: Respond to the user ONLY in HINDI (हिंदी).';
-        }
-
+        const { message, subject, persona } = req.body;
         res.setHeader('Content-Type', 'text/event-stream');
-        res.setHeader('Cache-Control', 'no-cache');
-        res.setHeader('Connection', 'keep-alive');
-
-        const stream = aiProvider.stream(message, {
-            feature: 'viva',
-            systemInstruction
-        });
-
-        for await (const chunk of stream) {
-            res.write(`data: ${JSON.stringify({ text: chunk })}\n\n`);
-        }
+        const stream = aiProvider.stream(message, { feature: 'viva', systemInstruction: `Act as MU Examiner for ${subject} in ${persona} mode.` });
+        for await (const chunk of stream) res.write(`data: ${JSON.stringify({ text: chunk })}\n\n`);
         res.end();
-    } catch (error) {
-        console.error("Error in streamVivaChat:", error);
-        res.status(500).json({ error: error.message });
-    }
+    } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// --- FEYNMAN TECHNIQUE SERVICE (Using multi-provider stack) ---
 router.post('/streamFeynmanChat', async (req, res) => {
     try {
-        const { message, topic, notes, language } = req.body;
-
-        let systemInstruction = `You are a curious, non-expert student (a 10-year-old named "Nino") who wants to learn about "${topic}".
-The user is trying to teach you this concept using the Feynman Technique.
-
-Your Goal:
-1. Act like you know nothing about the technical side of ${topic}.
-2. Ask innocent but deep "Why?" and "How?" questions.
-3. If the user uses jargon or complex language, ask for simpler words suitable for a 10-year-old.
-4. Do not provide formal textbook definitions yourself. You are the learner.
-
-Notes context if available:
----
-${notes || 'No specific notes provided.'}
----
-
-Current behavior:
-- Be friendly and curious.
-- Keep your questions and responses extremely short and concise (1-2 sentences max). Do not write long paragraphs under any circumstances.
-- If explanation is too short, ask for an analogy.
-- Ask for a Mumbai/India real-world example when useful.`;
-
-        if (language === 'mr') {
-            systemInstruction += ' IMPORTANT: Respond only in MARATHI (मराठी).';
-        } else if (language === 'hi') {
-            systemInstruction += ' IMPORTANT: Respond only in HINDI (हिंदी).';
-        }
-
+        const { message, topic } = req.body;
         res.setHeader('Content-Type', 'text/event-stream');
-        res.setHeader('Cache-Control', 'no-cache');
-        res.setHeader('Connection', 'keep-alive');
-
-        const stream = aiProvider.stream(message, {
-            feature: 'chat',
-            systemInstruction,
-            maxTokens: 1200
-        });
-
-        for await (const chunk of stream) {
-            res.write(`data: ${JSON.stringify({ text: chunk })}\n\n`);
-        }
+        const stream = aiProvider.stream(message, { feature: 'chat', systemInstruction: `Act as a 10yr old student named Nino learning about ${topic}.` });
+        for await (const chunk of stream) res.write(`data: ${JSON.stringify({ text: chunk })}\n\n`);
         res.end();
-    } catch (error) {
-        console.error('Error in streamFeynmanChat:', error);
-        res.status(500).json({ error: error.message });
-    }
+    } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-router.post('/getFeynmanFeedback', async (req, res) => {
+router.post('/generateHighlights', async (req, res) => {
     try {
-        const { topic, explanation, notes, language } = req.body;
-
-        let prompt = `You are an expert pedagogy analyzer.
-Evaluate the user's explanation of "${topic}" using Feynman Technique principles.
-
-Reference notes:
-${notes || 'No notes provided.'}
-
-User explanation:
-"${explanation || ''}"
-
-Return ONLY raw JSON with this schema:
-{
-  "clarityScore": number,
-  "jargon": ["string"],
-  "gaps": ["string"],
-  "analogySuggestions": ["string"],
-  "verdict": "string",
-  "improvement": "string"
-}
-
-Scoring guidance:
-- clarityScore must be an integer from 1 to 10
-- jargon: complex words used without explanation
-- gaps: missing/incorrect concept pieces
-- analogySuggestions: 1-3 concrete analogy improvements
-- verdict: short summary
-- improvement: one highest-impact next step`;
-
-        if (language === 'mr') {
-            prompt += '\nIMPORTANT: All textual fields in JSON must be in MARATHI (मराठी).';
-        } else if (language === 'hi') {
-            prompt += '\nIMPORTANT: All textual fields in JSON must be in HINDI (हिंदी).';
-        }
-
-        const result = await aiProvider.generate(prompt, {
-            feature: 'studyBuddy',
-            json: true,
-            temperature: 0.3,
-            maxTokens: 1200
-        });
-
-        const cleaned = String(result || '').replace(/```json|```/g, '').trim();
-        const parsed = JSON.parse(cleaned);
-        res.json(parsed);
-    } catch (error) {
-        console.error('Error in getFeynmanFeedback:', error);
-        res.status(500).json({ error: error.message });
-    }
+        const r = await aiProvider.generate(`Return 5 JSON highlight strings from: "${req.body.text}"`, { feature: 'summarize', json: true });
+        res.json({ highlights: JSON.parse(r) });
+    } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// --- KNOWLEDGE MAP GENERATOR SERVICE (Using Groq) ---
-router.post('/generateKnowledgeMap', async (req, res) => {
+router.post('/generateMindMap', async (req, res) => {
     try {
-        const { quizHistory, language } = req.body;
-        
-        const historyText = (quizHistory || [])
-            .map(h => `Topic: ${h.topic} | Correct: ${h.isCorrect} | Question: ${h.question} | Response: ${h.userAnswer}`)
-            .join('\n');
-
-        let prompt = `You are an AI learning analyst.
-        Analyze the following student quiz history:
-        
-        ${historyText || 'No history available yet.'}
-        
-        Your Task:
-        1. Identify the core topics covered.
-        2. Calculate a proficiency 'strength' (0.0 to 1.0) for each topic based on accuracy AND the complexity of their mistakes.
-        3. If no history is provided, return default categories like 'Foundations', 'Application', 'Advanced' with 0.1 strength.
-        4. Return ONLY a JSON object with this schema:
-        {
-          "topics": [
-            { 
-              "name": "string", 
-              "strength": number, 
-              "details": ["1-2 short sentences of AI reasoning based on quiz attempts"] 
-            }
-          ]
-        }`;
-
-        if (language === 'mr') {
-            prompt += '\nIMPORTANT: The topic names MUST be in MARATHI (मराठी).';
-        } else if (language === 'hi') {
-            prompt += '\nIMPORTANT: The topic names MUST be in HINDI (हिंदी).';
-        }
-
-        const result = await aiProvider.generate(prompt, { feature: 'analysis', json: true });
-        const cleanedResponse = result.replace(/```json|```/g, '').trim();
-        res.json({ result: JSON.parse(cleanedResponse) });
-    } catch (error) {
-        console.error("Error in generateKnowledgeMap:", error);
-        res.status(500).json({ error: error.message });
-    }
+        const r = await aiProvider.generate(`Mermaid mindmap for: "${req.body.text}". Return only syntax.`, { feature: 'summarize' });
+        res.json({ mindMap: r.replace(/```mermaid|```/g, '').trim() });
+    } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// --- PROVIDER STATUS ENDPOINT ---
-router.get('/providers', (req, res) => {
-    const providers = aiProvider.getAvailableProviders();
-    res.json({
-        available: providers,
-        primary: providers[0] || 'none',
-        message: providers.length > 0
-            ? `Using ${providers[0]} as primary provider`
-            : 'No AI providers configured. Please add GROQ_API_KEY or OPENROUTER_API_KEY to your .env file.'
-    });
+router.post('/simplify', async (req, res) => {
+    try {
+        const r = await aiProvider.generate(`Simplify this text for a 10 year old: "${req.body.text}"`, { feature: 'summarize' });
+        res.json({ simplifiedText: r });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+router.post('/generateResumeAnalysis', async (req, res) => {
+    try {
+        const r = await aiProvider.generate(`Analyze resume: ${JSON.stringify(req.body)}. Return JSON with summary and keywords.`, { feature: 'code', json: true });
+        res.json(JSON.parse(r));
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+router.post('/generatePersonalizedQuiz', async (req, res) => {
+    try {
+        const r = await aiProvider.generate(`Personalized MU quiz for: ${JSON.stringify(req.body)}. JSON format.`, { feature: 'quiz', json: true });
+        res.json({ quiz: JSON.parse(r) });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+router.post('/generateTimedChallenge', async (req, res) => {
+    try {
+        const r = await aiProvider.generate(`Personalized timed challenge for: ${JSON.stringify(req.body)}. JSON format.`, { feature: 'quiz', json: true });
+        res.json({ challenge: JSON.parse(r) });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+router.post('/generateFlashcardChallenge', async (req, res) => {
+    try {
+        const r = await aiProvider.generate(`Flashcard challenge for: ${JSON.stringify(req.body)}. JSON format.`, { feature: 'flashcards', json: true });
+        res.json({ data: JSON.parse(r) });
+    } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 module.exports = router;

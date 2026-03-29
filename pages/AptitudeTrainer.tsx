@@ -73,7 +73,7 @@ const AptitudeTrainer: React.FC = () => {
     const [timer, setTimer] = useState(0);
     const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-    const TOTAL_QUESTIONS = 5;
+    const TOTAL_QUESTIONS = 10;
 
     useEffect(() => {
         trackToolUsage('placement');

@@ -1,7 +1,7 @@
 
 
 import React from 'react';
-import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import Sidebar from './components/Sidebar';
 import Dashboard from './pages/Dashboard'; // Renamed StudyHub to Dashboard
 import AITutor from './pages/AiChat'; // Renamed AiTutor to AITutor
@@ -63,9 +63,11 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
   }
 
   return isAuthenticated ? (
-    <div className="flex h-screen bg-slate-900 text-slate-200">
-      <Sidebar />
-      <main className="flex-1 overflow-y-auto flex flex-col relative w-full">
+    <div className="flex h-screen bg-slate-900 text-slate-200 overflow-hidden">
+      <div className="z-40 relative flex-shrink-0">
+        <Sidebar />
+      </div>
+      <main className="flex-1 overflow-y-auto flex flex-col relative w-full z-0">
         <TopBarTabs />
         <div className="p-4 sm:p-6 lg:p-8 flex-1 h-full">
           {children}
@@ -80,7 +82,58 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
 const App: React.FC = () => {
   return (
     <Router>
-      <ModeProvider>
+      <AppContent />
+    </Router>
+  );
+};
+
+const AppContent: React.FC = () => {
+  const location = useLocation();
+
+  React.useEffect(() => {
+    const path = location.pathname;
+    let title = 'NexusAI';
+    let description = 'Next-gen academic excellence platform powered by AI.';
+
+    const routeMap: Record<string, { title: string, desc: string }> = {
+      '/': { title: 'Dashboard | NexusAI', desc: 'Manage your daily learning journey and focus goals.' },
+      '/resources': { title: 'Resource Library | NexusAI', desc: 'Access comprehensive study materials and university resources.' },
+      '/placement': { title: 'Placement Arena | NexusAI', desc: 'Prepare for top companies with AI-simulated tests and resources.' },
+      '/notes': { title: 'My Notes | NexusAI', desc: 'Organize and analyze your study notes with AI flashcards.' },
+      '/tutor': { title: 'AI Neural Tutor | NexusAI', desc: 'Get 24/7 academic assistance from our proprietary AI engine.' },
+      '/insights': { title: 'AI Insights | NexusAI', desc: 'Deep analytics on your learning patterns and performance.' },
+      '/curriculum': { title: 'Curriculum Explorer | NexusAI', desc: 'Navigate your course syllabus with university-specific insights.' },
+      '/study-lobby': { title: 'Study Rooms | NexusAI', desc: 'Join collaborative study sessions with peers.' },
+      '/quizzes': { title: 'Practice Center | NexusAI', desc: 'Test your knowledge with AI-generated custom quizzes.' },
+      '/study-guru': { title: 'Smart Study | NexusAI', desc: 'Strategic study recommendations based on your unique profile.' },
+      '/login': { title: 'Login | NexusAI', desc: 'Securely access your personalized learning dashboard.' },
+      '/signup': { title: 'Join NexusAI', desc: 'Create your account to start your AI-powered academic journey.' },
+      '/terms': { title: 'Terms of Service | NexusAI', desc: 'Read our platform usage policies and conditions.' },
+      '/privacy': { title: 'Privacy Policy | NexusAI', desc: 'Understand how we protect your data and privacy.' },
+      '/personalization': { title: 'Customize Your Experience | NexusAI', desc: 'Tailor your learning path with our personalization engine.' }
+    };
+
+    const route = Object.entries(routeMap).find(([p]) => path === p || (p !== '/' && path.startsWith(p)));
+    
+    if (route) {
+      title = route[1].title;
+      description = route[1].desc;
+    }
+
+    document.title = title;
+    
+    // Update Meta Description
+    let metaDesc = document.querySelector('meta[name="description"]');
+    if (!metaDesc) {
+      metaDesc = document.createElement('meta');
+      metaDesc.setAttribute('name', 'description');
+      document.head.appendChild(metaDesc);
+    }
+    metaDesc.setAttribute('content', description);
+  }, [location]);
+
+  return (
+    <ModeProvider>
         <Routes>
           {/* Public Routes */}
           <Route path="/login" element={<Login />} />
@@ -135,7 +188,6 @@ const App: React.FC = () => {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </ModeProvider>
-    </Router>
   );
 };
 

@@ -80,7 +80,7 @@ const limiter = rateLimit({
 app.use('/api', limiter);
 
 // 3. Body Parsers
-const requestBodyLimit = process.env.REQUEST_BODY_LIMIT || '10mb';
+const requestBodyLimit = process.env.REQUEST_BODY_LIMIT || '100mb';
 app.use(express.json({ limit: requestBodyLimit }));
 app.use(express.urlencoded({ extended: true, limit: requestBodyLimit }));
 

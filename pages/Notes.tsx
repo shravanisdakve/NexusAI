@@ -11,6 +11,8 @@ import { generateFlashcards, extractTextFromFile, generateStudyPlan, generateQui
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useLanguage } from '../contexts/LanguageContext';
 import Flashcard from '../components/Flashcard';
+import EmptyState from '../components/EmptyState';
+import { useToast } from '../contexts/ToastContext';
 
 
 // Helper function
@@ -42,6 +44,7 @@ const StudyPlanView: React.FC<{
   const [isGenerating, setIsGenerating] = useState(false);
 
   const { language } = useLanguage();
+  const { showToast } = useToast();
   const handleGenerate = async () => {
     if (!goal || !courseId) return;
 
@@ -102,11 +105,11 @@ const StudyPlanView: React.FC<{
 
       if (newPlan) {
         onPlanSaved(newPlan);
-        alert("Personalized study plan created!");
+        showToast("Your personalized study plan has been crafted and activated! ✨", 'success');
       }
     } catch (error) {
       console.error("Failed to generate study plan:", error);
-      alert("Failed to generate study plan. Please try again.");
+      showToast("We couldn't generate your plan right now. Please check your notes/goal and try again.", 'error');
     } finally {
       setIsGenerating(false);
     }
@@ -188,9 +191,9 @@ const StudyPlanView: React.FC<{
           <p className="text-slate-400 mt-1">Starting {new Date(studyPlan.startDate).toLocaleDateString()}</p>
         </div>
         <Button variant="ghost" className="text-slate-400 hover:text-white text-sm" onClick={() => {
-          if (confirm("Create a new plan? This will replace your current one.")) {
+            // Let the parent handle the confirmation or show a quick toast
+            showToast("Tip: Creating a new plan will archive your current progress.", 'info');
             onPlanSaved(null as any);
-          }
         }}>
           New Plan
         </Button>
@@ -249,8 +252,12 @@ const Notes: React.FC = () => {
   const [selectedCourse, setSelectedCourse] = useState<string>('');
   const [notes, setNotes] = useState<Note[]>([]);
   const { language } = useLanguage();
+  const { showToast } = useToast();
   const [activeNote, setActiveNote] = useState<Note | null>(null);
   const [isEditingNote, setIsEditingNote] = useState(false);
+  const [isAddCourseModalOpen, setIsAddCourseModalOpen] = useState(false);
+  const [newCourseName, setNewCourseName] = useState('');
+  const [isSubmittingCourse, setIsSubmittingCourse] = useState(false);
   const [editedContent, setEditedContent] = useState('');
 
   const [flashcards, setFlashcards] = useState<FlashcardType[]>([]);
@@ -311,37 +318,29 @@ const Notes: React.FC = () => {
 
   // --- Handlers ---
   const handleAddCourse = async () => {
-    const courseName = prompt("Enter the name of the new course:");
-    if (!courseName || courseName.trim() === '') {
-      console.log("[Notes] Course creation cancelled - no name provided");
+    if (!newCourseName.trim()) return;
+    
+    // Duplicate check
+    const exists = courses.some(c => c.name.toLowerCase() === newCourseName.trim().toLowerCase());
+    if (exists) {
+      showToast(`Course "${newCourseName}" already exists!`, 'error');
       return;
     }
 
-    console.log(`[Notes] Attempting to add course: "${courseName}"`);
-
+    setIsSubmittingCourse(true);
     try {
-      const newCourse = await addCourse(courseName.trim());
-
+      const newCourse = await addCourse(newCourseName.trim());
       if (newCourse) {
-        console.log(`[Notes] Successfully added course:`, newCourse);
         setCourses(prev => [...prev, newCourse]);
         setSelectedCourse(newCourse.id);
-        alert(`✅ Course "${courseName}" added successfully!`);
-      } else {
-        console.error("[Notes] addCourse returned null");
-        alert("❌ Failed to add course. Please check your Firebase configuration.");
+        showToast(`Course "${newCourseName}" added!`, 'success');
+        setIsAddCourseModalOpen(false);
+        setNewCourseName('');
       }
     } catch (error) {
-      console.error("[Notes] Error adding course:", error);
-      const errorMessage = error instanceof Error ? error.message : String(error);
-
-      if (errorMessage.includes("Database not initialized")) {
-        alert("❌ Database connection failed. Please check your backend server.");
-      } else if (errorMessage.includes("insufficient permissions")) {
-        alert("❌ Permission denied. You might need to log in again.");
-      } else {
-        alert(`❌ Failed to add course: ${errorMessage}`);
-      }
+      showToast('Failed to add course.', 'error');
+    } finally {
+      setIsSubmittingCourse(false);
     }
   };
 
@@ -364,13 +363,18 @@ const Notes: React.FC = () => {
 
   // --- FIX: Updated function signature (no 'e' or 'noteId') ---
   const handleDeleteNote = async (noteToDelete: Note) => {
-    if (!selectedCourse || !window.confirm("Are you sure you want to delete this note?")) return;
+    if (!selectedCourse) return;
 
     if (noteToDelete) {
-      await deleteNote(selectedCourse, noteToDelete);
-      reloadNotes();
-      if (activeNote?.id === noteToDelete.id) {
-        setActiveNote(null);
+      try {
+        await deleteNote(selectedCourse, noteToDelete);
+        showToast("Note successfully removed from your library.", 'success');
+        reloadNotes();
+        if (activeNote?.id === noteToDelete.id) {
+          setActiveNote(null);
+        }
+      } catch (error) {
+        showToast("We encountered an issue while deleting that note.", 'error');
       }
     }
   };
@@ -387,7 +391,7 @@ const Notes: React.FC = () => {
       setIsEditingNote(false);
     } catch (error) {
       console.error("Failed to save note edit:", error);
-      alert("Failed to save your changes. Please try again.");
+      showToast("Unable to save your changes. Please check your connection.", 'error');
     }
   };
 
@@ -594,7 +598,7 @@ const Notes: React.FC = () => {
             <option key={course.id} value={course.id}>{course.name}</option>
           )}
         </Select>
-        <Button onClick={handleAddCourse} className="p-2.5" aria-label="Add new course"><PlusCircle size={16} /></Button>
+        <Button onClick={() => setIsAddCourseModalOpen(true)} className="p-2.5" aria-label="Add new course"><PlusCircle size={16} /></Button>
       </div>
 
       {selectedCourse ? (
@@ -682,10 +686,54 @@ const Notes: React.FC = () => {
         </div>
 
       ) : (
-        <div className="flex-1 flex items-center justify-center bg-slate-800/50 rounded-xl ring-1 ring-slate-700">
-          <p className="text-slate-400">Please select a course to view your notes.</p>
+        <div className="flex-1 flex items-center justify-center bg-slate-800/30 rounded-2xl border border-slate-700/50 p-12">
+          <EmptyState
+            icon={BookOpen}
+            title="No Course Selected"
+            description="Select a course from the dropdown above to view your notes and study tools, or create a new course to start organizing your learning journey."
+            action={{
+              label: "Add Your First Course",
+              onClick: () => setIsAddCourseModalOpen(true)
+            }}
+            tips={[
+              "AI auto-generates flashcards from your notes",
+              "Upload PDFs or Images for text extraction",
+              "Create custom quizzes for personalized practice"
+            ]}
+          />
         </div>
       )}
+
+      {/* --- Add Course Modal --- */}
+      <Modal 
+        isOpen={isAddCourseModalOpen} 
+        onClose={() => setIsAddCourseModalOpen(false)}
+        title="Create New Course"
+      >
+        <div className="space-y-4">
+          <div>
+            <label htmlFor="course-name-input" className="block text-sm font-medium text-slate-300 mb-1">
+              Course Name
+            </label>
+            <Input 
+              id="course-name-input"
+              value={newCourseName}
+              onChange={e => setNewCourseName(e.target.value)}
+              placeholder="e.g. Data Structures, Calculus III"
+              autoFocus
+              onKeyDown={e => e.key === 'Enter' && handleAddCourse()}
+            />
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="ghost" onClick={() => setIsAddCourseModalOpen(false)} disabled={isSubmittingCourse}>
+              Cancel
+            </Button>
+            <Button onClick={handleAddCourse} isLoading={isSubmittingCourse} disabled={!newCourseName.trim()}>
+              Add Course
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       {/* --- Add Note Modal --- */}
       <AddNoteModal
