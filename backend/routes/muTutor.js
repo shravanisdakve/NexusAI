@@ -47,10 +47,7 @@ router.get('/likelyQuestions', auth, async (req, res) => {
         const { subject, module } = req.query;
         if (!subject) return res.status(400).json({ success: false, message: 'Subject name required.' });
 
-        const query = { subject };
-        if (module) query.module = Number(module);
-
-        const questions = await MUPastQuestion.find(query).sort({ frequency: -1, marks: -1 }).limit(10);
+        const questions = await muAnalysis.getLikelyQuestions(subject, module);
         res.json({ success: true, questions });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });

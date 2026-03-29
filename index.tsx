@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import App from './App';
 import { AuthProvider } from './contexts/AuthContext';
 import { LanguageProvider } from './contexts/LanguageContext';
+import { ToastProvider } from './contexts/ToastContext';
 
 const rootElement = document.getElementById('root');
 if ('serviceWorker' in navigator) {
@@ -21,7 +22,9 @@ const root = ReactDOM.createRoot(rootElement);
 root.render(
   <AuthProvider>
     <LanguageProvider>
-      <App />
+      <ToastProvider>
+        <App />
+      </ToastProvider>
     </LanguageProvider>
   </AuthProvider>
 );

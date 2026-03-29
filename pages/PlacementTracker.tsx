@@ -9,6 +9,8 @@ import {
 } from 'lucide-react';
 import { trackToolUsage } from '../services/personalizationService';
 
+const APPS_PER_PAGE = 5;
+
 type Status = 'upcoming' | 'applied' | 'aptitude' | 'gd' | 'technical' | 'hr' | 'offer' | 'rejected';
 
 interface Application {
@@ -282,6 +284,7 @@ const PlacementTracker: React.FC = () => {
     const [viewMode, setViewMode] = useState<'board' | 'list'>('board');
     const [expandedApp, setExpandedApp] = useState<string | null>(null);
     const [playingVideo, setPlayingVideo] = useState<{ title: string; youtubeId: string } | null>(null);
+    const [currentPage, setCurrentPage] = useState(1);
 
     useEffect(() => { trackToolUsage('placement'); }, []);
 
@@ -299,6 +302,13 @@ const PlacementTracker: React.FC = () => {
         setEditingId(null);
         setShowForm(false);
     };
+
+    const paginatedApps = React.useMemo(() => {
+        const start = (currentPage - 1) * APPS_PER_PAGE;
+        return applications.slice(start, start + APPS_PER_PAGE);
+    }, [applications, currentPage]);
+
+    const totalPages = Math.max(1, Math.ceil(applications.length / APPS_PER_PAGE));
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -705,7 +715,7 @@ const PlacementTracker: React.FC = () => {
                             <p className="text-slate-400">No applications yet. Click "Add Application" to start tracking!</p>
                         </Card>
                     ) : (
-                        applications.map(app => {
+                        paginatedApps.map(app => {
                             const statusConfig = STATUS_CONFIG.find(s => s.id === app.status);
                             const intel = getCompanyIntel(app.company);
                             const isExpanded = expandedApp === app.id;
@@ -748,6 +758,15 @@ const PlacementTracker: React.FC = () => {
                                 </Card>
                             );
                         })
+                    )}
+                    {totalPages > 1 && (
+                        <div className="flex items-center justify-between pt-4">
+                            <span className="text-xs text-slate-500">Page {currentPage} of {totalPages}</span>
+                            <div className="flex gap-2">
+                                <Button size="sm" variant="ghost" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)}>Prev</Button>
+                                <Button size="sm" variant="ghost" disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)}>Next</Button>
+                            </div>
+                        </div>
                     )}
                 </div>
             )}

@@ -206,9 +206,17 @@ const UniversityStatus: React.FC = () => {
                                             </div>
                                             <h4 className="text-lg font-bold text-white leading-tight">{item.title}</h4>
                                         </div>
-                                        <a href={item.link} target="_blank" rel="noopener noreferrer" className="p-2 rounded-lg bg-slate-900 border border-slate-700 text-slate-400 hover:text-white">
+                                        <button 
+                                            onClick={(e) => {
+                                                e.preventDefault();
+                                                const url = item.link.startsWith('http') ? item.link : `https://mu.ac.in${item.link.startsWith('/') ? '' : '/'}${item.link}`;
+                                                window.open(url, '_blank');
+                                            }}
+                                            className="p-2 rounded-lg bg-slate-900 border border-slate-700 text-slate-400 hover:text-white transition-colors"
+                                            title="Open Official Circular"
+                                        >
                                             <ExternalLink className="w-4 h-4" />
-                                        </a>
+                                        </button>
                                     </div>
                                 </Card>
                             ));

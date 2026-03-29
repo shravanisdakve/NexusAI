@@ -125,8 +125,139 @@ Output ONLY valid JSON:
     }
 };
 
+/**
+ * Generates a personalized academic quiz based on student weaknesses.
+ */
+const generatePersonalizedQuiz = async (config) => {
+    try {
+        const prompt = `Generate a personalized quiz for a Computer Engineering student.
+        
+        Context:
+        - Weak topics: ${config.weakTopics || 'General Fundamentals'}
+        - Target exam: ${config.targetExam || 'General MU Exams'}
+        - Difficulty: ${config.difficulty || 'mixed'}
+        - Question Count: ${config.questionCount || 10}
+        
+        Focus 70% on weak topics and 30% on adjacent core fundamentals.
+        
+        Output JSON in this exact shape:
+        {
+          "title": "string",
+          "recommendedTimeMinutes": number,
+          "questions": [
+            {
+              "id": "q1",
+              "type": "mcq | short_answer | code",
+              "topic": "string",
+              "question": "string",
+              "options": ["A", "B", "C", "D"] or null,
+              "correctAnswer": "string",
+              "marks": number,
+              "explanation": "string"
+            }
+          ]
+        }`;
+
+        const response = await aiProvider.generate(prompt, {
+            feature: 'quiz',
+            json: true,
+            systemInstruction: 'You are NexusAI, an academic mentor. Generate clean, exam-ready JSON quizzes for Mumbai University students.'
+        });
+
+        return typeof response === 'string' ? JSON.parse(response) : response;
+    } catch (error) {
+        console.error('AI Personalized Quiz error:', error);
+        return null;
+    }
+};
+
+/**
+ * Generates a personalized "Serious Game" timed challenge.
+ */
+const generateTimedChallenge = async (config) => {
+    try {
+        const prompt = `Design a personalized timed challenge for a Computer Engineering student.
+        
+        Context:
+        - Weak topics: ${config.weakTopics || 'General fundamentals'}
+        - Accuracy: ${config.accuracyPercent || 60}%
+        - Available time: ${config.timeAvailableMinutes || 5} minutes
+        - Mode: ${config.mode || 'speed_drill'}
+        
+        Output JSON in this exact shape:
+        {
+          "mode": "speed_drill | streak_mode",
+          "title": "string",
+          "description": "string",
+          "recommendedTimeMinutes": number,
+          "rules": ["string"],
+          "questions": [
+            {
+              "id": "c1",
+              "type": "mcq | short_answer | code",
+              "topic": "string",
+              "question": "string",
+              "options": ["A","B","C","D"] or null,
+              "correctAnswer": "string",
+              "timeLimitSeconds": number
+            }
+          ]
+        }`;
+
+        const response = await aiProvider.generate(prompt, {
+            feature: 'quiz', // Reusing quiz logic for structured response
+            json: true,
+            systemInstruction: 'You are NexusAI, designing serious academic game modes. Avoid childish games; focus on speed, recall, and skill.'
+        });
+
+        return typeof response === 'string' ? JSON.parse(response) : response;
+    } catch (error) {
+        console.error('AI Timed Challenge error:', error);
+        return null;
+    }
+};
+
+/**
+ * Generates a set of flashcards and error-fix exercises.
+ */
+const generateFlashcardChallenge = async (config) => {
+    try {
+        const prompt = `Generate a personalized flashcard + error-fix set based on student weaknesses.
+        
+        Context:
+        - Weak topics: ${config.weakTopics || 'General Fundamentals'}
+        - Target exam: ${config.targetExam || 'MU Semester Exams'}
+        - Count: ${config.count || 8}
+        
+        Output JSON:
+        {
+          "title": "string",
+          "flashcards": [
+            { "id": "f1", "topic": "string", "front": "string", "back": "string" }
+          ],
+          "errorFixItems": [
+            { "id": "e1", "topic": "string", "brokenStatementOrCode": "string", "task": "string", "solution": "string" }
+          ]
+        }`;
+
+        const response = await aiProvider.generate(prompt, {
+            feature: 'flashcards',
+            json: true,
+            systemInstruction: 'You are NexusAI, generating spaced-repetition flashcards and error-fix exercises for Computer Engineering students.'
+        });
+
+        return typeof response === 'string' ? JSON.parse(response) : response;
+    } catch (error) {
+        console.error('AI Flashcard Challenge error:', error);
+        return null;
+    }
+};
+
 module.exports = {
     analyzeChatContext,
     analyzeKnowledgeGaps,
-    generateResumeAnalysis
+    generateResumeAnalysis,
+    generatePersonalizedQuiz,
+    generateTimedChallenge,
+    generateFlashcardChallenge
 };

@@ -198,6 +198,7 @@ export interface GeminiRequest {
     subject?: string;
     year?: string;
     persona?: string;
+    semester?: string;
     count?: number;
     topic?: string;
     quizHistory?: any[];

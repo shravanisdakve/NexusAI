@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { Modal, Input, Button } from './ui';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Modal, Input, Button, Tooltip, TooltipTrigger, TooltipContent } from './ui';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useToast } from '../contexts/ToastContext';
 import { useMode } from '../contexts/ModeContext';
 import {
     LayoutDashboard,
@@ -114,6 +116,7 @@ const placementNavigation = [
 const Sidebar: React.FC = () => {
     const { user, logout, updateUserProfile } = useAuth();
     const { language, setLanguage, t } = useLanguage();
+    const { showToast } = useToast();
     const { mode } = useMode();
     const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
     const navigate = useNavigate();
@@ -165,80 +168,111 @@ const Sidebar: React.FC = () => {
                     ))}
 
                     {/* Neural Pulse Indicator */}
-                    <div className="mx-2 mt-8 p-4 bg-slate-900/80 rounded-2xl border border-white/5 relative overflow-hidden group hover:border-violet-500/30 transition-all">
-                        <div className="absolute top-0 right-0 p-8 bg-violet-500/5 blur-[30px] rounded-full"></div>
-                        <div className="relative z-10">
-                            <div className="flex items-center justify-between mb-2">
-                                <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Neural Pulse</span>
-                                <div className="flex gap-0.5">
-                                    <div className="w-1 h-3 bg-emerald-500/40 rounded-full"></div>
-                                    <div className="w-1 h-2 bg-emerald-500/60 rounded-full mt-1"></div>
-                                    <div className="w-1 h-4 bg-emerald-500 rounded-full mt-[-2px] animate-pulse"></div>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <div className="mx-2 mt-8 p-4 bg-slate-900/80 rounded-2xl border border-white/5 relative overflow-hidden group hover:border-violet-500/30 transition-all cursor-help">
+                                <div className="absolute top-0 right-0 p-8 bg-violet-500/5 blur-[30px] rounded-full"></div>
+                                <div className="relative z-10">
+                                    <div className="flex items-center justify-between mb-2">
+                                        <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Neural Pulse</span>
+                                        <div className="flex gap-0.5">
+                                            <div className="w-1 h-3 bg-emerald-500/40 rounded-full"></div>
+                                            <div className="w-1 h-2 bg-emerald-500/60 rounded-full mt-1"></div>
+                                            <div className="w-1 h-4 bg-emerald-500 rounded-full mt-[-2px] animate-pulse"></div>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]"></div>
+                                        <span className="text-[11px] font-bold text-slate-300">Groq-L3-70B</span>
+                                    </div>
+                                    <div className="mt-2 flex items-center justify-between">
+                                        <span className="text-[9px] text-slate-500 font-mono">Lat: 142ms</span>
+                                        <span className="text-[9px] text-emerald-500/80 font-bold uppercase tracking-tighter">Live Sync</span>
+                                    </div>
                                 </div>
                             </div>
-                            <div className="flex items-center gap-2">
-                                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]"></div>
-                                <span className="text-[11px] font-bold text-slate-300">Groq-L3-70B</span>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                            <div className="space-y-1">
+                                <p className="font-bold text-violet-400">System Status</p>
+                                <p className="text-xs text-slate-300">
+                                    AI Model: Groq LLaMA 3 70B — Response latency is live.
+                                </p>
+                                <div className="flex items-center gap-2 mt-1">
+                                    <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
+                                    <p className="text-[10px] text-slate-400">Green = Healthy (&lt; 200ms)</p>
+                                </div>
                             </div>
-                            <div className="mt-2 flex items-center justify-between">
-                                <span className="text-[9px] text-slate-500 font-mono">Lat: 142ms</span>
-                                <span className="text-[9px] text-emerald-500/80 font-bold uppercase tracking-tighter">Live Sync</span>
-                            </div>
-                        </div>
-                    </div>
+                        </TooltipContent>
+                    </Tooltip>
                 </nav>
 
                 <div className="mt-10 pt-6 border-t border-white/5">
                     <div className="px-3 py-3 rounded-xl bg-surface/50 border border-white/5">
                         {user && (
-                            <div className="flex items-center space-x-3 mb-6">
-                                <img
-                                    src={`https://ui-avatars.com/api/?name=${user.displayName || 'User'}&background=random`}
-                                    alt="User avatar"
-                                    className="w-10 h-10 rounded-full border border-violet-500/20"
-                                />
-                                <div className="flex-1 overflow-hidden">
-                                    <p className="font-bold text-sm text-white truncate">{user.displayName || 'User'}</p>
-                                    <div className="flex items-center gap-1.5 mt-0.5">
-                                        <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
-                                        <span className="text-[10px] text-slate-500 uppercase font-black tracking-widest">
+                            <div className="mb-6">
+                                <div className="flex items-center space-x-3 mb-2">
+                                    <img
+                                        src={`https://ui-avatars.com/api/?name=${user.displayName || 'User'}&background=random`}
+                                        alt="User avatar"
+                                        className="w-10 h-10 rounded-full border border-violet-500/20"
+                                    />
+                                    <div className="flex-1 overflow-hidden">
+                                        <p className="font-bold text-sm text-white truncate">{user.displayName || 'User'}</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-4 ml-1">
+                                    <div className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-500/10 rounded-full border border-emerald-500/20 shadow-sm shadow-emerald-500/5">
+                                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
+                                        <span className="text-[10px] text-emerald-400 uppercase font-black tracking-widest leading-none">
                                             {t('sidebar.profile.activeBranch', { branch: user.branch || 'CO' })}
                                         </span>
                                     </div>
+                                    <div className="w-[1.5px] h-3 bg-white/30 rounded-full shadow-[0_0_5px_rgba(255,255,255,0.1)]"></div>
+                                    <button
+                                        onClick={() => setIsProfileModalOpen(true)}
+                                        className="text-[10px] font-bold text-slate-400 hover:text-white transition-all uppercase tracking-widest flex items-center gap-1.5 group/edit"
+                                    >
+                                        <Edit3 size={11} className="group-hover/edit:text-violet-400 transition-colors" />
+                                        {t('sidebar.profile.editProfile')}
+                                    </button>
                                 </div>
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="p-1 text-slate-400 hover:text-white"
-                                    onClick={() => setIsProfileModalOpen(true)}
-                                    title={t('sidebar.profile.editProfile')}
-                                >
-                                    <Edit3 size={16} />
-                                </Button>
                             </div>
                         )}
 
                         <div className="flex items-center justify-between p-2 mb-4 bg-slate-900/50 rounded-lg border border-white/5">
                             <span className="text-[10px] font-bold text-slate-500 uppercase ml-1">{t('sidebar.profile.language')}</span>
-                            <div className="flex gap-1">
-                                <button
-                                    onClick={() => setLanguage('en')}
-                                    className={`px-1.5 py-0.5 rounded text-[10px] font-bold transition-colors ${language === 'en' ? 'bg-violet-600 text-white' : 'hover:bg-white/5 text-slate-500'}`}
-                                >
-                                    EN
-                                </button>
-                                <button
-                                    onClick={() => setLanguage('mr')}
-                                    className={`px-1.5 py-0.5 rounded text-[10px] font-bold transition-colors ${language === 'mr' ? 'bg-violet-600 text-white' : 'hover:bg-white/5 text-slate-500'}`}
-                                >
-                                    MR
-                                </button>
-                                <button
-                                    onClick={() => setLanguage('hi')}
-                                    className={`px-1.5 py-0.5 rounded text-[10px] font-bold transition-colors ${language === 'hi' ? 'bg-violet-600 text-white' : 'hover:bg-white/5 text-slate-500'}`}
-                                >
-                                    HI
-                                </button>
+                            <div className="flex gap-1.5">
+                                {[
+                                    { key: 'en', label: 'EN', name: 'English' },
+                                    { key: 'mr', label: 'MR', name: 'Marathi' },
+                                    { key: 'hi', label: 'HI', name: 'Hindi' }
+                                ].map((l) => (
+                                    <button
+                                        key={l.key}
+                                        aria-pressed={language === l.key}
+                                        onClick={() => {
+                                            if (language !== l.key) {
+                                                setLanguage(l.key as any);
+                                                showToast(`Language set to ${l.name} ✓`, 'success');
+                                            }
+                                        }}
+                                        className={`px-3 py-1.5 rounded-lg text-[10px] font-black transition-all relative ${language === l.key
+                                            ? 'bg-violet-600/20 text-violet-400 shadow-sm shadow-violet-500/10'
+                                            : 'hover:bg-white/5 text-slate-500 hover:text-slate-300'
+                                            }`}
+                                    >
+                                        {l.label}
+                                        {language === l.key && (
+                                            <motion.span 
+                                                layoutId="active-lang-pill"
+                                                className="absolute inset-0 ring-1 ring-violet-500/50 rounded-lg"
+                                                initial={false}
+                                                transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                                            />
+                                        )}
+                                    </button>
+                                ))}
                             </div>
                         </div>
 

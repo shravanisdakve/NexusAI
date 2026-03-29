@@ -17,7 +17,9 @@ import {
 } from 'lucide-react';
 import { generateHighlights, generateMindMap, simplifyText, generateQuizSet, generateFlashcards, summarizeText } from '../services/geminiService';
 import { useLanguage } from '../contexts/LanguageContext';
-import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+import { useToast } from '../contexts/ToastContext';
+// @ts-ignore
+const mermaid = (window as any).mermaid;
 import PomodoroTimer from '../components/PomodoroTimer';
 import Flashcard from '../components/Flashcard';
 
@@ -54,6 +56,7 @@ const SmartStudy: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { t, language } = useLanguage();
+  const { showToast } = useToast();
   
   const initialNote = location.state?.note || null;
   const [note, setNote] = useState(initialNote);
@@ -146,9 +149,7 @@ const SmartStudy: React.FC = () => {
     try {
       const result = await summarizeText(note.content, language);
       setSynthesizedNotes(result);
-      // Auto-switch highlights so user sees what was fetched? 
-      // Or just show in a toast. For now, we'll keep it in state.
-      alert("Notes Synthesized! Important points have been 'fetched out'.");
+      showToast("Document successfully synthesized! Key concepts are now active.", 'success');
     } catch (err) {
       console.error(err);
     } finally {
@@ -284,6 +285,12 @@ const SmartStudy: React.FC = () => {
               >
                 Mind Map
               </button>
+              <button 
+                onClick={() => setActiveTab('flashcards')}
+                className={`flex-1 py-4 text-xs font-bold uppercase tracking-widest transition-all ${activeTab === 'flashcards' ? 'text-violet-400 border-b-2 border-violet-400 bg-violet-400/5' : 'text-slate-500 hover:text-slate-300'}`}
+              >
+                Flashcards
+              </button>
             </div>
 
             <div className="flex-1 overflow-y-auto p-6 space-y-6">
@@ -398,18 +405,38 @@ const SmartStudy: React.FC = () => {
                            <p className="text-emerald-400 font-bold">Quiz Ready! ✨</p>
                            <p className="text-xs text-slate-400">5 questions generated based on this document.</p>
                         </div>
-                        {quizzes.slice(0, 1).map((q, i) => (
-                          <div key={i} className="bg-slate-900 p-4 rounded-xl border border-slate-700">
-                             <p className="text-sm text-white font-medium mb-3">{q.question}</p>
-                             <div className="grid gap-2">
-                                {q.options.map((opt: string, oi: number) => (
-                                  <button key={oi} className="text-left text-xs p-2.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-slate-400 hover:text-white transition-colors border border-white/5">
-                                     {opt}
-                                  </button>
-                                ))}
+                         {quizzes.slice(0, 1).map((q, i) => {
+                           const [selected, setSelected] = useState<number | null>(null);
+                           const isCorrect = selected === q.correctOptionIndex;
+                           
+                           return (
+                             <div key={i} className="bg-slate-900 p-4 rounded-xl border border-slate-700">
+                                <p className="text-sm text-white font-medium mb-3">{q.question}</p>
+                                <div className="grid gap-2">
+                                   {q.options.map((opt: string, oi: number) => {
+                                     let btnClass = "bg-slate-800 hover:bg-slate-700 border-white/5 text-slate-400";
+                                     if (selected === oi) {
+                                       btnClass = oi === q.correctOptionIndex ? "bg-emerald-500/20 border-emerald-500/50 text-emerald-400" : "bg-red-500/20 border-red-500/50 text-red-400";
+                                     }
+                                     return (
+                                       <button 
+                                         key={oi} 
+                                         onClick={() => setSelected(oi)}
+                                         className={`text-left text-xs p-2.5 rounded-lg transition-colors border ${btnClass}`}
+                                       >
+                                         {opt}
+                                       </button>
+                                     );
+                                   })}
+                                </div>
+                                {selected !== null && (
+                                  <p className={`mt-3 text-[10px] font-bold uppercase tracking-tighter ${isCorrect ? 'text-emerald-400' : 'text-red-400'}`}>
+                                    {isCorrect ? 'Correct Answer!' : `Wrong. Correct: ${q.options[q.correctOptionIndex]}`}
+                                  </p>
+                                )}
                              </div>
-                          </div>
-                        ))}
+                           );
+                         })}
                         <Button variant="ghost" className="w-full text-xs" onClick={() => navigate('/quizzes')}>
                            Go to Full Quiz Practice
                         </Button>

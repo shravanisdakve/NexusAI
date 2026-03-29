@@ -1,12 +1,31 @@
 const express = require('express');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
+const geminiService = require('../services/geminiService');
 const router = express.Router();
 
-// Initialize Gemini with API key from environment variables
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY, { apiVersion: 'v1beta' });
+// --- KEY ROTATION STRATEGY ---
+const getGeminiKeys = () => {
+    const keys = [process.env.GEMINI_API_KEY];
+    for (let i = 2; i <= 10; i++) {
+        const key = process.env[`GEMINI_API_KEY_${i}`];
+        if (key) keys.push(key);
+    }
+    return keys.filter(Boolean);
+};
+
+let currentKeyIndex = 0;
+const keys = getGeminiKeys();
+
+// Circular key rotation
+const getGenAI = () => {
+    const key = keys[currentKeyIndex];
+    currentKeyIndex = (currentKeyIndex + 1) % keys.length;
+    return new GoogleGenerativeAI(key, { apiVersion: 'v1beta' });
+};
 
 // Helper to get model
 const getModel = (modelName = 'gemini-2.0-flash', systemInstruction = null) => {
+    const genAI = getGenAI();
     const config = { model: modelName };
     if (systemInstruction) {
         config.systemInstruction = systemInstruction;
@@ -833,6 +852,40 @@ router.post('/generateResumeAnalysis', async (req, res) => {
         res.json(result);
     } catch (error) {
         console.error("Error in generateResumeAnalysis route:", error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// --- PERSONALIZED QUIZ & GAME SERVICES ---
+router.post('/generatePersonalizedQuiz', async (req, res) => {
+    try {
+        const result = await geminiService.generatePersonalizedQuiz(req.body);
+        if (!result) throw new Error('AI Engine failed to generate quiz.');
+        res.json({ quiz: result });
+    } catch (error) {
+        console.error("Error in generatePersonalizedQuiz:", error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+router.post('/generateTimedChallenge', async (req, res) => {
+    try {
+        const result = await geminiService.generateTimedChallenge(req.body);
+        if (!result) throw new Error('AI Engine failed to generate challenge.');
+        res.json({ challenge: result });
+    } catch (error) {
+        console.error("Error in generateTimedChallenge:", error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+router.post('/generateFlashcardChallenge', async (req, res) => {
+    try {
+        const result = await geminiService.generateFlashcardChallenge(req.body);
+        if (!result) throw new Error('AI Engine failed to generate flashcards.');
+        res.json({ data: result });
+    } catch (error) {
+        console.error("Error in generateFlashcardChallenge:", error);
         res.status(500).json({ error: error.message });
     }
 });

@@ -86,4 +86,6 @@ const StudyRoomSchema = new mongoose.Schema({
     trackedConcepts: [String]
 });
 
+StudyRoomSchema.index({ createdBy: 1, topic: 1 }, { unique: true });
+
 module.exports = mongoose.model('StudyRoom', StudyRoomSchema);

@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { Button, Input, Modal, PageHeader } from '../components/ui';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useToast } from '../contexts/ToastContext';
 import { ArrowRight, PlusCircle, RefreshCw, Settings2, Trash2, Users } from 'lucide-react';
 import CreateRoomModal from '../components/CreateRoomModal';
 import { checkRoomExists, deleteRoom, getRooms, updateRoom } from '../services/communityService';
@@ -16,6 +17,7 @@ const StudyLobby: React.FC = () => {
     const location = useLocation();
     const { user } = useAuth();
     const { t } = useLanguage();
+    const { showToast } = useToast();
 
     const [joinId, setJoinId] = useState('');
     const [error, setError] = useState('');
@@ -77,7 +79,20 @@ const StudyLobby: React.FC = () => {
         const query = searchQuery.trim().toLowerCase();
         const topicQuery = topicFromState.toLowerCase();
 
-        let next = [...rooms];
+        // Primary deduplication by ID (API safety)
+        const uniqueById = Array.from(new Map(rooms.map((r) => [r.id, r])).values());
+        let next = [...uniqueById];
+
+        // Deduplicate common duplicates before filtering (host_id + topic)
+        const seen = new Set();
+        next = next.filter(room => {
+            const hostId = room.createdById || room.createdByEmail || room.createdBy;
+            const topicId = (room.topic || '').toLowerCase().trim();
+            const key = `${hostId}-${topicId}`;
+            if (topicId && seen.has(key)) return false;
+            seen.add(key);
+            return true;
+        });
 
         if (topicQuery) {
             next = next.filter((room) => {
@@ -87,8 +102,13 @@ const StudyLobby: React.FC = () => {
             });
         }
 
+        // ISSUE 12: In "Public Rooms", filter out user's own rooms if they are just browsing.
+        // If showOnlyMine is true, we ONLY show user's rooms.
         if (showOnlyMine) {
             next = next.filter((room) => isRoomHost(room));
+        } else {
+            // By default, only show "Public" discovery - rooms from others
+            next = next.filter((room) => !isRoomHost(room));
         }
 
         if (query) {
@@ -104,6 +124,17 @@ const StudyLobby: React.FC = () => {
 
         return next;
     }, [rooms, searchQuery, topicFromState, showOnlyMine, isRoomHost, courseNameById]);
+
+    const findDuplicateRoom = useCallback((room: StudyRoom) => {
+        return rooms.find((other) =>
+            other.id !== room.id &&
+            ((other.createdById && other.createdById === room.createdById) ||
+                (other.createdByEmail && other.createdByEmail === room.createdByEmail)) &&
+            other.topic === room.topic &&
+            room.topic !== undefined &&
+            room.topic.trim() !== ''
+        );
+    }, [rooms]);
 
     const totalPages = useMemo(() => {
         return Math.max(1, Math.ceil(visibleRooms.length / ROOMS_PER_PAGE));
@@ -127,20 +158,24 @@ const StudyLobby: React.FC = () => {
     const handleJoinRoom = async (e: React.FormEvent) => {
         e.preventDefault();
         const id = joinId.trim();
-        if (!id) return;
+        if (!id) {
+            setError('Please enter a Room ID.');
+            return;
+        }
 
         setIsLoading(true);
         setError('');
         try {
             const exists = await checkRoomExists(id);
             if (!exists) {
-                setError('Room not found. Check the Room ID.');
+                setError('Room ID not found. It may be expired or deleted.');
+                setIsLoading(false);
                 return;
             }
             navigate(`/study-room/${id}`);
         } catch (err: any) {
-            setError('Failed to join room. Please try again.');
-        } finally {
+            console.error('Failed to join room:', err);
+            setError('System error. Please try manually refresh.');
             setIsLoading(false);
         }
     };
@@ -199,8 +234,8 @@ const StudyLobby: React.FC = () => {
     };
 
     const handleDeleteRoom = async (room: StudyRoom) => {
-        const confirmed = window.confirm(`Delete "${room.name}"? This will close the room for everyone.`);
-        if (!confirmed) return;
+        // High-end feedback for room closure
+        showToast(`Closing room "${room.name}" for all participants...`, 'info');
 
         setActionLoadingRoomId(room.id);
         setError('');
@@ -213,9 +248,9 @@ const StudyLobby: React.FC = () => {
             if (roomBeingEdited?.id === room.id) {
                 handleCloseManageRoom();
             }
-        } catch (deleteError: any) {
-            const message = deleteError?.response?.data?.message || deleteError?.message || 'Failed to delete room.';
-            setError(message);
+        } catch (error: any) {
+            console.error('Failed to delete room:', error);
+            showToast("Action failed. Please verify host privileges.", 'error');
         } finally {
             setActionLoadingRoomId(null);
         }
@@ -329,8 +364,16 @@ const StudyLobby: React.FC = () => {
                         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
                             <div>
                                 <h3 className="text-xl font-bold text-white">{t('studyLobby.publicRooms')}</h3>
-                                <p className="text-xs text-slate-400 mt-0.5">
-                                    {visibleRooms.length} visible room{visibleRooms.length === 1 ? '' : 's'}
+                                <p className="text-xs text-slate-400 mt-1 flex items-center gap-1.5">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.3)]"></span>
+                                    {visibleRooms.length === 0 ? (
+                                        'No rooms found'
+                                    ) : (
+                                        <span className="whitespace-nowrap">
+                                            {showOnlyMine ? 'My Active Rooms: ' : 'Active Public Sessions: '}
+                                            <span className="font-bold text-slate-200">{visibleRooms.length}</span>
+                                        </span>
+                                    )}
                                     {topicFromState ? ` for topic "${topicFromState}"` : ''}
                                 </p>
                             </div>
@@ -380,6 +423,12 @@ const StudyLobby: React.FC = () => {
                                                 <p className="text-[11px] text-slate-500 mt-1">
                                                     Host: {room.createdBy}
                                                 </p>
+                                                {findDuplicateRoom(room) && (
+                                                    <div className="mt-2.5 p-2 bg-amber-500/10 border border-amber-500/20 rounded-lg flex items-center gap-2 group/warn animate-pulse hover:animate-none transition-all">
+                                                        <div className="w-1.5 h-1.5 rounded-full bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)] leading-none"></div>
+                                                        <p className="text-[10px] font-black uppercase text-amber-500 tracking-widest leading-none">Duplicate room detected — check for existing sessions</p>
+                                                    </div>
+                                                )}
                                             </div>
 
                                             <div className="flex flex-wrap items-center gap-2 lg:justify-end">
@@ -429,11 +478,11 @@ const StudyLobby: React.FC = () => {
                             )}
                         </div>
 
-                        {totalPages > 1 && (
-                            <div className="mt-4 flex items-center justify-between text-sm">
-                                <span className="text-slate-400">
-                                    Page {currentPage} of {totalPages}
-                                </span>
+                         {totalPages > 1 && (
+                            <div className="mt-6 flex items-center justify-between text-sm py-4 border-t border-slate-700/30">
+                <span className="text-slate-400 font-medium whitespace-nowrap shrink-0 bg-slate-800/80 px-3 py-1 rounded-md border border-slate-700/50">
+                    Page {currentPage} of {totalPages}
+                </span>
                                 <div className="flex gap-2">
                                     <Button
                                         size="sm"

@@ -5,6 +5,7 @@ import { getProductivityReport } from '../services/analyticsService';
 import KnowledgeMap from '../components/KnowledgeMap';
 import { useLanguage } from '../contexts/LanguageContext';
 import { generateKnowledgeMap } from '../services/geminiService';
+import { motion } from 'framer-motion';
 
 // -------------------- TYPES --------------------
 interface ProductivityData {
@@ -82,9 +83,11 @@ const Insights: React.FC = () => {
       strength: t.accuracy / 100
     }));
     finalMapData = fallbackData.length > 0 ? fallbackData : [
-      { name: 'Applied Mathematics', strength: 0.72 },
-      { name: 'Engineering Physics', strength: 0.68 },
-      { name: 'Basic Electrical Eng', strength: 0.64 },
+      { name: 'Engineering Mechanics', strength: 0.42 },
+      { name: 'Applied Mathematics III', strength: 0.58 },
+      { name: 'Logic Design', strength: 0.75 },
+      { name: 'Data Structures', strength: 0.35 },
+      { name: 'Computer Networks', strength: 0.88 },
     ];
   }
 
@@ -127,8 +130,8 @@ const Insights: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 relative group">
           {(aiMapData.length > 0 || aiLoading) && (
-            <div className={`absolute -top-4 -right-4 bg-violet-600 text-white text-[10px] px-2 py-1 rounded-full font-bold z-10 shadow-lg shadow-violet-500/50 flex items-center gap-1 ${aiLoading ? 'animate-pulse' : ''}`}>
-              <Sparkles size={10} /> {aiLoading ? 'ANALYZING...' : 'AI GENERATED'}
+            <div className={`absolute -top-4 -right-4 bg-violet-600 text-white text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full z-10 shadow-lg shadow-violet-500/50 flex items-center gap-1 ${aiLoading ? 'animate-pulse' : ''}`}>
+              <Sparkles size={10} /> {aiLoading ? 'ANALYZING...' : 'AI SYNTHESIZED'}
             </div>
           )}
           <div className={aiLoading ? 'opacity-50 blur-sm transition-all duration-1000' : 'transition-all duration-1000'}>
@@ -136,26 +139,43 @@ const Insights: React.FC = () => {
           </div>
           {aiLoading && (
             <div className="absolute inset-0 flex items-center justify-center">
-              <div className="bg-slate-900/80 backdrop-blur px-4 py-2 rounded-full border border-violet-500/50 text-violet-400 text-sm font-bold flex items-center gap-2">
-                <Brain size={16} className="animate-bounce" /> Analyzing Quiz Patterns...
+              <div className="bg-slate-900/80 backdrop-blur px-6 py-3 rounded-2xl border border-violet-500/50 text-violet-400 text-sm font-black uppercase tracking-widest flex items-center gap-3 shadow-2xl">
+                <Brain size={20} className="animate-bounce" /> Neural Pattern Analysis...
               </div>
             </div>
           )}
         </div>
 
         <div className="space-y-6">
-          <div className="bg-slate-800/50 p-6 rounded-3xl ring-1 ring-slate-700 border border-slate-700/50">
-            <h4 className="text-lg font-bold text-slate-100 mb-4 flex items-center gap-2">
-              <ShieldAlert size={18} className="text-rose-400" /> {t('insights.improvementAreas')}
+          <div className="bg-slate-800/50 p-6 rounded-[2rem] ring-1 ring-slate-700/50 border border-slate-700/30 shadow-xl overflow-hidden relative group">
+            <div className="absolute top-0 right-0 p-12 bg-rose-500/5 blur-[40px] rounded-full group-hover:bg-rose-500/10 transition-colors"></div>
+            <h4 className="text-sm font-black text-slate-100 mb-6 flex items-center gap-2 uppercase tracking-widest relative z-10">
+              <ShieldAlert size={18} className="text-rose-400" /> Gap Analysis
             </h4>
             {report.weaknesses.length === 0 ? (
-              <p className="text-sm text-slate-400 italic">{t('insights.noGaps')}</p>
+               <div className="flex flex-col items-center py-10 opacity-40 relative z-10">
+                  <Activity size={32} className="mb-4 text-slate-500" />
+                  <p className="text-xs font-black uppercase tracking-widest text-center">{t('insights.noGaps')}</p>
+               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-6 relative z-10">
                 {report.weaknesses.map((w, idx) => (
-                  <div key={idx} className="flex justify-between items-center bg-slate-900/50 p-3 rounded-xl ring-1 ring-slate-800">
-                    <span className="text-slate-200 font-medium capitalize">{w.topic}</span>
-                    <span className="text-rose-400 font-bold">{w.accuracy}%</span>
+                  <div key={idx} className="space-y-2 group/gap cursor-default">
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="text-slate-200 font-bold capitalize group-hover/gap:text-rose-400 transition-colors">{w.topic}</span>
+                      <span className="text-rose-400 font-black tracking-tighter">{w.accuracy}%</span>
+                    </div>
+                    <div className="h-1.5 w-full bg-slate-900 rounded-full overflow-hidden border border-white/5">
+                        <motion.div 
+                            initial={{ width: 0 }}
+                            animate={{ width: `${w.accuracy}%` }}
+                            transition={{ duration: 1, delay: idx * 0.1 }}
+                            className="h-full bg-gradient-to-r from-rose-600 to-rose-400 rounded-full"
+                        />
+                    </div>
+                    <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest opacity-0 group-hover/gap:opacity-100 transition-opacity">
+                        Requires Active Recall Session
+                    </p>
                   </div>
                 ))}
               </div>

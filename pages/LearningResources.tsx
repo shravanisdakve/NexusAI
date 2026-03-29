@@ -345,8 +345,8 @@ const RESOURCE_CATEGORIES: ResourceCategory[] = [
 // Helper to get safe YouTube embed URL from various formats
 const getEmbedUrl = (url: string) => {
     if (!url) return null;
-    // Extract ID (handling watch URLs, youtu.be, embed URLs, and IDs)
-    const match = url.match(/(?:v=|youtu\.be\/|embed\/)([^&\s?]+)/);
+    // Extract ID (handling watch URLs, youtu.be, embed URLs, shorts, and IDs)
+    const match = url.match(/(?:v=|youtu\.be\/|embed\/|shorts\/)([^&\s?]+)/);
     const id = match ? match[1] : (url.includes('://') ? null : url);
     return id ? `https://www.youtube.com/embed/${id}` : null;
 };
@@ -355,7 +355,7 @@ const VideoThumbnail: React.FC<{ youtubeUrl: string, title: string, duration?: s
     const [error, setError] = React.useState(false);
 
     // Extract ID for thumbnail
-    const match = youtubeUrl.match(/(?:v=|youtu\.be\/|embed\/)([^&\s?]+)/);
+    const match = youtubeUrl.match(/(?:v=|youtu\.be\/|embed\/|shorts\/)([^&\s?]+)/);
     const youtubeId = match ? match[1] : (youtubeUrl.includes('://') ? null : youtubeUrl);
 
     // Use hqdefault as primary because it's higher quality and more reliable for newer videos

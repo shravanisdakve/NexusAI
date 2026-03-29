@@ -130,8 +130,8 @@ export const generateImage = async (prompt: string, aspectRatio: string): Promis
 };
 
 // --- NOTE SUMMARIZATION SERVICE ---
-export const summarizeText = async (text: string): Promise<string> => {
-    const requestBody: GeminiRequest = { text };
+export const summarizeText = async (text: string, language?: string): Promise<string> => {
+    const requestBody: GeminiRequest = { text, language };
     const response = await fetch(`${API_URL}/api/gemini/summarizeText`, {
         method: 'POST',
         headers: {
@@ -424,8 +424,8 @@ export const generateProjectIdeas = async (branch: string, interest: string, dif
 };
 
 // --- MOCK PAPER GENERATOR SERVICE ---
-export const generateMockPaper = async (branch: string, subject: string, year: string, language?: string): Promise<any> => {
-    const requestBody: GeminiRequest = { branch, subject, year, language };
+export const generateMockPaper = async (branch: string, subject: string, year: string, semester: string, language?: string): Promise<any> => {
+    const requestBody: GeminiRequest = { branch, subject, year, semester, language };
     const response = await fetch(`${API_URL}/api/gemini/generateMockPaper`, {
         method: 'POST',
         headers: {
@@ -580,4 +580,67 @@ export const generateResumeAnalysis = async (candidateData: any): Promise<{ summ
 
     if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
     return response.json();
+};
+
+// --- PERSONALIZED QUIZ & GAME SERVICES ---
+export const generatePersonalizedQuiz = async (config: {
+    weakTopics: string;
+    targetExam: string;
+    difficulty: 'easy' | 'medium' | 'hard' | 'mixed';
+    questionCount: number;
+    language?: string;
+}): Promise<any> => {
+    const response = await fetch(`${API_URL}/api/gemini/generatePersonalizedQuiz`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify(config),
+    });
+
+    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+    const data = await response.json();
+    return data.quiz;
+};
+
+export const generateTimedChallenge = async (config: {
+    weakTopics: string;
+    accuracyPercent: number;
+    timeAvailableMinutes: number;
+    mode: 'speed_drill' | 'streak_mode';
+    language?: string;
+}): Promise<any> => {
+    const response = await fetch(`${API_URL}/api/gemini/generateTimedChallenge`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify(config),
+    });
+
+    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+    const data = await response.json();
+    return data.challenge;
+};
+
+export const generateFlashcardChallenge = async (config: {
+    weakTopics: string;
+    targetExam: string;
+    count: number;
+    language?: string;
+}): Promise<any> => {
+    const response = await fetch(`${API_URL}/api/gemini/generateFlashcardChallenge`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify(config),
+    });
+
+    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+    const data = await response.json();
+    return data.data;
 };

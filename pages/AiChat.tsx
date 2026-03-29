@@ -9,7 +9,9 @@ import { startSession, endSession, recordQuizResult, getProductivityReport } fro
 import { createChatSession, addMessageToSession } from '../services/aiChatService';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
-import { Bot, User, Send, Mic, Volume2, VolumeX, Lightbulb, Sparkles, Calendar, Image as ImageIcon, X, Paperclip, Target, Library } from 'lucide-react';
+import { Bot, User, Send, Mic, Volume2, VolumeX, Lightbulb, Sparkles, Calendar, Image as ImageIcon, X, Paperclip, Target, Library, Brain } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface Quiz {
     topic: string;
@@ -28,37 +30,53 @@ const UPLOADED_CONTEXT_MAX_CHARS = parsePositiveInt(import.meta.env.VITE_AI_DOC_
 const UPLOADED_QUIZ_CONTEXT_MAX_CHARS = parsePositiveInt(import.meta.env.VITE_AI_DOC_QUIZ_CONTEXT_MAX_CHARS, 12000);
 const UPLOAD_MAX_FILE_MB = parsePositiveInt(import.meta.env.VITE_AI_DOC_MAX_FILE_MB, 10);
 
-import ReactMarkdown from 'react-markdown';
-
 const ChatItem: React.FC<{ message: ChatMessage; onSpeak: (text: string) => void }> = ({ message, onSpeak }) => {
     const isModel = message.role === 'model';
     const text = message.parts.map(part => part.text).join('');
 
     return (
-        <div className={`flex items-start gap-4 my-4 ${isModel ? '' : 'justify-end'}`}>
+        <motion.div 
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className={`flex items-start gap-4 my-4 ${isModel ? '' : 'justify-end'}`}
+        >
             {isModel && (
-                <div className="flex-shrink-0 w-10 h-10 rounded-full bg-violet-600 flex items-center justify-center">
-                    <Bot className="w-6 h-6 text-white" />
+                <div className="flex-shrink-0 relative">
+                    <div className="w-11 h-11 rounded-3xl bg-gradient-to-tr from-violet-600 to-sky-500 flex items-center justify-center shadow-xl shadow-violet-500/30 ring-2 ring-white/10 overflow-hidden group">
+                        <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                        <Brain className="w-6 h-6 text-white relative z-10" />
+                        <motion.div 
+                            animate={{ 
+                                scale: [1, 1.2, 1],
+                                opacity: [0.3, 0.6, 0.3] 
+                            }}
+                            transition={{ repeat: Infinity, duration: 3 }}
+                            className="absolute inset-0 bg-white/30 blur-md rounded-full"
+                        />
+                    </div>
+                    <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-emerald-500 border-2 border-slate-900 flex items-center justify-center">
+                        <Sparkles className="w-2.5 h-2.5 text-white animate-pulse" />
+                    </div>
                 </div>
             )}
-            <div className={`flex flex-col gap-2 max-w-xl`}>
-                <div className={`p-4 rounded-2xl ${isModel ? 'bg-slate-800 rounded-tl-none' : 'bg-sky-600 text-white rounded-br-none'}`}>
-                    <div className="prose prose-invert prose-sm">
+            <div className={`flex flex-col gap-2 max-w-[85%] lg:max-w-xl`}>
+                <div className={`p-4 rounded-2xl shadow-sm ${isModel ? 'bg-slate-800 rounded-tl-none border border-slate-700/50' : 'bg-sky-600 text-white rounded-br-none shadow-sky-500/10'}`}>
+                    <div className="prose prose-invert prose-sm max-w-none">
                         <ReactMarkdown>{text}</ReactMarkdown>
                     </div>
                 </div>
                 {isModel && text && (
-                    <button onClick={() => onSpeak(text)} className="flex items-center gap-1 text-xs text-slate-400 hover:text-violet-400 transition-colors self-start ml-2">
-                        <Volume2 size={14} /> Listen
+                    <button onClick={() => onSpeak(text)} className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-slate-500 hover:text-violet-400 transition-colors self-start ml-2 mt-1">
+                        <Volume2 size={12} /> Listen
                     </button>
                 )}
             </div>
             {!isModel && (
-                <div className="flex-shrink-0 w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center">
-                    <User className="w-6 h-6 text-slate-300" />
+                <div className="flex-shrink-0 w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center ring-2 ring-slate-600 shadow-lg shadow-black/20">
+                    <User className="w-5 h-5 text-slate-300" />
                 </div>
             )}
-        </div>
+        </motion.div>
     );
 };
 
@@ -104,35 +122,17 @@ const getLocalizedMessage = (type: 'default' | 'weakness' | 'activeRecall' | 'fe
 
 const AiTutor: React.FC = () => {
     const { language } = useLanguage();
+    const { user } = useAuth();
+    const location = useLocation();
+    const navigate = useNavigate();
 
-    const getInitialGreeting = () => {
-        const isMr = language === 'mr';
-        const isHi = language === 'hi';
-        if (isMr) return "नमस्कार! मी तुमचा AI ट्यूटर आहे. आज आपण कोणता विषय शिकणार आहोत?";
-        if (isHi) return "नमस्ते! मैं आपका AI ट्यूटर हूँ। आज हम कौन सा विषय सीखेंगे?";
-        return "Hello! I'm your AI Tutor. What subject are we diving into today?";
-    };
-
-    const [messages, setMessages] = useState<ChatMessage[]>([
-        { role: 'model', parts: [{ text: "..." }] }
-    ]);
-
-    useEffect(() => {
-        if (messages.length === 1 && messages[0].role === 'model' && messages[0].parts[0].text === "...") {
-            setMessages([{
-                role: 'model',
-                parts: [{ text: getLocalizedMessage('default', language) }]
-            }]);
-        }
-    }, [language]);
-
-
+    const [selectedCourse, setSelectedCourse] = useState<string | null>(null);
+    const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [isListening, setIsListening] = useState(false);
     const [quiz, setQuiz] = useState<Quiz | null>(null);
-    const [selectedCourse, setSelectedCourse] = useState<string | null>(null);
     const [studyMode, setStudyMode] = useState<'Normal' | 'Feynman Technique' | 'Spaced Repetition' | 'Active Recall'>('Normal');
     const [isAutoSpeaking, setIsAutoSpeaking] = useState(() => {
         try {
@@ -147,13 +147,10 @@ const AiTutor: React.FC = () => {
     const [uploadedContext, setUploadedContext] = useState('');
     const [uploadedContextMeta, setUploadedContextMeta] = useState<{ name: string; truncated: boolean } | null>(null);
     const [isExtracting, setIsExtracting] = useState(false);
+    
     const fileInputRef = useRef<HTMLInputElement>(null);
-
     const recognitionRef = useRef<any | null>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
-    const location = useLocation();
-    const navigate = useNavigate();
-    const { user } = useAuth();
     const proactiveMessageSent = useRef(false);
 
     const getUserContext = () => {
@@ -161,6 +158,7 @@ const AiTutor: React.FC = () => {
         const parts = [
             `User: ${user.displayName || 'Student'}`,
             `Context: ${user.branch || 'Engineering'} ${user.year ? user.year + ' Year' : ''}`,
+            `Subject: ${selectedCourse || 'General Study'}`
         ];
         if (user.learningGoals?.length) parts.push(`Goals: ${user.learningGoals.join(', ')}`);
         if (user.learningStyle) parts.push(`Learning Style: ${user.learningStyle}`);
@@ -168,42 +166,42 @@ const AiTutor: React.FC = () => {
         return `[SYSTEM_CONTEXT: ${parts.join(' | ')}]`;
     };
 
+    const getInitialGreeting = () => {
+        const isMr = language === 'mr';
+        const isHi = language === 'hi';
+        if (isMr) return "नमस्कार! मी तुमचा AI ट्यूटर आहे. आज आपण कोणता विषय शिकणार आहोत?";
+        if (isHi) return "नमस्ते! मैं आपका AI ट्यूटर हूँ। आज हम कौन सा विषय सीखेंगे?";
+        return `Hello! I'm your AI Tutor. I'm ready to help you with **${selectedCourse || 'your studies'}**. What's on your mind?`;
+    };
+
+    // Auto-scroll logic
+    const scrollToBottom = () => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    };
+
     useEffect(() => {
-        const initSession = async () => {
-            try {
-                if (!sessionId && proactiveMessageSent.current) {
-                    const initialMsg = messages[0];
-                    if (initialMsg) {
-                        const session = await createChatSession("AI Tutor Session", [initialMsg]);
-                        setSessionId(session._id);
-                    }
-                }
-            } catch (err) {
-                console.error("Failed to initialize chat session:", err);
+        scrollToBottom();
+    }, [messages, quiz, isLoading]);
+
+    // Analytics and Usage Tracking
+    useEffect(() => {
+        if (selectedCourse) {
+            trackToolUsage('tutor');
+            let analyticsSessionId: string | null = null;
+            const start = async () => {
+                analyticsSessionId = await startSession('tutor', selectedCourse);
             }
-        };
-
-        if (messages.length > 0 && !sessionId) {
-            initSession();
-        }
-    }, [messages, sessionId]);
-
-    useEffect(() => {
-        trackToolUsage('tutor');
-        let analyticsSessionId: string | null = null;
-        const start = async () => {
-            analyticsSessionId = await startSession('tutor', selectedCourse);
-        }
-        start();
-
-        return () => {
-            if (analyticsSessionId) {
-                endSession(analyticsSessionId);
+            start();
+            return () => {
+                if (analyticsSessionId) endSession(analyticsSessionId);
             }
         }
     }, [selectedCourse]);
 
+    // Proactive Messages and Route State handling
     useEffect(() => {
+        if (!selectedCourse) return;
+        
         const checkForProactiveMessage = async () => {
             if (proactiveMessageSent.current) return;
 
@@ -211,7 +209,7 @@ const AiTutor: React.FC = () => {
             let initialPrompt = getInitialGreeting();
 
             if (report && report.weaknesses && report.weaknesses.length > 0) {
-                const weakestTopic = report.weaknesses[0];
+                const weakestTopic = report.weaknesses.find(w => w.topic.toLowerCase().includes(selectedCourse.toLowerCase())) || report.weaknesses[0];
                 initialPrompt = getLocalizedMessage('weakness', language, { topic: weakestTopic.topic, accuracy: weakestTopic.accuracy });
             }
 
@@ -222,22 +220,11 @@ const AiTutor: React.FC = () => {
         if (location.state?.technique && location.state?.topic) {
             const { technique, topic } = location.state;
             let initialPrompt = '';
-
             switch (technique) {
-                case 'Active Recall':
-                    setStudyMode('Active Recall');
-                    initialPrompt = getLocalizedMessage('activeRecall', language, { topic });
-                    break;
-                case 'Feynman Technique':
-                    setStudyMode('Feynman Technique');
-                    initialPrompt = getLocalizedMessage('feynman', language, { topic });
-                    break;
-                case 'Spaced Repetition':
-                    setStudyMode('Spaced Repetition');
-                    initialPrompt = getLocalizedMessage('spacedRepetition', language, { topic });
-                    break;
+                case 'Active Recall': setStudyMode('Active Recall'); initialPrompt = getLocalizedMessage('activeRecall', language, { topic }); break;
+                case 'Feynman Technique': setStudyMode('Feynman Technique'); initialPrompt = getLocalizedMessage('feynman', language, { topic }); break;
+                case 'Spaced Repetition': setStudyMode('Spaced Repetition'); initialPrompt = getLocalizedMessage('spacedRepetition', language, { topic }); break;
             }
-
             if (initialPrompt) {
                 setMessages([{ role: 'model', parts: [{ text: initialPrompt }] }]);
                 navigate(location.pathname, { replace: true, state: {} });
@@ -252,170 +239,49 @@ const AiTutor: React.FC = () => {
         } else {
             checkForProactiveMessage();
         }
-    }, [location.state, navigate, language]);
-
-
-
-    const scrollToBottom = () => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    };
-
-    useEffect(() => {
-        scrollToBottom();
-    }, [messages, quiz]);
-
-    useEffect(() => {
-        try {
-            localStorage.setItem('nexusAutoSpeak', String(isAutoSpeaking));
-        } catch (error) {
-            console.error("Failed to save auto-speak setting to localStorage", error);
-        }
-        if (!isAutoSpeaking) {
-            speechSynthesis.cancel();
-        }
-    }, [isAutoSpeaking]);
-
-    const handleSpeak = (text: string) => {
-        if (speechSynthesis.speaking) {
-            speechSynthesis.cancel();
-        }
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.rate = 1.1;
-        speechSynthesis.speak(utterance);
-    };
-
-    const clearUploadedContext = () => {
-        setSelectedDocument(null);
-        setUploadedContext('');
-        setUploadedContextMeta(null);
-        if (fileInputRef.current) fileInputRef.current.value = '';
-    };
-
-    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-
-        if (file.size > UPLOAD_MAX_FILE_MB * 1024 * 1024) {
-            setError(`File is too large. Max allowed is ${UPLOAD_MAX_FILE_MB}MB.`);
-            if (e.target) e.target.value = '';
-            return;
-        }
-
-        setError(null);
-        setSelectedDocument({
-            name: file.name,
-            type: file.type,
-            size: file.size
-        });
-        setUploadedContext('');
-        setUploadedContextMeta(null);
-        setIsExtracting(true);
-
-        try {
-            const dataUrl = await new Promise<string>((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onloadend = () => resolve(String(reader.result || ''));
-                reader.onerror = () => reject(new Error('Failed to read selected file.'));
-                reader.readAsDataURL(file);
-            });
-
-            const base64 = dataUrl.includes(',') ? dataUrl.split(',')[1] : dataUrl;
-            const extracted = await extractTextFromFile(base64, file.type || 'application/octet-stream');
-            const cleanText = String(extracted || '').trim();
-
-            if (!cleanText) {
-                throw new Error('No readable text found in the uploaded file.');
-            }
-
-            const truncated = cleanText.length > UPLOADED_CONTEXT_MAX_CHARS;
-            const finalContext = truncated ? cleanText.slice(0, UPLOADED_CONTEXT_MAX_CHARS) : cleanText;
-            setUploadedContext(finalContext);
-            setUploadedContextMeta({ name: file.name, truncated });
-
-            const readyMessage = truncated
-                ? `Loaded "${file.name}". I can answer based only on this file. For stability, I am using the first ${UPLOADED_CONTEXT_MAX_CHARS} characters.`
-                : `Loaded "${file.name}". Ask me anything from this file, and I will answer strictly from it.`;
-
-            const modelMessage: ChatMessage = { role: 'model', parts: [{ text: readyMessage }] };
-            setMessages(prev => [...prev, modelMessage]);
-            if (sessionId) {
-                addMessageToSession(sessionId, [modelMessage]).catch(err => console.error("Failed to save file-ready message", err));
-            }
-        } catch (err: any) {
-            console.error("File extraction failed:", err);
-            let userFriendlyMsg = 'Could not read this file. Please ensure it is a valid document or image.';
-
-            // Check for explicit 429 rate limit errors from our new backend
-            const isQuotaError = err?.status === 429 || /quota|busy|capacity|rate limit/i.test(err?.message || '');
-
-            if (isQuotaError) {
-                userFriendlyMsg = 'NexusAI File Reader is currently busy due to Google API limits. Please wait 30 seconds and try uploading again.';
-            } else if (err?.status === 503) {
-                userFriendlyMsg = 'The extraction engine is currently starting up. Please try again in a few moments.';
-            } else if (typeof err?.message === 'string' && err.message.trim()) {
-                userFriendlyMsg = err.message;
-            }
-
-            setError(userFriendlyMsg);
-            setSelectedDocument(null);
-            setUploadedContext('');
-            setUploadedContextMeta(null);
-        } finally {
-            setIsExtracting(false);
-            if (e.target) e.target.value = '';
-        }
-
-    };
+    }, [selectedCourse, location.state, language]);
 
     const handleSend = useCallback(async (messageToSend?: string, isVoiceInput = false) => {
         const currentMessage = messageToSend || input;
-        if (!currentMessage.trim() || isLoading || isExtracting) return;
+        if (!currentMessage.trim() || isLoading || isExtracting || !selectedCourse) return;
 
         speechSynthesis.cancel();
 
         const newUserMessage: ChatMessage = {
             role: 'user',
             parts: [{ text: currentMessage }],
-            attachment: selectedDocument
-                ? { name: selectedDocument.name, type: selectedDocument.type, size: selectedDocument.size }
-                : undefined
+            attachment: selectedDocument ? { ...selectedDocument } : undefined
         };
         const newModelMessage: ChatMessage = { role: 'model', parts: [{ text: '' }] };
+        
         setMessages(prev => [...prev, newUserMessage, newModelMessage]);
-
         setInput('');
         setIsLoading(true);
         setError(null);
         setQuiz(null);
 
         if (sessionId) {
-            addMessageToSession(sessionId, [newUserMessage]).catch(e => console.error("Failed to save user message", e));
+            addMessageToSession(sessionId, [newUserMessage]).catch(e => console.error(e));
+        } else {
+            createChatSession(`Tutor: ${selectedCourse}`, [newUserMessage]).then(s => setSessionId(s._id));
         }
 
         try {
             let contextPrompt = currentMessage;
+            if (studyMode === 'Feynman Technique') contextPrompt = `[MODE: FEYNMAN] ${currentMessage}`;
+            else if (studyMode === 'Spaced Repetition') contextPrompt = `[MODE: SPACED REPETITION] ${currentMessage}`;
+            else if (studyMode === 'Active Recall') contextPrompt = `[MODE: ACTIVE RECALL] ${currentMessage}`;
 
-            if (studyMode === 'Feynman Technique') {
-                contextPrompt = `[MODE: FEYNMAN TECHNIQUE - Explain like I'm 10. Identify gaps.] User says: ${currentMessage}`;
-            } else if (studyMode === 'Spaced Repetition') {
-                contextPrompt = `[MODE: SPACED REPETITION - Focus on creating memorization cards and scheduling.] User says: ${currentMessage}`;
-            } else if (studyMode === 'Active Recall') {
-                contextPrompt = `[MODE: ACTIVE RECALL - Ask tough questions to probe understanding.] User says: ${currentMessage}`;
-            }
-
-            const hasUploadedContext = Boolean(uploadedContext.trim());
-            if (!hasUploadedContext) {
+            if (!uploadedContext.trim()) {
                 const userContext = getUserContext();
-                if (userContext) {
-                    contextPrompt = `${userContext}\n\n${contextPrompt}`;
-                }
+                contextPrompt = `${userContext}\n\n${contextPrompt}`;
             }
 
-            const stream = hasUploadedContext
+            const stream = uploadedContext.trim()
                 ? await streamStudyBuddyChat(contextPrompt, uploadedContext, language)
                 : await streamChat(contextPrompt, undefined, undefined, language);
 
-            if (!stream) throw new Error("Failed to start stream");
+            if (!stream) throw new Error("Stream failed");
 
             const reader = stream.getReader();
             const decoder = new TextDecoder();
@@ -425,260 +291,248 @@ const AiTutor: React.FC = () => {
             while (true) {
                 const { done, value } = await reader.read();
                 if (done) break;
-
                 const chunk = decoder.decode(value, { stream: true });
                 buffer += chunk;
-
                 const lines = buffer.split('\n\n');
                 buffer = lines.pop() || '';
 
                 for (const line of lines) {
-                    const trimmedLine = line.trim();
-                    if (trimmedLine.startsWith('data: ')) {
+                    if (line.trim().startsWith('data: ')) {
                         try {
-                            const data = JSON.parse(trimmedLine.slice(6));
+                            const data = JSON.parse(line.trim().slice(6));
                             if (data.text) {
                                 modelResponse += data.text;
                                 setMessages(prev => {
-                                    const newMessages = [...prev];
-                                    const lastMessage = newMessages[newMessages.length - 1];
-                                    if (lastMessage && lastMessage.role === 'model') {
-                                        lastMessage.parts = [{ text: modelResponse }];
-                                    }
-                                    return newMessages;
+                                    const next = [...prev];
+                                    const last = next[next.length - 1];
+                                    if (last && last.role === 'model') last.parts = [{ text: modelResponse }];
+                                    return next;
                                 });
                             }
-                        } catch (e) {
-                            console.error("Error parsing stream chunk", e);
-                        }
+                        } catch {}
                     }
                 }
             }
 
-            setIsLoading(false);
-
             if (sessionId && modelResponse) {
-                const finalModelMsg: ChatMessage = { role: 'model', parts: [{ text: modelResponse }] };
-                addMessageToSession(sessionId, [finalModelMsg]).catch(e => console.error("Failed to save model message", e));
+                addMessageToSession(sessionId, [{ role: 'model', parts: [{ text: modelResponse }] }]);
             }
-
-            if (modelResponse && (isAutoSpeaking || isVoiceInput)) {
-                handleSpeak(modelResponse);
-            }
+            if (modelResponse && (isAutoSpeaking || isVoiceInput)) handleSpeak(modelResponse);
         } catch (err: any) {
-            console.error("AI Tutor Error:", err);
-            let userFriendlyMsg = 'Sorry, something went wrong. Please try again.';
-            const rawError = err.message || '';
-            if (rawError.includes('429') || rawError.toLowerCase().includes('quota')) {
-                userFriendlyMsg = 'The AI is currently at its limit (free tier). Please wait about a minute and try again.';
-            } else if (rawError.includes('404')) {
-                userFriendlyMsg = 'The AI model is currently unavailable. I am looking into it.';
-            }
-            setError(userFriendlyMsg);
-            setMessages(prev => [...prev, { role: 'model', parts: [{ text: userFriendlyMsg }] }]);
+            const msg = err.message?.includes('429') ? 'AI Quota limit reached. Wait 60s.' : 'Failed to connect to AI.';
+            setError(msg);
+            setMessages(prev => [...prev, { role: 'model', parts: [{ text: msg }] }]);
         } finally {
             setIsLoading(false);
         }
-    }, [input, isLoading, isAutoSpeaking, studyMode, sessionId, language, selectedDocument, uploadedContext, isExtracting]);
-
-    // Bug 9: Read query param 'q' and auto-send it
-    useEffect(() => {
-        const params = new URLSearchParams(location.search);
-        const q = params.get('q');
-        if (q) {
-            const decodedQ = decodeURIComponent(q);
-            handleSend(decodedQ);
-            // Replace URL to clean up the query param
-            navigate(location.pathname, { replace: true });
-        }
-    }, [location.search, handleSend, navigate]);
-
-    const handleQuizMe = async () => {
-        if (isLoading) return;
-        setError(null);
-        setIsLoading(true);
-        setQuiz(null);
-
-        const context = uploadedContext.trim()
-            ? uploadedContext.slice(0, UPLOADED_QUIZ_CONTEXT_MAX_CHARS)
-            : messages.map(m => `${m.role}: ${m.parts.map(p => p.text).join('')}`).join('\n');
-        setMessages(prev => [...prev, { role: 'model', parts: [{ text: "Of course! Here's a question for you..." }] }]);
-
-        try {
-            const quizJsonString = await generateQuizQuestion(context, language);
-            const parsedQuiz = JSON.parse(quizJsonString);
-            setQuiz(parsedQuiz);
-        } catch (err) {
-            console.error("Failed to generate quiz", err);
-            setError("Sorry, I couldn't generate a quiz question right now. Please try again.");
-        } finally {
-            setIsLoading(false);
-        }
-    };
+    }, [input, isLoading, isExtracting, selectedCourse, studyMode, uploadedContext, language, sessionId, selectedDocument, isAutoSpeaking]);
 
     const handleAnswerQuiz = async (selectedIndex: number) => {
         if (!quiz) return;
-
         const isCorrect = selectedIndex === quiz.correctOptionIndex;
-
-        // --- DATA PIPELINE: Save Detailed Result ---
-        await recordQuizResult(
-            quiz.topic,
-            isCorrect,
-            selectedCourse,
-            quiz.question,
-            quiz.options[selectedIndex],
-            quiz.options[quiz.correctOptionIndex]
-        );
-
-        let feedbackMessage = '';
-        if (isCorrect) {
-            feedbackMessage = `Correct! Well done.`;
-        } else {
-            feedbackMessage = `Not quite. The correct answer was: "${quiz.options[quiz.correctOptionIndex]}"`;
-        }
-
-        setMessages(prev => [...prev, { role: 'model', parts: [{ text: feedbackMessage }] }]);
-
-        if (sessionId) {
-            addMessageToSession(sessionId, [{ role: 'model', parts: [{ text: feedbackMessage }] }]);
-        }
-
+        await recordQuizResult(quiz.topic, isCorrect, selectedCourse, quiz.question, quiz.options[selectedIndex], quiz.options[quiz.correctOptionIndex]);
+        const feedback = isCorrect ? "✅ Correct! Great job." : `❌ Not quite. Correct: "${quiz.options[quiz.correctOptionIndex]}"`;
+        setMessages(prev => [...prev, { role: 'model', parts: [{ text: feedback }] }]);
         setQuiz(prev => prev ? { ...prev, userAnswerIndex: selectedIndex } : null);
-        setTimeout(() => setQuiz(null), 3000);
+        setTimeout(() => setQuiz(null), 3500);
     };
 
-    useEffect(() => {
+    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file || file.size > UPLOAD_MAX_FILE_MB * 1024 * 1024) return;
+        setSelectedDocument({ name: file.name, type: file.type, size: file.size });
+        setIsExtracting(true);
+        try {
+            const reader = new FileReader();
+            const dataUrl = await new Promise<string>((res) => {
+                reader.onload = () => res(reader.result as string);
+                reader.readAsDataURL(file);
+            });
+            const base64 = dataUrl.split(',')[1];
+            const text = await extractTextFromFile(base64, file.type);
+            setUploadedContext(text.slice(0, UPLOADED_CONTEXT_MAX_CHARS));
+            setUploadedContextMeta({ name: file.name, truncated: text.length > UPLOADED_CONTEXT_MAX_CHARS });
+            setMessages(prev => [...prev, { role: 'model', parts: [{ text: `📄 Loaded **${file.name}**. I'll study this with you.` }] }]);
+        } catch { setError("Failed to read file."); }
+        finally { setIsExtracting(false); }
+    };
+
+    const handleListen = () => {
         const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
         if (!SpeechRecognition) return;
         const recognition = new SpeechRecognition();
-        recognition.continuous = false;
-        recognition.interimResults = true;
-        recognition.lang = 'en-US';
-        recognitionRef.current = recognition;
-    }, []);
-
-    const handleListen = () => {
-        const recognition = recognitionRef.current;
-        if (!recognition) {
-            setError("Speech recognition is not available in your browser.");
-            return;
-        }
-        if (isListening) {
-            recognition.stop();
-            return;
-        }
-        setError(null);
-        let finalTranscript = '';
-        recognition.onresult = (event: any) => {
-            let interimTranscript = '';
-            for (let i = event.resultIndex; i < event.results.length; ++i) {
-                const transcript = event.results[i][0].transcript;
-                if (event.results[i].isFinal) finalTranscript += transcript + ' ';
-                else interimTranscript += transcript;
-            }
-            setInput(finalTranscript + interimTranscript);
+        recognition.onresult = (e: any) => {
+            const transcript = e.results[0][0].transcript;
+            setInput(transcript);
+            handleSend(transcript, true);
         };
-        recognition.onend = () => {
-            setIsListening(false);
-            if (finalTranscript.trim()) handleSend(finalTranscript.trim(), true);
-        };
-        recognition.onerror = () => setIsListening(false);
-        setInput('');
         recognition.start();
         setIsListening(true);
+        recognition.onend = () => setIsListening(false);
+    };
+
+    const handleSpeak = (text: string) => {
+        speechSynthesis.cancel();
+        const u = new SpeechSynthesisUtterance(text);
+        u.rate = 1.05;
+        speechSynthesis.speak(u);
     };
 
     return (
-        <div className="h-full flex flex-col">
-            <div className="flex justify-between items-center">
+        <div className="h-full flex flex-col relative overflow-hidden">
+            <div className="flex justify-between items-center mb-4 px-2">
                 <div className="flex items-center gap-4">
-                    <PageHeader title="AI Tutor" subtitle="Your personal AI guide for any subject." />
+                    <PageHeader title="AI Tutor" subtitle="Master any subject with personalized AI guidance." />
                     {studyMode !== 'Normal' && (
-                        <div className="bg-violet-600/20 text-violet-400 px-3 py-1 rounded-full text-xs font-bold ring-1 ring-violet-500/50 flex items-center gap-1 animate-pulse">
-                            <Sparkles size={12} /> {studyMode} Mode
+                        <div className="bg-violet-600/20 text-violet-400 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ring-1 ring-violet-500/50 flex items-center gap-1 animate-pulse">
+                            <Sparkles size={12} /> {studyMode}
                         </div>
                     )}
                 </div>
                 <div className="flex items-center gap-2">
-                    <Button size="sm" variant="ghost" onClick={() => navigate('/topic-predictor')} className="text-amber-400 bg-amber-400/10 hover:bg-amber-400/20 border border-amber-400/20"><Target size={14} className="mr-1" /> Topic Predictor</Button>
-                    <Button size="sm" variant="ghost" onClick={() => navigate('/paper-bank')} className="text-sky-400 bg-sky-400/10 hover:bg-sky-400/20 border border-sky-400/20"><Library size={14} className="mr-1" /> Paper Bank</Button>
+                    <Button size="sm" variant="ghost" onClick={() => navigate('/topic-predictor')} className="text-amber-400 hover:bg-amber-400/10"><Target size={14} className="mr-1" /> Trends</Button>
                     <CourseSelector selectedCourse={selectedCourse} onCourseChange={setSelectedCourse} />
                 </div>
             </div>
-            <div className="flex-1 bg-slate-800/50 rounded-xl p-4 flex flex-col overflow-hidden ring-1 ring-slate-700">
-                <div className="flex-1 overflow-y-auto pr-2">
-                    {messages.map((msg, index) => <ChatItem key={index} message={msg} onSpeak={handleSpeak} />)}
+
+            <div className="flex-1 bg-slate-900/40 border border-slate-700/50 rounded-2xl flex flex-col overflow-hidden relative">
+                <AnimatePresence>
+                    {!selectedCourse && (
+                        <motion.div 
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="absolute inset-0 z-50 bg-slate-900/95 backdrop-blur-xl flex flex-col items-center justify-center p-8 text-center"
+                        >
+                            <motion.div 
+                                initial={{ scale: 0.9, opacity: 0 }}
+                                animate={{ scale: 1, opacity: 1 }}
+                                className="w-24 h-24 bg-gradient-to-br from-violet-600 to-indigo-700 rounded-3xl flex items-center justify-center mb-8 shadow-2xl shadow-violet-500/20 ring-4 ring-white/5"
+                            >
+                                <Library className="w-12 h-12 text-white" />
+                            </motion.div>
+                            <h3 className="text-3xl font-black text-white mb-4 tracking-tight">Initialize Your Session</h3>
+                            <p className="max-w-xs text-slate-400 text-sm mb-10 leading-relaxed font-medium">
+                                Select a subject to unlock personalized tutoring, MU-specific insights, and deep-dive explanations.
+                            </p>
+                            <div className="w-full max-w-sm transform scale-125">
+                                <CourseSelector 
+                                    selectedCourse={selectedCourse} 
+                                    onCourseChange={(c) => {
+                                        if (c) {
+                                            setSelectedCourse(c);
+                                            setMessages([{ role: 'model', parts: [{ text: `Session initialized for **${c.toUpperCase()}**. How can I help you today?` }] }]);
+                                        }
+                                    }} 
+                                />
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+
+                <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
+                    {messages.map((msg, idx) => <ChatItem key={idx} message={msg} onSpeak={handleSpeak} />)}
                     {isLoading && !quiz && (
-                        <div className="flex items-start gap-4 my-4">
-                            <div className="flex-shrink-0 w-10 h-10 rounded-full bg-violet-600 flex items-center justify-center"><Bot className="w-6 h-6 text-white" /></div>
-                            <div className="max-w-xl p-4 rounded-2xl bg-slate-800 rounded-tl-none">
-                                <div className="loading-dot">
-                                    <span className="inline-block w-2 h-2 bg-slate-400 rounded-full"></span>
-                                    <span className="inline-block w-2 h-2 bg-slate-400 rounded-full ml-1"></span>
-                                    <span className="inline-block w-2 h-2 bg-slate-400 rounded-full ml-1"></span>
-                                </div>
+                        <div className="flex items-start gap-4 my-6 animate-pulse">
+                            <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center border border-slate-700"><Bot size={20} className="text-slate-500" /></div>
+                            <div className="bg-slate-800/50 h-12 w-32 rounded-2xl rounded-tl-none border border-slate-700/50 flex items-center justify-center gap-1">
+                                <span className="w-1.5 h-1.5 bg-slate-600 rounded-full animate-bounce" />
+                                <span className="w-1.5 h-1.5 bg-slate-600 rounded-full animate-bounce [animation-delay:0.2s]" />
+                                <span className="w-1.5 h-1.5 bg-slate-600 rounded-full animate-bounce [animation-delay:0.4s]" />
                             </div>
                         </div>
                     )}
                     {quiz && (
-                        <div className="my-4 p-4 bg-slate-900/50 rounded-xl ring-1 ring-violet-600/50 animate-in fade-in-50">
-                            <p className="font-semibold text-slate-200 text-base mb-1">Topic: <span className="capitalize font-light">{quiz.topic}</span></p>
-                            <p className="font-bold text-slate-100 text-lg">{quiz.question}</p>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-4">
-                                {quiz.options.map((option, index) => {
-                                    const isSelected = quiz.userAnswerIndex === index;
-                                    const isCorrect = quiz.correctOptionIndex === index;
-                                    let buttonClass = 'bg-slate-700 hover:bg-slate-600';
-                                    if (quiz.userAnswerIndex !== undefined) {
-                                        if (isCorrect) buttonClass = 'bg-green-500/80 ring-2 ring-green-400';
-                                        else if (isSelected && !isCorrect) buttonClass = 'bg-red-500/80';
-                                        else buttonClass = 'bg-slate-800/50 opacity-60';
-                                    }
-                                    return <button key={index} onClick={() => handleAnswerQuiz(index)} disabled={quiz.userAnswerIndex !== undefined} className={`p-3 text-left text-sm rounded-lg transition-all duration-200 ${buttonClass}`}>{option}</button>
-                                })}
+                        <motion.div 
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            className="my-6 p-6 bg-slate-800 border border-violet-500/30 rounded-2xl shadow-xl shadow-black/40"
+                        >
+                            <div className="flex items-center gap-2 mb-4">
+                                <span className="px-2 py-0.5 bg-violet-500/10 text-violet-400 text-[10px] font-black uppercase tracking-widest rounded border border-violet-500/20">Active Recall</span>
+                                <span className="text-slate-500 text-xs font-bold uppercase tracking-tighter">{quiz.topic}</span>
                             </div>
-                        </div>
+                            <h4 className="text-lg font-bold text-slate-100 mb-6 leading-snug">{quiz.question}</h4>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                {quiz.options.map((option, i) => (
+                                    <button 
+                                        key={i} 
+                                        onClick={() => handleAnswerQuiz(i)}
+                                        disabled={quiz.userAnswerIndex !== undefined}
+                                        className={`p-4 text-left text-sm rounded-xl font-medium transition-all ${
+                                            quiz.userAnswerIndex === undefined 
+                                            ? 'bg-slate-700 hover:bg-slate-600 border border-slate-600'
+                                            : i === quiz.correctOptionIndex 
+                                                ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-400 shadow-lg shadow-emerald-500/10'
+                                                : i === quiz.userAnswerIndex 
+                                                    ? 'bg-rose-500/20 border-rose-500/50 text-rose-400'
+                                                    : 'bg-slate-900/50 border-slate-800 opacity-50'
+                                        }`}
+                                    >
+                                        {option}
+                                    </button>
+                                ))}
+                            </div>
+                        </motion.div>
                     )}
                     <div ref={messagesEndRef} />
                 </div>
-                {error && <p className="text-red-400 text-sm text-center my-2">{error}</p>}
-                <div className="mt-4 flex flex-col gap-2">
-                    {(selectedDocument || isExtracting || uploadedContextMeta) && (
-                        <div className="flex items-center gap-2 p-2 bg-slate-900/80 rounded-lg border border-slate-700 w-fit animate-in slide-in-from-bottom-2">
-                            <ImageIcon size={16} className="text-sky-400" />
-                            <span className="text-xs text-slate-300 max-w-[260px] truncate">{isExtracting ? `Reading ${selectedDocument?.name || 'file'}...` : uploadedContextMeta ? `${uploadedContextMeta.name}${uploadedContextMeta.truncated ? ' (trimmed for AI context)' : ''}` : selectedDocument?.name}</span>
-                            <button onClick={clearUploadedContext} className="text-slate-500 hover:text-rose-400" disabled={isExtracting}><X size={14} /></button>
+
+                <div className="p-4 bg-slate-900 border-t border-slate-700/50">
+                    {uploadedContextMeta && (
+                        <div className="flex items-center gap-2 mb-4 p-2 bg-slate-800/80 rounded-lg border border-slate-700 w-fit">
+                            <ImageIcon size={14} className="text-sky-400" />
+                            <span className="text-[11px] font-bold text-slate-300">{uploadedContextMeta.name}</span>
+                            <button onClick={() => { setUploadedContext(''); setUploadedContextMeta(null); }} className="text-slate-500 hover:text-white ml-2"><X size={14} /></button>
                         </div>
                     )}
-                    <div className="flex items-center gap-2">
-                        <input
-                            type="file"
-                            id="file-upload"
-                            ref={fileInputRef}
-                            onChange={handleImageUpload}
-                            accept="image/*,.pdf,.txt,.docx,.md,.ppt,.pptx"
-                            className="hidden"
-                        />
-                        <Button
-                            id="attachment-button"
-                            onClick={() => {
-                                console.log('Attachment button clicked');
-                                fileInputRef.current?.click();
-                            }}
-                            disabled={isLoading || !!quiz || isExtracting}
-                            className="px-4 py-3 bg-slate-700 hover:bg-slate-600"
-                        >
-                            <Paperclip className="w-5 h-5" />
-                        </Button>
-                        <Input id="chat-input" name="chatInput" type="text" value={input} onChange={(e) => setInput(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && !isLoading && handleSend()} placeholder={uploadedContextMeta ? "Ask anything from your uploaded file..." : "Ask a question or upload notes/image..."} disabled={isLoading || !!quiz || isExtracting} className="flex-1" autoComplete="off" aria-label="Ask the AI Tutor" />
-                        <Button onClick={handleQuizMe} disabled={isLoading || !!quiz || isExtracting} className="px-4 py-3 bg-slate-700 hover:bg-slate-600"><Lightbulb className="w-5 h-5" /></Button>
-                        <Button onClick={handleListen} disabled={isLoading || !!quiz || isExtracting} className={`px-4 py-3 ${isListening ? 'bg-red-600 hover:bg-red-700' : 'bg-slate-700 hover:bg-slate-600'}`}><Mic className="w-5 h-5" /></Button>
-                        <Button onClick={() => { speechSynthesis.cancel(); setIsAutoSpeaking(prev => !prev); }} className={`px-4 py-3 ${isAutoSpeaking ? 'bg-violet-600 hover:bg-violet-700' : 'bg-slate-700 hover:bg-slate-600'}`}>{isAutoSpeaking ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}</Button>
-                        <Button onClick={() => handleSend()} isLoading={isLoading} disabled={!input.trim() || !!quiz || isExtracting} className="px-4 py-3">{!isLoading && <Send className="w-5 h-5" />}</Button>
+                    <div className="flex items-center gap-3">
+                        <label className="p-3 bg-slate-800 hover:bg-slate-700 rounded-xl border border-slate-700 transition-colors cursor-pointer group">
+                            <input type="file" onChange={handleImageUpload} className="hidden" />
+                            <Paperclip size={20} className="text-slate-400 group-hover:text-white" />
+                        </label>
+                        <div className="flex-1 relative">
+                            <Input 
+                                value={input}
+                                onChange={(e) => setInput(e.target.value.slice(0, 2000))}
+                                onKeyPress={(e) => e.key === 'Enter' && handleSend()}
+                                placeholder="Type your doubt or paste notes..."
+                                className="w-full bg-slate-800 border-slate-700 focus:border-violet-500/50 py-6 pr-20 text-sm font-medium"
+                                disabled={isLoading || !selectedCourse}
+                            />
+                            <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                                <span className={`text-[9px] font-black ${input.length > 1800 ? 'text-amber-500' : 'text-slate-500'}`}>
+                                    {input.length}/2000
+                                </span>
+                                <Button 
+                                    size="sm" 
+                                    onClick={() => handleSend()} 
+                                    disabled={!input.trim() || isLoading}
+                                    className="bg-violet-600 hover:bg-violet-700 shadow-lg shadow-violet-500/20 p-2 h-9 w-9 rounded-lg"
+                                >
+                                    <Send size={16} />
+                                </Button>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <button onClick={handleListen} className={`p-3 rounded-xl border border-slate-700 transition-all ${isListening ? 'bg-rose-500/20 border-rose-500/50 text-rose-500 animate-pulse' : 'bg-slate-800 text-slate-400 hover:text-white'}`}>
+                                <Mic size={20} />
+                            </button>
+                            <button 
+                                onClick={() => setIsAutoSpeaking(!isAutoSpeaking)}
+                                className={`p-3 rounded-xl border border-slate-700 transition-all ${isAutoSpeaking ? 'bg-sky-500/20 border-sky-500/50 text-sky-500' : 'bg-slate-800 text-slate-400 hover:text-white'}`}
+                            >
+                                {isAutoSpeaking ? <Volume2 size={20} /> : <VolumeX size={20} />}
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
+            {error && (
+                <div className="absolute top-20 left-1/2 -translate-x-1/2 px-4 py-2 bg-rose-500 text-white text-xs font-bold rounded-full shadow-2xl animate-in fade-in slide-in-from-top-4">
+                    {error}
+                </div>
+            )}
         </div>
     );
 };

@@ -216,10 +216,50 @@ const TCSNQTSimulator: React.FC = () => {
                         className="grid grid-cols-1 lg:grid-cols-4 gap-8 flex-1"
                     >
                         <div className="lg:col-span-3 space-y-6">
-                            <Card className="p-8 min-h-[400px] flex flex-col">
-                                <div className="flex justify-between items-start mb-10">
-                                        <div className="px-3 py-1 rounded bg-rose-500 text-white text-[10px] font-black uppercase">
-                                        {t('simulator.section')}: {questions[currentQuestionIndex]?.section || t('simulator.sectionGeneral')}
+                            {/* Section Navigation Bar */}
+                            <div className="flex flex-wrap gap-2 mb-6 p-2 bg-slate-900/50 rounded-2xl border border-slate-700/50 overflow-x-auto no-scrollbar">
+                                {Array.from(new Set(questions.map(q => q.section))).map((section, idx) => {
+                                    const sectionQuestions = questions.filter(q => q.section === section);
+                                    const answeredInSection = sectionQuestions.filter(q => answers[q.id] !== undefined).length;
+                                    const isActive = questions[currentQuestionIndex]?.section === section;
+                                    
+                                    return (
+                                        <button
+                                            key={section}
+                                            onClick={() => {
+                                                const firstIdx = questions.findIndex(q => q.section === section);
+                                                if (firstIdx !== -1) setCurrentQuestionIndex(firstIdx);
+                                            }}
+                                            className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-all flex items-center gap-2 border-2 ${
+                                                isActive 
+                                                    ? 'bg-rose-600 border-rose-400 text-white shadow-lg shadow-rose-900/40 scale-105' 
+                                                    : 'bg-slate-800 border-slate-700 text-slate-500 hover:border-slate-600'
+                                            }`}
+                                        >
+                                            {section || t('simulator.sectionGeneral')}
+                                            <span className={`px-1.5 py-0.5 rounded-md ${isActive ? 'bg-white/20 text-white' : 'bg-slate-700 text-slate-400'}`}>
+                                                {answeredInSection}/{sectionQuestions.length}
+                                            </span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+
+                            <Card className="p-8 min-h-[400px] flex flex-col relative overflow-hidden">
+                                <div className="absolute top-0 left-0 w-full h-1 bg-slate-800">
+                                    <div 
+                                        className="h-full bg-rose-500 transition-all duration-500" 
+                                        style={{ width: `${((currentQuestionIndex + 1) / questions.length) * 100}%` }}
+                                    />
+                                </div>
+                                <div className="flex justify-between items-start mb-10 mt-2">
+                                    <div className="flex items-center gap-2">
+                                        <div className="px-3 py-1 rounded-full bg-rose-500 text-white text-[10px] font-black uppercase">
+                                            {questions[currentQuestionIndex]?.section || t('simulator.sectionGeneral')}
+                                        </div>
+                                        <div className="px-3 py-1 rounded-full bg-slate-800 text-slate-400 text-[10px] font-bold">
+                                            Q.{currentQuestionIndex + 1}
+                                        </div>
                                     </div>
                                     <span className="text-xs font-mono text-slate-500">
                                         {t('simulator.questionOf', { current: currentQuestionIndex + 1, total: questions.length })}
