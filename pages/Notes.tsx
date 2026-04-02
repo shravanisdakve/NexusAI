@@ -158,6 +158,7 @@ const StudyPlanView: React.FC<{
                 <label htmlFor="study-goal-input" className="block text-sm font-medium text-slate-300 mb-1">Academic Goal</label>
                 <Input
                   id="study-goal-input"
+                  name="studyGoal"
                   placeholder="e.g., Master organic chemistry mechanisms"
                   value={goal}
                   onChange={e => setGoal(e.target.value)}
@@ -165,7 +166,7 @@ const StudyPlanView: React.FC<{
               </div>
               <div>
                 <label htmlFor="study-duration-select" className="block text-sm font-medium text-slate-300 mb-1">Timeframe (Days)</label>
-                <Select id="study-duration-select" value={duration} onChange={e => setDuration(e.target.value)}>
+                <Select id="study-duration-select" name="studyDuration" value={duration} onChange={e => setDuration(e.target.value)}>
                   {[3, 5, 7, 10, 14, 21, 30].map(d => (
                     <option key={d} value={d}>{d} Days</option>
                   ))}
@@ -413,12 +414,22 @@ const Notes: React.FC = () => {
     try {
       console.log("Generating flashcards from combined notes content length:", content.length);
       const flashcardsJson = await generateFlashcards(content, language);
-      const newFlashcards = JSON.parse(flashcardsJson).map((f: any) => ({
+      const parsedData = JSON.parse(flashcardsJson);
+      const flashcardsArray = Array.isArray(parsedData) ? parsedData : (parsedData.flashcards || []);
+
+      if (flashcardsArray.length === 0) {
+        alert("The AI couldn't generate any flashcards from these notes. Try adding more detailed content!");
+        setIsGenerating(false);
+        return;
+      }
+
+      const newFlashcards = flashcardsArray.map((f: any) => ({
         ...f,
         id: `mock_flashcard_${Date.now()}_${Math.random()}`,
         bucket: 1,
         lastReview: Date.now()
       }));
+
       await addFlashcards(selectedCourse, newFlashcards);
       reloadFlashcards();
       alert(`Successfully generated ${newFlashcards.length} flashcards from notes!`);
@@ -468,6 +479,12 @@ const Notes: React.FC = () => {
       const parsedData = JSON.parse(flashcardsJson);
       const flashcardsArray = Array.isArray(parsedData) ? parsedData : (parsedData.flashcards || []);
       
+      if (flashcardsArray.length === 0) {
+        alert(`The AI couldn't generate any flashcards from the file ${file.name}. Try a file with more structured text!`);
+        setIsFileGenerating(false);
+        return;
+      }
+
       const newFlashcards = flashcardsArray.map((f: any) => ({
         ...f,
         id: `mock_flashcard_${Date.now()}_${Math.random()}`,
@@ -500,6 +517,12 @@ const Notes: React.FC = () => {
       const flashcardsJson = await generateFlashcards(note.content, language);
       const parsedData = JSON.parse(flashcardsJson);
       const flashcardsArray = Array.isArray(parsedData) ? parsedData : (parsedData.flashcards || []);
+
+      if (flashcardsArray.length === 0) {
+        alert(`The AI couldn't generate any flashcards from the note '${note.title}'. Try adding more detail!`);
+        setIsSingleGenerating(null);
+        return;
+      }
 
       const newFlashcards = flashcardsArray.map((f: any) => ({
         ...f,
@@ -717,6 +740,7 @@ const Notes: React.FC = () => {
             </label>
             <Input 
               id="course-name-input"
+              name="courseName"
               value={newCourseName}
               onChange={e => setNewCourseName(e.target.value)}
               placeholder="e.g. Data Structures, Calculus III"
@@ -1053,14 +1077,16 @@ const AddNoteModal: React.FC<{ isOpen: boolean, onClose: () => void, courseId: s
           </Button>
         </div>
 
-        <Input
-          id="add-note-title"
-          name="noteTitle"
-          placeholder="Title (Optional - uses filename if blank)" // Changed placeholder
-          value={title}
-          onChange={e => setTitle(e.target.value)}
-        // required // Title is now optional
-        />
+        <div>
+          <label htmlFor="add-note-title" className="sr-only">Title</label>
+          <Input
+            id="add-note-title"
+            name="noteTitle"
+            placeholder="Title (Optional - uses filename if blank)"
+            value={title}
+            onChange={e => setTitle(e.target.value)}
+          />
+        </div>
 
         {noteType === 'text' && (
           <>
@@ -1161,6 +1187,7 @@ const FlashcardsView: React.FC<{
           onChange={handleFileChange}
           style={{ display: 'none' }}
           accept=".txt,.md,.pdf,.pptx,.ppt,.png,.jpg,.jpeg"
+          aria-label="Upload file for flashcard generation"
         />
 
         <div className="flex gap-4 mb-6">

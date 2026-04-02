@@ -40,9 +40,9 @@ const FEATURE_PROVIDER_MAP = {
 // Model configurations for each provider
 const MODEL_CONFIG = {
     [PROVIDERS.NVIDIA]: {
-        default: 'nvidia/llama-3.1-405b-instruct',
-        fast: 'nvidia/llama-3.1-70b-instruct',
-        json: 'nvidia/llama-3.1-405b-instruct',
+        default: 'meta/llama-3.1-70b-instruct',
+        fast: 'meta/llama-3.1-8b-instruct',
+        json: 'meta/llama-3.1-70b-instruct',
     },
     [PROVIDERS.GROQ]: {
         default: 'llama-3.3-70b-versatile',
@@ -113,8 +113,16 @@ async function generateWithNvidia(prompt, options = {}) {
     });
 
     if (!response.ok) {
-        const error = await response.json();
-        throw new Error(`NVIDIA error: ${error.error?.message || 'Unknown error'}`);
+        const errorText = await response.text();
+        console.error(`[AIProvider] NVIDIA API Error: ${response.status} - ${errorText}`);
+        let errorMessage = 'Unknown error';
+        try {
+            const errorJson = JSON.parse(errorText);
+            errorMessage = errorJson.error?.message || errorJson.message || 'Unknown error';
+        } catch (e) {
+            errorMessage = errorText;
+        }
+        throw new Error(`NVIDIA error: ${errorMessage}`);
     }
 
     const data = await response.json();
@@ -152,29 +160,47 @@ async function* streamWithNvidia(prompt, options = {}) {
     });
 
     if (!response.ok) {
-        const error = await response.json();
-        throw new Error(`NVIDIA error: ${error.error?.message || 'Unknown error'}`);
+        const errorText = await response.text();
+        console.error(`[AIProvider] NVIDIA Stream API Error: ${response.status} - ${errorText}`);
+        let errorMessage = 'Unknown error';
+        try {
+            const errorJson = JSON.parse(errorText);
+            errorMessage = errorJson.error?.message || errorJson.message || 'Unknown error';
+        } catch (e) {
+            errorMessage = errorText;
+        }
+        throw new Error(`NVIDIA error: ${errorMessage}`);
     }
 
-    const reader = response.body.getReader();
+    if (!response.body) {
+        throw new Error('NVIDIA stream response body is null');
+    }
+
     const decoder = new TextDecoder();
+    let lineBuffer = '';
 
-    while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+    for await (const value of response.body) {
+        const chunk = decoder.decode(value, { stream: true });
+        lineBuffer += chunk;
 
-        const chunk = decoder.decode(value);
-        const lines = chunk.split('\n').filter(line => line.startsWith('data: '));
+        let boundary = lineBuffer.indexOf('\n');
+        while (boundary !== -1) {
+            const line = lineBuffer.slice(0, boundary).trim();
+            lineBuffer = lineBuffer.slice(boundary + 1);
 
-        for (const line of lines) {
-            const data = line.slice(6);
-            if (data === '[DONE]') continue;
+            if (line.startsWith('data: ')) {
+                const data = line.slice(6);
+                if (data === '[DONE]') continue;
 
-            try {
-                const parsed = JSON.parse(data);
-                const content = parsed.choices[0]?.delta?.content;
-                if (content) yield content;
-            } catch (e) { }
+                try {
+                    const parsed = JSON.parse(data);
+                    const content = parsed.choices[0]?.delta?.content;
+                    if (content) yield content;
+                } catch (e) {
+                    console.warn('[AIProvider] Nvidia Stream JSON parse error:', e.message);
+                }
+            }
+            boundary = lineBuffer.indexOf('\n');
         }
     }
 }
@@ -338,21 +364,35 @@ async function* streamWithOpenRouter(prompt, options = {}) {
         }),
     });
 
-    const reader = response.body.getReader();
+    if (!response.body) {
+        throw new Error('OpenRouter stream response body is null');
+    }
+
     const decoder = new TextDecoder();
-    while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        const chunk = decoder.decode(value);
-        const lines = chunk.split('\n').filter(line => line.startsWith('data: '));
-        for (const line of lines) {
-            const data = line.slice(6);
-            if (data === '[DONE]') continue;
-            try {
-                const parsed = JSON.parse(data);
-                const content = parsed.choices[0]?.delta?.content;
-                if (content) yield content;
-            } catch (e) { }
+    let lineBuffer = '';
+
+    for await (const value of response.body) {
+        const chunk = decoder.decode(value, { stream: true });
+        lineBuffer += chunk;
+
+        let boundary = lineBuffer.indexOf('\n');
+        while (boundary !== -1) {
+            const line = lineBuffer.slice(0, boundary).trim();
+            lineBuffer = lineBuffer.slice(boundary + 1);
+
+            if (line.startsWith('data: ')) {
+                const data = line.slice(6);
+                if (data === '[DONE]') continue;
+
+                try {
+                    const parsed = JSON.parse(data);
+                    const content = parsed.choices[0]?.delta?.content;
+                    if (content) yield content;
+                } catch (e) {
+                    console.warn('[AIProvider] OpenRouter Stream JSON parse error:', e.message);
+                }
+            }
+            boundary = lineBuffer.indexOf('\n');
         }
     }
 }
@@ -396,7 +436,7 @@ async function generateWithGemini(prompt, options = {}) {
     for (const key of keys) {
         try {
             const genAI = new GoogleGenerativeAI(key);
-            const modelName = options.model || (options.fast ? 'gemini-1.5-flash' : 'gemini-1.5-pro');
+            const modelName = options.model || (options.fast ? 'gemini-1.5-flash' : 'gemini-1.5-flash-latest');
             const model = genAI.getGenerativeModel({ model: modelName });
             const content = options.systemInstruction ? `${options.systemInstruction}\n\n${prompt}` : prompt;
             const result = await model.generateContent(content);
@@ -430,7 +470,7 @@ async function* streamWithGemini(prompt, options = {}) {
     for (const key of keys) {
         try {
             const genAI = new GoogleGenerativeAI(key);
-            const modelName = options.model || (options.fast ? 'gemini-1.5-flash' : 'gemini-1.5-pro');
+            const modelName = options.model || (options.fast ? 'gemini-1.5-flash' : 'gemini-1.5-flash-latest');
             const model = genAI.getGenerativeModel({ model: modelName });
             const content = options.systemInstruction ? `${options.systemInstruction}\n\n${prompt}` : prompt;
             const result = await model.generateContentStream(content);
@@ -487,22 +527,30 @@ async function* streamWithOllama(prompt, options = {}) {
 
     const reader = response.body.getReader();
     const decoder = new TextDecoder('utf-8');
-    let buffer = '';
+    let lineBuffer = '';
+
     while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        let boundary = buffer.indexOf('\n');
+
+        const chunk = decoder.decode(value, { stream: true });
+        lineBuffer += chunk;
+
+        let boundary = lineBuffer.indexOf('\n');
         while (boundary !== -1) {
-            const line = buffer.slice(0, boundary).trim();
-            buffer = buffer.slice(boundary + 1);
+            const line = lineBuffer.slice(0, boundary).trim();
+            lineBuffer = lineBuffer.slice(boundary + 1);
+
             if (line) {
                 try {
                     const parsed = JSON.parse(line);
                     if (parsed.message?.content) yield parsed.message.content;
-                } catch (e) {}
+                } catch (e) {
+                    // Ollama might send partial JSON if not careful, though usually it's line-delimited
+                    console.warn('[AIProvider] Ollama Stream JSON parse error:', e.message);
+                }
             }
-            boundary = buffer.indexOf('\n');
+            boundary = lineBuffer.indexOf('\n');
         }
     }
 }
@@ -545,26 +593,52 @@ async function generate(prompt, options = {}) {
  * Main unified streaming function
  */
 async function* stream(prompt, options = {}) {
-    // For streaming, we try the best available provider based on priority
-    const provider = getProviderForFeature(options.feature);
-    console.log(`[AIProvider] Streaming with ${provider} for feature: ${options.feature || 'default'}`);
+    const fallbackChain = [PROVIDERS.NVIDIA, PROVIDERS.GROQ, PROVIDERS.OPENROUTER, PROVIDERS.GEMINI, PROVIDERS.OLLAMA];
+    let lastError = null;
+    let anySuccess = false;
 
-    try {
-        switch (provider) {
-            case PROVIDERS.NVIDIA: yield* streamWithNvidia(prompt, options); return;
-            case PROVIDERS.GROQ: yield* streamWithGroq(prompt, options); return;
-            case PROVIDERS.OPENROUTER: yield* streamWithOpenRouter(prompt, options); return;
-            case PROVIDERS.GEMINI: yield* streamWithGemini(prompt, options); return;
-            case PROVIDERS.OLLAMA: yield* streamWithOllama(prompt, options); return;
+    for (const provider of fallbackChain) {
+        // Skip if provider key is missing
+        if (provider === PROVIDERS.NVIDIA && !process.env.NVIDIA_API_KEY) continue;
+        if (provider === PROVIDERS.GROQ && !process.env.GROQ_API_KEY) continue;
+        if (provider === PROVIDERS.OPENROUTER && !process.env.OPENROUTER_API_KEY) continue;
+        if (provider === PROVIDERS.GEMINI && !process.env.GEMINI_API_KEY) continue;
+
+        console.log(`[AIProvider] Attempting stream with ${provider} for feature: ${options.feature || 'default'}`);
+
+        try {
+            switch (provider) {
+                case PROVIDERS.NVIDIA:
+                    yield* streamWithNvidia(prompt, options);
+                    anySuccess = true;
+                    return;
+                case PROVIDERS.GROQ:
+                    yield* streamWithGroq(prompt, options);
+                    anySuccess = true;
+                    return;
+                case PROVIDERS.OPENROUTER:
+                    yield* streamWithOpenRouter(prompt, options);
+                    anySuccess = true;
+                    return;
+                case PROVIDERS.GEMINI:
+                    yield* streamWithGemini(prompt, options);
+                    anySuccess = true;
+                    return;
+                case PROVIDERS.OLLAMA:
+                    yield* streamWithOllama(prompt, options);
+                    anySuccess = true;
+                    return;
+            }
+        } catch (error) {
+            console.error(`[AIProvider] Stream error with ${provider}:`, error.message);
+            lastError = error;
+            // Fall through to next provider in chain
+            continue;
         }
-    } catch (error) {
-        console.error(`[AIProvider] Stream error with ${provider}:`, error.message);
-        // Emergency fallback for streaming (to Gemini)
-        if (provider !== PROVIDERS.GEMINI && process.env.GEMINI_API_KEY) {
-            yield* streamWithGemini(prompt, options);
-        } else {
-            throw error;
-        }
+    }
+
+    if (!anySuccess) {
+        throw new Error(`All AI streaming providers in chain failed. Last error: ${lastError?.message}`);
     }
 }
 

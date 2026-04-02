@@ -186,7 +186,8 @@ const AptitudeTrainer: React.FC = () => {
                             <button
                                 key={cat.id}
                                 onClick={() => { setSelectedCategory(cat.id); setPhase('topic'); }}
-                                className={`p-8 rounded-2xl border border-slate-700/50 bg-gradient-to-br ${cat.gradient} hover:border-slate-500 transition-all text-left group hover:scale-[1.02]`}
+                                className="group p-6 bg-slate-800 rounded-2xl border border-white/5 shadow-xl hover:translate-y-[-4px] hover:shadow-2xl transition-all duration-300 text-left relative overflow-hidden"
+                                aria-label={`Select ${cat.label} category`}
                             >
                                 <div className={`w-14 h-14 rounded-2xl bg-slate-800/80 border border-slate-700 flex items-center justify-center ${cat.color} mb-4 group-hover:scale-110 transition-transform`}>
                                     {cat.icon}
@@ -220,8 +221,8 @@ const AptitudeTrainer: React.FC = () => {
                         </div>
 
                         <div>
-                            <p className="text-sm font-bold text-slate-300 mb-3">Choose Topic</p>
-                            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                            <label id="aptitude-topic-label" className="block text-sm font-bold text-slate-300 mb-3">Choose Topic</label>
+                            <div className="grid grid-cols-2 md:grid-cols-3 gap-2" role="group" aria-labelledby="aptitude-topic-label">
                                 {categoryObj.topics.map(topic => (
                                     <button
                                         key={topic}
@@ -230,6 +231,7 @@ const AptitudeTrainer: React.FC = () => {
                                             ? 'bg-violet-500/20 border-violet-500 text-violet-300'
                                             : 'bg-slate-800/50 border-slate-700 text-slate-400 hover:border-slate-500 hover:text-white'
                                             }`}
+                                        aria-pressed={selectedTopic === topic}
                                     >
                                         {topic}
                                     </button>
@@ -238,18 +240,19 @@ const AptitudeTrainer: React.FC = () => {
                         </div>
 
                         <div>
-                            <p className="text-sm font-bold text-slate-300 mb-3">Difficulty Level</p>
-                            <div className="flex gap-3">
+                            <label id="aptitude-difficulty-label" className="block text-sm font-bold text-slate-300 mb-3">Difficulty Level</label>
+                            <div className="flex gap-3" role="group" aria-labelledby="aptitude-difficulty-label">
                                 {DIFFICULTY_CONFIG.map(d => (
                                     <button
                                         key={d.id}
                                         onClick={() => setDifficulty(d.id)}
                                         className={`flex-1 py-3 rounded-xl text-sm font-bold transition-all border ${difficulty === d.id
-                                            ? 'bg-slate-700 border-slate-500 text-white'
-                                            : 'bg-slate-800/50 border-slate-700 text-slate-500 hover:border-slate-600'
+                                            ? 'bg-violet-500/20 border-violet-500 text-violet-300 shadow-lg shadow-violet-500/10'
+                                            : 'bg-slate-800/50 border-slate-700 text-slate-400 hover:border-slate-500 hover:text-white'
                                             }`}
+                                        aria-pressed={difficulty === d.id}
                                     >
-                                        <span className={difficulty === d.id ? d.color : ''}>{d.label}</span>
+                                        {d.label}
                                     </button>
                                 ))}
                             </div>

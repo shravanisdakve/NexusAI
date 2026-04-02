@@ -89,8 +89,10 @@ const MockPaperGenerator: React.FC = () => {
                             </h3>
                             
                             <div>
-                                <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1.5 ml-1">Subject</label>
+                                <label htmlFor="paper-subject-input" className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1.5 ml-1">Subject</label>
                                 <Input
+                                    id="paper-subject-input"
+                                    name="subject"
                                     value={subject}
                                     onChange={(e) => setSubject(e.target.value)}
                                     placeholder="e.g. Applied Math IV"
@@ -100,8 +102,10 @@ const MockPaperGenerator: React.FC = () => {
                             </div>
 
                             <div>
-                                <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1.5 ml-1">Branch</label>
+                                <label htmlFor="paper-branch-input" className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1.5 ml-1">Branch</label>
                                 <Input
+                                    id="paper-branch-input"
+                                    name="branch"
                                     value={branch}
                                     onChange={(e) => setBranch(e.target.value)}
                                     placeholder="e.g. Comps / IT"
@@ -112,8 +116,8 @@ const MockPaperGenerator: React.FC = () => {
 
                             <div className="grid grid-cols-2 gap-3">
                                 <div>
-                                    <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1.5 ml-1">Year</label>
-                                    <Select value={year} onChange={(e) => setYear(e.target.value)}>
+                                    <label htmlFor="paper-year-select" className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1.5 ml-1">Year</label>
+                                    <Select id="paper-year-select" name="year" value={year} onChange={(e) => setYear(e.target.value)}>
                                         <option>FE</option>
                                         <option>SE</option>
                                         <option>TE</option>
@@ -121,8 +125,8 @@ const MockPaperGenerator: React.FC = () => {
                                     </Select>
                                 </div>
                                 <div>
-                                    <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1.5 ml-1">Sem</label>
-                                    <Select value={semester} onChange={(e) => setSemester(e.target.value)}>
+                                    <label htmlFor="paper-sem-select" className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1.5 ml-1">Sem</label>
+                                    <Select id="paper-sem-select" name="semester" value={semester} onChange={(e) => setSemester(e.target.value)}>
                                         {Array.from({ length: 8 }, (_, i) => (
                                             <option key={i+1}>Sem {i+1}</option>
                                         ))}

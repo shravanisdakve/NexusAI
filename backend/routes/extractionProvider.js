@@ -13,11 +13,11 @@ const mammoth = require('mammoth');
 // --- GEMINI KEY POOL MANAGER (OCR Fallback) ---
 const getGeminiKeys = () => {
     const keys = [process.env.GEMINI_API_KEY];
-    for (let i = 2; i <= 10; i++) {
+    for (let i = 1; i <= 10; i++) {
         const key = process.env[`GEMINI_API_KEY_${i}`];
         if (key) keys.push(key);
     }
-    return keys.filter(Boolean);
+    return [...new Set(keys.filter(Boolean))]; // Filter nulls and remove duplicates
 };
 
 const keyPool = getGeminiKeys();
@@ -82,7 +82,15 @@ router.post('/streamChat', async (req, res) => {
             res.write(`data: ${JSON.stringify({ text: chunk })}\n\n`);
         }
         res.end();
-    } catch (e) { res.status(500).json({ error: e.message }); }
+    } catch (e) {
+        console.error(`[AI Stream] Error: ${e.message}`);
+        if (!res.headersSent) {
+            res.status(500).json({ error: e.message });
+        } else {
+            res.write(`data: ${JSON.stringify({ error: e.message })}\n\n`);
+            res.end();
+        }
+    }
 });
 
 router.post('/streamStudyBuddyChat', async (req, res) => {
@@ -168,7 +176,10 @@ router.post('/extractTextFromFile', async (req, res) => {
         const dataPart = { inlineData: { data: base64Data, mimeType: mimeType || 'application/pdf' } };
         const extractedText = await callGeminiWithRetry(FILE_EXTRACTION_PROMPT, dataPart);
         res.json({ text: extractedText });
-    } catch (e) { res.status(500).json({ error: e.message }); }
+    } catch (e) { 
+        console.error(`[ExtractFromFile Error]: ${e.message}`, e.stack);
+        res.status(500).json({ error: `AI Extraction Failed: ${e.message}` }); 
+    }
 });
 
 router.post('/generateQuizQuestion', async (req, res) => {

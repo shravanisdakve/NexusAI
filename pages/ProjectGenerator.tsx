@@ -49,7 +49,7 @@ const ProjectGenerator: React.FC = () => {
                 <div className="md:col-span-1 bg-slate-800/50 rounded-xl p-6 ring-1 ring-slate-700 h-fit">
                     <form onSubmit={handleGenerate} className="space-y-4">
                         <div>
-                            <label className="block text-sm font-medium text-slate-300 mb-2">Branch</label>
+                            <label htmlFor="project-branch" className="block text-sm font-medium text-slate-300 mb-2">Branch</label>
                             <Input
                                 id="project-branch"
                                 name="branch"
@@ -59,7 +59,7 @@ const ProjectGenerator: React.FC = () => {
                             />
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-slate-300 mb-2">Area of Interest</label>
+                            <label htmlFor="project-interest" className="block text-sm font-medium text-slate-300 mb-2">Area of Interest</label>
                             <Input
                                 id="project-interest"
                                 name="interest"
@@ -69,7 +69,7 @@ const ProjectGenerator: React.FC = () => {
                             />
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-slate-300 mb-2">Difficulty</label>
+                            <label htmlFor="project-difficulty" className="block text-sm font-medium text-slate-300 mb-2">Difficulty</label>
                             <Select id="project-difficulty" name="difficulty" value={difficulty} onChange={(e) => setDifficulty(e.target.value)}>
                                 <option>Beginner</option>
                                 <option>Intermediate</option>

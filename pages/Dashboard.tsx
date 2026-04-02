@@ -667,6 +667,17 @@ const Dashboard: React.FC = () => {
                                 <ActivePlanWidget />
                             </Card>
                         </div>
+                        <div className="bg-slate-800 rounded-xl p-8 border border-white/10 shadow-card hover:shadow-card-hover transition-all duration-300">
+                            <h3 className="text-xl font-bold text-slate-100 flex items-center mb-4">
+                                <Library className="w-6 h-6 mr-3 text-violet-400" /> {t('dashboard.engineeringResourcesTitle')}
+                            </h3>
+                            <p className="text-slate-400 mb-6">{t('dashboard.engineeringResourcesSubtitle')}</p>
+                            <Link to="/resources">
+                                <Button className="w-full text-sm">
+                                    {t('dashboard.viewAllResources')}
+                                </Button>
+                            </Link>
+                        </div>
                         <MyCourses />
                     </div>
                 </div>

@@ -192,14 +192,19 @@ interface ModalProps {
     onClose: () => void;
     title: string;
     children: React.ReactNode;
+    idPrefix?: string; // Optional custom prefix
 }
-export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }) => {
+
+export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, idPrefix }) => {
+    const generatedId = React.useId();
+    const modalTitleId = idPrefix ? `${idPrefix}-title` : `modal-title-${generatedId}`;
+
     if (!isOpen) return null;
 
     return (
         <div
             className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 transition-opacity duration-300"
-            aria-labelledby="modal-title"
+            aria-labelledby={modalTitleId}
             role="dialog"
             aria-modal="true"
             onClick={onClose}
@@ -210,7 +215,7 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }
                 style={{ animationName: 'modal-enter', animationDuration: '0.2s', animationFillMode: 'forwards' }}
             >
                 <div className="flex justify-between items-center mb-4">
-                    <h2 id="modal-title" className="text-xl font-bold text-white">{title}</h2>
+                    <h2 id={modalTitleId} className="text-xl font-bold text-white">{title}</h2>
                     <button onClick={onClose} className="text-slate-400 hover:text-white p-1 rounded-full hover:bg-slate-700 transition-colors">
                         <X size={20} />
                     </button>
