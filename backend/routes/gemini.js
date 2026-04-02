@@ -24,11 +24,14 @@ const getGenAI = () => {
 };
 
 // Helper to get model
-const getModel = (modelName = 'gemini-2.0-flash', systemInstruction = null) => {
+const getModel = (modelName = 'gemini-2.0-flash', systemInstruction = null, generationConfig = {}) => {
     const genAI = getGenAI();
     const config = { model: modelName };
     if (systemInstruction) {
         config.systemInstruction = systemInstruction;
+    }
+    if (Object.keys(generationConfig).length > 0) {
+        config.generationConfig = generationConfig;
     }
     return genAI.getGenerativeModel(config);
 };
@@ -253,10 +256,7 @@ router.post('/generateQuizQuestion', async (req, res) => {
     try {
         const { context, language } = req.body;
         console.log(`[GenerateQuizQuestion] Language: ${language}`);
-        const model = genAI.getGenerativeModel({
-            model: "gemini-2.0-flash",
-            generationConfig: { responseMimeType: "application/json" }
-        });
+        const model = getModel('gemini-2.0-flash', null, { responseMimeType: "application/json" });
 
         let prompt = `Based on the following context, generate a single multiple-choice quiz question to test understanding. The question should focus on a key concept from the text. 
         RETURN ONLY RAW JSON. Do not wrap in markdown or code blocks.`;
@@ -291,10 +291,7 @@ router.post('/generateQuizQuestion', async (req, res) => {
 router.post('/generateQuizSet', async (req, res) => {
     try {
         const { context, count = 5, language } = req.body;
-        const model = genAI.getGenerativeModel({
-            model: "gemini-2.0-flash",
-            generationConfig: { responseMimeType: "application/json" }
-        });
+        const model = getModel('gemini-2.0-flash', null, { responseMimeType: "application/json" });
 
         let prompt = `Based on the provided notes/context, generate a set of ${count} multiple-choice quiz questions.
         Focus on testing key concepts, definitions, and applications.
@@ -362,10 +359,7 @@ router.post('/getStudySuggestions', async (req, res) => {
 router.post('/generateFlashcards', async (req, res) => {
     try {
         const { context, language } = req.body;
-        const model = genAI.getGenerativeModel({
-            model: "gemini-2.0-flash",
-            generationConfig: { responseMimeType: "application/json" }
-        });
+        const model = getModel('gemini-2.0-flash', null, { responseMimeType: "application/json" });
 
         let prompt = `Based on the following context, generate a list of flashcards. Each flashcard should have a 'front' (a question or term) and a 'back' (the answer or definition).
         RETURN ONLY RAW JSON. Do not wrap in markdown or code blocks.`;
@@ -425,10 +419,7 @@ router.post('/getSuggestionForMood', async (req, res) => {
 router.post('/breakDownGoal', async (req, res) => {
     try {
         const { goalTitle, language } = req.body;
-        const model = genAI.getGenerativeModel({
-            model: "gemini-2.0-flash",
-            generationConfig: { responseMimeType: "application/json" }
-        });
+        const model = getModel('gemini-2.0-flash', null, { responseMimeType: "application/json" });
 
         let prompt = `A user has set the following academic goal: "${goalTitle}".
         Break this high-level goal down into a short list of 3-5 small, actionable sub-tasks.
@@ -457,10 +448,7 @@ router.post('/breakDownGoal', async (req, res) => {
 router.post('/generateProjectIdeas', async (req, res) => {
     try {
         const { branch, interest, difficulty, language } = req.body;
-        const model = genAI.getGenerativeModel({
-            model: "gemini-2.0-flash",
-            generationConfig: { responseMimeType: "application/json" }
-        });
+        const model = getModel('gemini-2.0-flash', null, { responseMimeType: "application/json" });
 
         let prompt = `Generate 5 unique and innovative engineering project ideas.
         Branch: ${branch}
@@ -498,10 +486,7 @@ router.post('/generateProjectIdeas', async (req, res) => {
 router.post('/generateMockPaper', async (req, res) => {
     try {
         const { branch, subject, year, language } = req.body;
-        const model = genAI.getGenerativeModel({
-            model: "gemini-2.0-flash",
-            generationConfig: { responseMimeType: "application/json" }
-        });
+        const model = getModel('gemini-2.0-flash', null, { responseMimeType: "application/json" });
 
         let prompt = `Generate a comprehensive engineering exam mock question paper for Mumbai University.
         Branch: ${branch}
@@ -675,13 +660,11 @@ router.post('/streamFeynmanChat', async (req, res) => {
     }
 });
 
+// --- FEYNMAN TECHNIQUE FEEDBACK SERVICE ---
 router.post('/getFeynmanFeedback', async (req, res) => {
     try {
         const { topic, explanation, notes, language } = req.body;
-        const model = genAI.getGenerativeModel({
-            model: "gemini-2.0-flash",
-            generationConfig: { responseMimeType: "application/json" }
-        });
+        const model = getModel('gemini-2.0-flash', null, { responseMimeType: "application/json" });
 
         let prompt = `You are an expert pedagogy analyzer. Evaluate the user's explanation of "${topic}" using the Feynman Technique principles.
         
@@ -730,10 +713,7 @@ router.post('/getFeynmanFeedback', async (req, res) => {
 router.post('/generateHighlights', async (req, res) => {
     try {
         const { text, language } = req.body;
-        const model = genAI.getGenerativeModel({
-            model: "gemini-2.0-flash",
-            generationConfig: { responseMimeType: "application/json" }
-        });
+        const model = getModel('gemini-2.0-flash', null, { responseMimeType: "application/json" });
 
         let prompt = `You are an expert academic highlighter. Analyze the provided study text and identify the MOST CRITICAL sentences that a student should highlight for revision.
         

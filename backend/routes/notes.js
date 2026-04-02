@@ -338,10 +338,18 @@ router.post('/:courseId/flashcards', auth, async (req, res) => {
 
         const { flashcards } = req.body;
 
-        if (!Array.isArray(flashcards) || flashcards.length === 0) {
+        if (!Array.isArray(flashcards)) {
             return res.status(400).json({
                 success: false,
                 message: 'Flashcards array is required'
+            });
+        }
+
+        if (flashcards.length === 0) {
+            return res.json({
+                success: true,
+                message: 'No flashcards to add',
+                flashcards: []
             });
         }
 
@@ -378,6 +386,7 @@ router.post('/:courseId/flashcards', auth, async (req, res) => {
         });
     }
 });
+
 
 // @route   PUT /api/notes/:courseId/flashcards/:flashcardId
 // @desc    Update a flashcard (for spaced repetition)
