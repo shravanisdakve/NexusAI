@@ -488,7 +488,7 @@ const AiTutor: React.FC = () => {
                     )}
                     <div className="flex items-center gap-3">
                         <label className="p-3 bg-slate-800 hover:bg-slate-700 rounded-xl border border-slate-700 transition-colors cursor-pointer group">
-                            <input type="file" onChange={handleImageUpload} className="hidden" />
+                            <input id="chat-file-input" name="chatFileInput" type="file" onChange={handleImageUpload} className="hidden" />
                             <Paperclip size={20} className="text-slate-400 group-hover:text-white" />
                         </label>
                         <div className="flex-1 relative">

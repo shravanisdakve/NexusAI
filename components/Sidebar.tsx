@@ -73,6 +73,7 @@ const ProfileEditModal: React.FC<ProfileEditModalProps> = ({ isOpen, onClose, cu
                     </label>
                     <Input
                         id="displayNameSidebar"
+                        name="displayName"
                         value={newName}
                         onChange={(event) => setNewName(event.target.value)}
                         placeholder={t('sidebar.profile.displayNamePlaceholder')}
@@ -95,7 +96,7 @@ const ProfileEditModal: React.FC<ProfileEditModalProps> = ({ isOpen, onClose, cu
     );
 };
 
-const studyNavigation = [
+export const studyNavigation = [
     { key: 'sidebar.nav.studyHub', href: '/', icon: LayoutDashboard },
     { key: 'sidebar.nav.curriculum', href: '/curriculum', icon: GraduationCap },
     { key: 'sidebar.nav.university', href: '/university-status', icon: Bell },
@@ -105,7 +106,7 @@ const studyNavigation = [
     { key: 'sidebar.nav.studyRoom', href: '/study-lobby', icon: Users },
 ];
 
-const placementNavigation = [
+export const placementNavigation = [
     { key: 'sidebar.nav.placement', href: '/placement', icon: Briefcase },
     { key: 'Practice Hub', href: '/practice-hub', icon: Calculator, directTranslation: true },
     { key: 'Resume Builder', href: '/resume-builder', icon: FileText, directTranslation: true },
@@ -139,7 +140,7 @@ const Sidebar: React.FC = () => {
 
     return (
         <>
-            <aside className="w-[280px] flex-shrink-0 bg-[#0F1117] border-r border-white/5 p-6 flex flex-col overflow-y-auto custom-scrollbar">
+            <aside className="hidden xl:flex w-[280px] flex-shrink-0 bg-[#0F1117] border-r border-white/5 p-6 flex-col overflow-y-auto custom-scrollbar">
                 <div className="flex items-center mb-10">
                     <div className="p-2 bg-violet-600 rounded-lg">
                         <BrainCircuit className="w-7 h-7 text-white" />

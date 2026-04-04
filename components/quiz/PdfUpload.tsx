@@ -77,6 +77,8 @@ const PdfUpload: React.FC<PdfUploadProps> = ({ onTextExtracted, isProcessing }) 
               Supports PDF, DOCX, TXT, Images (Max 15MB)
             </span>
             <input 
+              id="quiz-pdf-upload"
+              name="quizPdfUpload"
               type="file" 
               className="hidden" 
               accept=".pdf,.docx,.txt,.png,.jpg,.jpeg" 
