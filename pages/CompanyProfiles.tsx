@@ -282,6 +282,8 @@ const CompanyProfiles: React.FC = () => {
                     <div className="relative max-w-md">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 w-4 h-4" />
                         <input
+                            id="company-search"
+                            name="companySearch"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             placeholder="Search companies..."

@@ -188,7 +188,7 @@ const MUPaperBank: React.FC = () => {
                                     file ? 'border-emerald-500/50 bg-emerald-500/5' : 'border-slate-700 hover:border-sky-500/50 hover:bg-sky-500/5'
                                 }`}
                             >
-                                <input ref={fileInputRef} type="file" className="hidden" accept=".pdf,image/*" onChange={handleFileChange} />
+                                <input id="paper-file-upload" name="paperFileUpload" ref={fileInputRef} type="file" className="hidden" accept=".pdf,image/*" onChange={handleFileChange} />
                                 {file ? (
                                     <>
                                         <div className="w-12 h-12 bg-emerald-500/20 text-emerald-400 rounded-xl flex items-center justify-center">

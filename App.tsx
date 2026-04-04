@@ -49,7 +49,7 @@ import SmartStudy from './pages/SmartStudy';
 import { useAuth } from './contexts/AuthContext';
 import { Spinner } from '@/components/ui';
 import { ModeProvider } from './contexts/ModeContext';
-import TopBarTabs from './components/TopBarTabs';
+import Header from './components/Header';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated, loading } = useAuth(); // Using isAuthenticated and loading from useAuth
@@ -68,7 +68,7 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
         <Sidebar />
       </div>
       <main className="flex-1 overflow-y-auto flex flex-col relative w-full z-0">
-        <TopBarTabs />
+        <Header />
         <div className="p-4 sm:p-6 lg:p-8 flex-1 h-full">
           {children}
         </div>
