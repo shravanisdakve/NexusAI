@@ -109,6 +109,7 @@ const seedDemoData = async (userId, branch = 'CSE') => {
             }
         ]);
 
+/*
         // 4. Create a Personal Study Room
         await StudyRoom.create({
             name: `${branch} Mastery Hub`,
@@ -128,6 +129,7 @@ const seedDemoData = async (userId, branch = 'CSE') => {
                 version: 1
             }
         });
+        */
 
         // 5. Create an Academic Goal
         await Goal.create({
