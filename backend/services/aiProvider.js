@@ -559,7 +559,8 @@ async function* streamWithOllama(prompt, options = {}) {
  * Main unified generation function - IMPLEMENTS NVIDIA -> GROQ -> OPENROUTER -> GEMINI
  */
 async function generate(prompt, options = {}) {
-    const fallbackChain = [PROVIDERS.NVIDIA, PROVIDERS.GROQ, PROVIDERS.OPENROUTER, PROVIDERS.GEMINI, PROVIDERS.OLLAMA];
+    // New Priority: Nvidia -> Groq -> Local Ollama -> OpenRouter -> Gemini (Last resort)
+    const fallbackChain = [PROVIDERS.NVIDIA, PROVIDERS.GROQ, PROVIDERS.OLLAMA, PROVIDERS.OPENROUTER, PROVIDERS.GEMINI];
     let lastError = null;
 
     for (const provider of fallbackChain) {
@@ -593,7 +594,8 @@ async function generate(prompt, options = {}) {
  * Main unified streaming function
  */
 async function* stream(prompt, options = {}) {
-    const fallbackChain = [PROVIDERS.NVIDIA, PROVIDERS.GROQ, PROVIDERS.OPENROUTER, PROVIDERS.GEMINI, PROVIDERS.OLLAMA];
+    // New Priority: Nvidia -> Groq -> Local Ollama -> OpenRouter -> Gemini (Last resort)
+    const fallbackChain = [PROVIDERS.NVIDIA, PROVIDERS.GROQ, PROVIDERS.OLLAMA, PROVIDERS.OPENROUTER, PROVIDERS.GEMINI];
     let lastError = null;
     let anySuccess = false;
 
