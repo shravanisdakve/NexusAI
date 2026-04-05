@@ -6,6 +6,7 @@
 const express = require('express');
 const router = express.Router();
 const aiProvider = require('../services/aiProvider');
+const ocrService = require('../services/ocrService');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const pdf = require('pdf-parse');
 const mammoth = require('mammoth');
@@ -165,7 +166,17 @@ router.post('/extractTextFromFile', async (req, res) => {
             if (localText.trim().length > 300) return res.json({ text: localText.trim() });
         } catch (e) { }
 
-        // Cloud OCR Fallback (NVIDIA vision models don't support PDF directly via standard API yet, so we use Gemini/Groq)
+        // NEW: Local OCR fallback for Images (Zero API Keys)
+        if (mimeType?.includes('image')) {
+            try {
+                const localOcrText = await ocrService.extractFromImage(base64Data);
+                if (localOcrText?.length > 50) return res.json({ text: localOcrText });
+            } catch (e) {
+                console.warn(`[LocalOCR-Image] Failed: ${e.message}`);
+            }
+        }
+
+        // Cloud OCR Fallback (NVIDIA/Groq/Gemini as last resort)
         if (mimeType?.includes('image') && process.env.GROQ_API_KEY) {
             try {
                 const text = await aiProvider.extractTextWithGroqVision(base64Data, mimeType, FILE_EXTRACTION_PROMPT);
