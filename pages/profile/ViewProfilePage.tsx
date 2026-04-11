@@ -66,6 +66,11 @@ const ViewProfilePage: React.FC = () => {
                         </h3>
                         
                         <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <BookOpen size={14} className="text-sky-400" />
+                                    <span className="text-[13px] text-slate-400">Degree Course</span>
+                                </div>
                                 <span className="text-[13px] font-semibold text-white uppercase tracking-wider">{user.branchAbbr || 'B.E. COMPS'}</span>
                             </div>
                             
