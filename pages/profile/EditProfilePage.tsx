@@ -52,19 +52,21 @@ const EditProfilePage: React.FC = () => {
 
                 <form onSubmit={handleSave} className="space-y-8">
                     {/* Avatar Upload Placeholder */}
-                    <div className="flex flex-col items-center gap-4 p-8 rounded-[2rem] bg-slate-900/40 border border-white/5 backdrop-blur-xl relative overflow-hidden group">
-                        <div className="absolute inset-0 bg-gradient-to-br from-violet-600/5 to-transparent"></div>
+                    <div className="flex items-center gap-4 p-4 rounded-xl bg-slate-900/40 border border-white/5">
                         <div className="relative">
                             <img
-                                src={`https://ui-avatars.com/api/?name=${formData.displayName || 'User'}&background=random&size=128`}
+                                src={`https://ui-avatars.com/api/?name=${formData.displayName || 'User'}&background=random&size=64`}
                                 alt="Profile Avatar"
-                                className="w-32 h-32 rounded-[2rem] border-2 border-violet-500/20 relative z-10"
+                                className="w-16 h-16 rounded-full border border-violet-500/20"
                             />
-                            <button type="button" className="absolute bottom-2 right-2 p-2 bg-violet-600 rounded-xl text-white shadow-lg shadow-violet-600/40 z-20 hover:scale-110 transition-transform">
-                                <Camera size={16} />
+                            <button type="button" className="absolute -bottom-1 -right-1 p-1.5 bg-violet-600 rounded-full text-white shadow-lg z-20 hover:scale-110 transition-transform">
+                                <Camera size={12} />
                             </button>
                         </div>
-                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest relative z-10">Change Profile Photo</p>
+                        <div>
+                            <p className="text-[13px] font-bold text-white">Profile Photo</p>
+                            <p className="text-[11px] text-slate-500">Update your account avatar.</p>
+                        </div>
                     </div>
 
                     {/* Basic Info */}
@@ -137,22 +139,23 @@ const EditProfilePage: React.FC = () => {
                         </div>
                     </div>
 
-                    <div className="flex gap-4 pt-4">
-                        <Button
-                            type="submit"
-                            isLoading={isSaving}
-                            className="flex-1 rounded-2xl h-14 font-black uppercase tracking-widest text-sm shadow-xl shadow-violet-600/20"
-                        >
-                            <Save size={18} className="mr-2" />
-                            Save Changes
-                        </Button>
+                    {/* Sticky Save Bar */}
+                    <div className="sticky bottom-0 bg-[#050608] border-t border-white/10 p-4 -mx-4 lg:-mx-8 mt-8 flex justify-end gap-3 z-30 shadow-[0_-10px_40px_rgba(5,6,8,0.9)]">
                         <Button
                             type="button"
                             variant="ghost"
                             onClick={() => navigate('/profile')}
-                            className="px-8 rounded-2xl h-14 text-slate-500 hover:text-white"
+                            className="px-6 rounded-lg h-[38px] text-[13px] text-slate-400 hover:text-white"
                         >
                             Cancel
+                        </Button>
+                        <Button
+                            type="submit"
+                            isLoading={isSaving}
+                            className="px-8 rounded-lg h-[38px] text-[13px] font-bold bg-violet-600 hover:bg-violet-500 text-white"
+                        >
+                            <Save size={16} className="mr-2" />
+                            Save Profile
                         </Button>
                     </div>
                 </form>

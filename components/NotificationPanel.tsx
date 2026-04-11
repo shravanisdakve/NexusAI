@@ -4,6 +4,7 @@ import {
     Bell, CheckCheck, Settings, BookOpen, 
     MessageSquare, Award, Clock, ChevronRight, X, Flame
 } from 'lucide-react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface NotificationPanelProps {
@@ -52,7 +53,7 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({ isOpen, onClose }
         },
     ];
 
-    return (
+    const content = (
         <AnimatePresence>
             {isOpen && (
                 <>
@@ -62,7 +63,7 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({ isOpen, onClose }
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         onClick={onClose}
-                        className="fixed inset-0 bg-slate-950/40 backdrop-blur-sm z-[100]"
+                        className="fixed inset-0 bg-black/60 backdrop-blur-[6px] z-[999]"
                     />
 
                     {/* Drawer Panel */}
@@ -149,6 +150,8 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({ isOpen, onClose }
             )}
         </AnimatePresence>
     );
+
+    return createPortal(content, document.body);
 };
 
 export default NotificationPanel;
