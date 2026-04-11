@@ -137,8 +137,8 @@ const ToolCard = ({ tool }: { tool: Tool }) => (
                 </div>
             )}
         </div>
-        <h4 className="font-bold text-white mb-1">{tool.name}</h4>
-        <p className="text-xs text-slate-400 mb-4 line-clamp-2 leading-relaxed">
+        <h4 className="font-bold text-white text-[15px] mb-1">{tool.name}</h4>
+        <p className="text-[13px] leading-relaxed text-slate-400 mb-4 line-clamp-2">
             {tool.description}
         </p>
         <div className="mt-auto space-y-4">
@@ -149,8 +149,8 @@ const ToolCard = ({ tool }: { tool: Tool }) => (
                 </div>
             )}
             <Link to={tool.href}>
-                <Button size="sm" className="w-full gap-2 text-[10px] font-black uppercase tracking-widest bg-slate-700 hover:bg-brand-primary group-hover:bg-brand-primary transition-colors">
-                    Launch Tool <ArrowRight size={12} />
+                <Button size="md" className="w-full gap-2 text-[11px] font-black uppercase tracking-[0.15em] bg-slate-700 hover:bg-brand-primary group-hover:bg-brand-primary transition-colors h-10 shadow-none">
+                    Launch Tool <ArrowRight size={14} className="-mr-1" />
                 </Button>
             </Link>
         </div>
@@ -183,10 +183,12 @@ const PrepTools: React.FC = () => {
                         onTabChange={setActiveTab}
                     />
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-4">
                         {filteredTools.length > 0 ? (
-                            filteredTools.map(tool => (
-                                <ToolCard key={tool.id} tool={tool} />
+                            filteredTools.map((tool, i) => (
+                                <div key={tool.id} className={i === 0 ? "md:col-span-2 lg:col-span-2" : ""}>
+                                    <ToolCard tool={tool} />
+                                </div>
                             ))
                         ) : (
                             <div className="col-span-full py-12 text-center">

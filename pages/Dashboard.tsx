@@ -324,10 +324,10 @@ const HeroBlock: React.FC<HeroBlockProps> = ({ plan, planProgress, weakTopic }) 
                 </div>
             </div>
 
-            {/* Primary CTA — h-12 (48px), Actionable based on state */}
+            {/* Primary CTA — h-10 (40px) */}
             <button
                 onClick={() => navigate('/study-plan')}
-                className="w-full h-12 rounded-xl bg-violet-600 hover:bg-violet-500 hover:scale-[1.01] active:scale-[0.98] text-white text-sm font-semibold transition-all mb-5 flex items-center justify-center gap-2 group shadow-lg shadow-violet-900/20"
+                className="w-full h-10 rounded-xl bg-violet-600 hover:bg-violet-500 hover:-translate-y-[1px] active:scale-[0.98] text-white text-[13px] font-semibold transition-all mb-5 flex items-center justify-center gap-2 group shadow-lg shadow-violet-900/20"
             >
                 {hasTasksToday ? 'Resume learning' : 'Generate today\'s plan'} 
                 <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
