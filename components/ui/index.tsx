@@ -215,6 +215,17 @@ export const Modal: React.FC<ModalProps> = ({
     const generatedId = React.useId();
     const modalTitleId = idPrefix ? `${idPrefix}-title` : `modal-title-${generatedId}`;
 
+    React.useEffect(() => {
+        if (isOpen) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = 'unset';
+        }
+        return () => {
+            document.body.style.overflow = 'unset';
+        };
+    }, [isOpen]);
+
     if (!isOpen) return null;
 
     const sizeClasses = {

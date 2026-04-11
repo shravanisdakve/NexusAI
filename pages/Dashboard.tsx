@@ -779,8 +779,8 @@ const Dashboard: React.FC = () => {
     ];
 
     const MainContent = (
-        <div className="h-full flex flex-col space-y-6">
-            <header className="flex flex-col gap-6 shrink-0 pt-2 lg:pt-0">
+        <div className="flex flex-col space-y-5 min-h-0">
+            <header className="flex flex-col gap-5 shrink-0 pt-2 lg:pt-0">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-2xl bg-violet-600/10 border border-violet-500/20 flex items-center justify-center">
@@ -816,7 +816,7 @@ const Dashboard: React.FC = () => {
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -8 }}
                     transition={{ duration: 0.2 }}
-                    className="flex-1 overflow-y-auto no-scrollbar px-1 pb-20 lg:pb-4"
+                    className="flex-1 min-h-0 min-w-0 px-1 pb-20 lg:pb-4"
                 >
                     {activeTab === 'focus' && (
                         <div className="space-y-8 mt-1">
@@ -865,7 +865,7 @@ const Dashboard: React.FC = () => {
     );
 
     const SideContent = (
-        <div className="space-y-6 h-full flex flex-col">
+        <div className="space-y-5 flex flex-col min-h-0">
             <div className="bg-slate-900/40 border border-white/[0.06] rounded-2xl p-5 shrink-0">
                 <div className="flex items-center justify-between mb-5 px-0.5">
                     <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">My Study Tracks</p>
