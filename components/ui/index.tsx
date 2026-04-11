@@ -16,9 +16,9 @@ export const PageHeader: React.FC<PageHeaderProps> = ({ title, subtitle, icon, c
                 {React.cloneElement(icon as React.ReactElement<{ className?: string }>, { className: 'w-6 h-6 text-violet-400' })}
             </div>
         )}
-        <div className="space-y-1">
-            <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight italic uppercase">{title}</h1>
-            <p className="text-slate-500 text-xs font-bold uppercase tracking-[0.2em]">{subtitle}</p>
+        <div className="space-y-1 mt-1">
+            <h1 className="text-2xl font-black text-white tracking-tight italic uppercase">{title}</h1>
+            <p className="text-slate-500 text-[11px] font-bold uppercase tracking-[0.2em]">{subtitle}</p>
         </div>
     </div>
 );
@@ -47,9 +47,9 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
 
         // Size styles
         const sizeStyles = {
-            sm: 'px-4 py-2 text-ui',   // ~15px
-            md: 'px-6 py-3.5 text-base', // 16px
-            lg: 'px-8 py-4 text-lg',   // 18px
+            sm: 'px-3 py-1.5 text-xs',
+            md: 'h-10 px-4 text-[13px]',
+            lg: 'h-12 px-6 text-sm',
         };
 
         // Base styles - always applied
@@ -322,7 +322,7 @@ interface CardProps {
 }
 export const Card: React.FC<CardProps> = ({ children, className = '', variant = 'default' }) => {
     const baseStyles = variant === 'default' 
-        ? 'bg-slate-800/40 backdrop-blur-md border border-slate-700/50 shadow-xl p-6 hover:border-slate-600/50 hover:shadow-2xl transition-all duration-300' 
+        ? 'bg-slate-800/40 backdrop-blur-[6px] border border-slate-700/50 shadow-xl p-4 hover:border-slate-600/50 hover:-translate-y-1 hover:shadow-2xl hover:shadow-violet-500/10 transition-all duration-200' 
         : 'bg-transparent border-none shadow-none p-0';
         
     return (
