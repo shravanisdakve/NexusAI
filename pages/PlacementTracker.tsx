@@ -564,18 +564,18 @@ const PlacementTracker: React.FC<PlacementTrackerProps> = ({ prefillData, onPref
             })()}
 
             {/* Stats Bar */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-                <div className="premium-card p-6 bg-slate-900/40 border-slate-700/30 flex flex-col items-center">
-                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-2">Total</p>
-                    <p className="text-3xl font-black text-white italic">{totalApps}</p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-[20px]">
+                <div className="premium-card h-[100px] flex flex-col justify-center items-center bg-slate-900/40 border-slate-700/30">
+                    <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest mb-1">Total</p>
+                    <p className="text-[18px] font-black text-white italic">{totalApps}</p>
                 </div>
-                <div className="premium-card p-6 bg-slate-900/40 border-blue-500/20 flex flex-col items-center">
-                    <p className="text-[10px] font-black text-blue-500/60 uppercase tracking-[0.2em] mb-2">Active</p>
-                    <p className="text-3xl font-black text-blue-400 italic">{active}</p>
+                <div className="premium-card h-[100px] flex flex-col justify-center items-center bg-slate-900/40 border-blue-500/20">
+                    <p className="text-[11px] font-black text-blue-500/60 uppercase tracking-widest mb-1">Active</p>
+                    <p className="text-[18px] font-black text-blue-400 italic">{active}</p>
                 </div>
-                <div className="premium-card p-6 bg-slate-900/40 border-emerald-500/20 flex flex-col items-center">
-                    <p className="text-[10px] font-black text-emerald-500/60 uppercase tracking-[0.2em] mb-2">Offers</p>
-                    <p className="text-3xl font-black text-emerald-400 italic">{offers}</p>
+                <div className="premium-card h-[100px] flex flex-col justify-center items-center bg-slate-900/40 border-emerald-500/20">
+                    <p className="text-[11px] font-black text-emerald-500/60 uppercase tracking-widest mb-1">Offers</p>
+                    <p className="text-[18px] font-black text-emerald-400 italic">{offers}</p>
                 </div>
             </div>
 
@@ -607,43 +607,19 @@ const PlacementTracker: React.FC<PlacementTrackerProps> = ({ prefillData, onPref
 
             {/* Getting Started / Empty State */}
             {applications.length === 0 && !showForm && (
-                <div className="py-12 flex flex-col items-center text-center space-y-8 animate-in fade-in zoom-in-95 duration-500">
-                    <div className="space-y-2">
-                        <div className="w-16 h-16 bg-slate-800/50 rounded-2xl flex items-center justify-center mx-auto border border-slate-700/50">
-                            <ClipboardList className="w-8 h-8 text-slate-500" />
-                        </div>
-                        <h3 className="text-xl font-bold text-white">No applications tracked yet</h3>
-                        <p className="text-sm text-slate-500 max-w-sm mx-auto">
-                            Start tracking your placement journey. Add your first application manually or use a template below.
-                        </p>
+                <div className="py-12 flex flex-col items-center text-center space-y-6 animate-in fade-in zoom-in-95 duration-500 border border-slate-800 rounded-2xl bg-slate-900/30 p-8 max-w-2xl mx-auto">
+                    <div className="w-12 h-12 bg-violet-500/10 rounded-xl flex items-center justify-center mx-auto border border-violet-500/20 mb-2">
+                        <ClipboardList className="w-6 h-6 text-violet-400" />
                     </div>
-
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 w-full max-w-3xl">
-                        {[
-                            { name: 'TCS', ctc: '3.36-11 LPA', color: 'border-blue-500/20 text-blue-400' },
-                            { name: 'Infosys', ctc: '3.6-9.5 LPA', color: 'border-amber-500/20 text-amber-400' },
-                            { name: 'Accenture', ctc: '4.5-12 LPA', color: 'border-rose-500/20 text-rose-400' },
-                            { name: 'Wipro', ctc: '3.5-6.5 LPA', color: 'border-cyan-500/20 text-cyan-400' }
-                        ].map(tmpl => (
-                            <button
-                                key={tmpl.name}
-                                onClick={() => {
-                                    setForm({ ...form, company: tmpl.name, ctc: tmpl.ctc, status: 'applied', date: new Date().toISOString().split('T')[0] });
-                                    setShowForm(true);
-                                }}
-                                className={`p-4 rounded-2xl bg-slate-800/30 border ${tmpl.color} hover:bg-slate-800/50 transition-all text-left flex flex-col gap-2`}
-                            >
-                                <Building2 size={18} />
-                                <div>
-                                    <p className="text-sm font-bold text-white">{tmpl.name}</p>
-                                    <p className="text-[10px] opacity-60 font-mono italic">{tmpl.ctc}</p>
-                                </div>
-                            </button>
-                        ))}
-                    </div>
-
-                    <Button onClick={() => setShowForm(true)} className="bg-violet-600 hover:bg-violet-500 gap-2">
-                        <Plus size={16} /> Add Custom Application
+                    <h3 className="text-xl font-bold text-white mb-2">Start your placement journey</h3>
+                    <ul className="text-[13.5px] text-slate-400 text-left space-y-2 mb-4 mx-auto inline-block">
+                        <li className="flex items-center gap-2"><Check size={14} className="text-emerald-400" /> Track upcoming deadlines automatically</li>
+                        <li className="flex items-center gap-2"><Check size={14} className="text-emerald-400" /> Monitor selection status per company</li>
+                        <li className="flex items-center gap-2"><Check size={14} className="text-emerald-400" /> Get exact interview prep suggestions</li>
+                    </ul>
+                    
+                    <Button onClick={() => setShowForm(true)} className="bg-violet-600 hover:bg-violet-500 gap-2 h-[40px] text-[13px] px-6">
+                        Start by adding the first →
                     </Button>
                 </div>
             )}

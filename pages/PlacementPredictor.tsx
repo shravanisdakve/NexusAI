@@ -73,18 +73,18 @@ const PlacementPredictor: React.FC<PlacementPredictorProps> = ({ prefillData, on
     };
 
     return (
-        <div className="max-w-4xl mx-auto space-y-6 pb-12 animate-fade-in">
-            <div className="flex flex-col gap-2 mb-6">
+        <div className="max-w-[900px] w-full mx-auto space-y-6 pb-12 animate-fade-in">
+            <div className="flex flex-col gap-2 mb-4">
                 <h2 className="text-2xl font-bold text-white flex items-center gap-2">
                     <TrendingUp className="text-amber-400" /> Package & Placement Predictor
                 </h2>
-                <p className="text-sm text-slate-400">
+                <p className="text-[13.5px] leading-relaxed text-slate-400">
                     Calculates your probability of shortlisting and conversion based on live MU placement trends (SPIT, VJTI, NMIMS etc.), your CGPA, and specific skill expectations.
                 </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Card className="p-6 space-y-5 border-slate-700/50 bg-slate-800/40">
+            <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_360px] gap-6 items-start">
+                <Card className="p-5 space-y-4 border-slate-700/50 bg-slate-800/40">
                     <div className="grid grid-cols-2 gap-4">
                         <div className="col-span-2 md:col-span-1">
                             <label htmlFor="college-select" className="block text-[10px] font-black text-slate-500 uppercase mb-1.5 flex items-center gap-1">
@@ -95,7 +95,7 @@ const PlacementPredictor: React.FC<PlacementPredictorProps> = ({ prefillData, on
                                 name="college"
                                 value={formParams.college}
                                 onChange={(e) => setFormParams({...formParams, college: e.target.value})}
-                                className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white text-xs focus:border-amber-500/50 focus:outline-none"
+                                className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 h-[38px] text-white text-[13px] focus:border-amber-500/50 focus:outline-none"
                             >
                                 {MU_COLLEGES.map(c => <option key={c} value={c}>{c}</option>)}
                             </select>
@@ -108,7 +108,7 @@ const PlacementPredictor: React.FC<PlacementPredictorProps> = ({ prefillData, on
                                 name="branch"
                                 value={formParams.branch}
                                 onChange={(e) => setFormParams({...formParams, branch: e.target.value})}
-                                className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white text-xs focus:border-amber-500/50 focus:outline-none"
+                                className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 h-[38px] text-white text-[13px] focus:border-amber-500/50 focus:outline-none"
                             >
                                 {BRANCHES.map(b => <option key={b} value={b}>{b}</option>)}
                             </select>
@@ -123,7 +123,7 @@ const PlacementPredictor: React.FC<PlacementPredictorProps> = ({ prefillData, on
                                 name="targetCompany"
                                 value={formParams.targetCompany}
                                 onChange={(e) => setFormParams({...formParams, targetCompany: e.target.value})}
-                                className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white text-xs focus:border-amber-500/50 focus:outline-none"
+                                className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 h-[38px] text-white text-[13px] focus:border-amber-500/50 focus:outline-none"
                             >
                                 {TARGET_COMPANIES.map(t => <option key={t} value={t}>{t}</option>)}
                             </select>
@@ -167,7 +167,7 @@ const PlacementPredictor: React.FC<PlacementPredictorProps> = ({ prefillData, on
                         </div>
                     </div>
 
-                    <Button onClick={handlePredict} disabled={loading} className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 mt-4">
+                    <Button onClick={handlePredict} disabled={loading} className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold h-10 mt-2 text-[13px]">
                         {loading ? 'Analyzing Data...' : 'Run Prediction Model'}
                     </Button>
                 </Card>
@@ -274,28 +274,25 @@ const PlacementPredictor: React.FC<PlacementPredictorProps> = ({ prefillData, on
                             )}
                         </div>
                     ) : (
-                        <Card className="h-full border-slate-700/50 border-dashed bg-slate-800/10 p-6 flex flex-col justify-center">
-                            <div className="text-center mb-8">
-                                <TrendingUp className="w-10 h-10 text-slate-600 mx-auto mb-3" />
-                                <h3 className="text-lg font-bold text-slate-400 mb-1">Awaiting Parameters</h3>
-                                <p className="text-xs text-slate-500">Prediction logic assesses 4 primary factors:</p>
-                            </div>
-
+                        <Card className="h-full border-emerald-500/20 bg-emerald-500/5 p-6 flex flex-col justify-start">
+                            <h3 className="flex items-center gap-2 text-sm font-bold text-emerald-400 mb-4">
+                                <Lightbulb size={16} /> Example Output Guide
+                            </h3>
                             <div className="space-y-4">
-                                {[
-                                    { icon: <GraduationCap size={16} />, label: 'Academic Standing', desc: 'CGPA thresholds for MU colleges' },
-                                    { icon: <Code size={16} />, label: 'Technical Stack', desc: 'Skill-match with company requirements' },
-                                    { icon: <Building2 size={16} />, label: 'Market Trends', desc: 'Active hiring data for target tier' },
-                                    { icon: <Target size={16} />, label: 'Fit Analysis', desc: 'Profile strength vs. role expectations' }
-                                ].map((factor, i) => (
-                                    <div key={i} className="flex gap-4 p-3 rounded-xl bg-slate-900/40 border border-slate-800/50 opacity-60">
-                                        <div className="text-slate-400 shrink-0">{factor.icon}</div>
-                                        <div>
-                                            <p className="text-xs font-bold text-slate-300">{factor.label}</p>
-                                            <p className="text-[10px] text-slate-500">{factor.desc}</p>
-                                        </div>
+                                <div>
+                                    <p className="text-[11px] text-emerald-500/70 font-bold uppercase tracking-widest mb-1">Target</p>
+                                    <p className="text-sm font-black text-white">JP Morgan Chase</p>
+                                    <p className="text-xs text-slate-400">Selection Probability: ~45%</p>
+                                </div>
+                                
+                                <div className="p-3 bg-slate-900/50 border border-slate-700/50 rounded-xl opacity-80 pointer-events-none">
+                                    <p className="text-[10px] text-amber-500 font-bold mb-2">Missing Filters Detected</p>
+                                    <div className="flex flex-wrap gap-1.5 border-l-2 border-amber-500 pl-2">
+                                        <span className="text-[10px] line-through text-slate-500 border border-slate-700 rounded px-1">Python</span>
+                                        <span className="text-[10px] line-through text-slate-500 border border-slate-700 rounded px-1">Spring Boot</span>
                                     </div>
-                                ))}
+                                    <p className="text-[10px] text-slate-500 mt-2 leading-tight">These skills are required criteria for clearing initial ATS. Add these to your resume/toolkit.</p>
+                                </div>
                             </div>
                         </Card>
                     )}
