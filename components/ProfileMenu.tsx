@@ -30,7 +30,7 @@ const ProfileMenu: React.FC<ProfileMenuProps> = ({ isOpen, onClose }) => {
 
     if (!user) return null;
 
-    const userActions = [
+    const menuItems = [
 
         { 
             label: 'View Profile', 
@@ -125,9 +125,6 @@ const ProfileMenu: React.FC<ProfileMenuProps> = ({ isOpen, onClose }) => {
                                 <span className="text-[13px] font-medium text-red-400 group-hover/item:text-red-300">Logout</span>
                             </button>
                         </div>
-                    </motion.div>
-
-
                     </motion.div>
                 </>
             )}
