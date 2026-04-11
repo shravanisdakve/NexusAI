@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Card, Button } from '../components/ui';
-import { Target, TrendingUp, AlertCircle, Briefcase, GraduationCap, Code, Building2, Check } from 'lucide-react';
+import { Target, TrendingUp, AlertCircle, Briefcase, GraduationCap, Code, Building2, Check, Lightbulb } from 'lucide-react';
 import { predictPlacement, PredictionResult } from '../services/placementService';
 
 const MU_COLLEGES = [
