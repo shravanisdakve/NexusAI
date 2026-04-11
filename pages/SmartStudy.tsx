@@ -25,7 +25,7 @@ import Flashcard from '../components/Flashcard';
 
 const ELI5Modal: React.FC<{ isOpen: boolean; onClose: () => void; content: string; isLoading: boolean }> = ({ isOpen, onClose, content, isLoading }) => {
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="💡 Explain Like I'm 5">
+    <Modal isOpen={isOpen} onClose={onClose} title="Explain Like I'm 5">
       <div className="space-y-4 p-2">
         {isLoading ? (
           <div className="flex flex-col items-center py-12 space-y-4">
@@ -43,7 +43,7 @@ const ELI5Modal: React.FC<{ isOpen: boolean; onClose: () => void; content: strin
               </div>
             </div>
             <div className="mt-6 flex justify-end">
-              <Button onClick={onClose} variant="primary">Got it, thanks! ✨</Button>
+              <Button onClick={onClose} variant="primary">Got it, thanks!</Button>
             </div>
           </div>
         )}
@@ -212,7 +212,7 @@ const SmartStudy: React.FC = () => {
           </button>
           <div>
             <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-              <Sparkles className="text-violet-400" size={24} />
+              <Brain className="text-violet-400" size={24} />
               AI Study Guru <span className="text-slate-500 text-sm font-normal">| {note?.title}</span>
             </h1>
           </div>
@@ -402,7 +402,7 @@ const SmartStudy: React.FC = () => {
                    ) : quizzes.length > 0 ? (
                      <div className="space-y-4">
                         <div className="bg-emerald-500/10 border border-emerald-500/20 p-4 rounded-xl text-center">
-                           <p className="text-emerald-400 font-bold">Quiz Ready! ✨</p>
+                           <p className="text-emerald-400 font-bold">Quiz Ready!</p>
                            <p className="text-xs text-slate-400">5 questions generated based on this document.</p>
                         </div>
                          {quizzes.slice(0, 1).map((q, i) => {
@@ -430,7 +430,7 @@ const SmartStudy: React.FC = () => {
                                    })}
                                 </div>
                                 {selected !== null && (
-                                  <p className={`mt-3 text-[10px] font-bold uppercase tracking-tighter ${isCorrect ? 'text-emerald-400' : 'text-red-400'}`}>
+                                  <p className={`mt-3 text-xs font-bold uppercase tracking-tighter ${isCorrect ? 'text-emerald-400' : 'text-red-400'}`}>
                                     {isCorrect ? 'Correct Answer!' : `Wrong. Correct: ${q.options[q.correctOptionIndex]}`}
                                   </p>
                                 )}

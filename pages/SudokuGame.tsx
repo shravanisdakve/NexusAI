@@ -183,7 +183,7 @@ const SudokuGame: React.FC = () => {
     if (isCorrect) {
       setIsWon(true);
       setIsActive(false);
-      showToast("Trophy Unlocked! Your score has been synced. ✨", 'success');
+      showToast("Trophy Unlocked! Your score has been synced.", 'success');
       
       const scoreBase = difficulty === 'Easy' ? 1000 : difficulty === 'Medium' ? 2000 : 3000;
       const score = Math.max(0, scoreBase - timer - (mistakes * 50));

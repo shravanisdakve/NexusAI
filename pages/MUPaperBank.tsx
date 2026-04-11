@@ -261,7 +261,7 @@ const MUPaperBank: React.FC = () => {
                                         </div>
                                         <div>
                                             <span className="text-xs font-bold text-slate-100 block">{paper.name}</span>
-                                            <span className="text-[10px] text-slate-500 uppercase tracking-widest font-mono">Verify PDF</span>
+                                            <span className="text-xs text-slate-500 uppercase tracking-widest font-mono">Verify PDF</span>
                                         </div>
                                         <Download size={16} className="text-slate-600 group-hover/item:text-indigo-400 ml-2" />
                                     </a>
@@ -344,7 +344,7 @@ const BrowseResults: React.FC<{ results: any[] }> = ({ results }) => {
                         <div className="flex justify-between items-start gap-4">
                             <div className="flex-1">
                                 <p className="text-slate-200 font-medium mb-1 line-clamp-2 leading-relaxed">{q.questionText}</p>
-                                <div className="flex flex-wrap gap-2 items-center text-[10px] sm:text-xs">
+                                <div className="flex flex-wrap gap-2 items-center text-xs">
                                     <span className="px-2 py-0.5 bg-slate-800 text-slate-400 rounded-md border border-slate-700 group-hover:border-sky-500/20">{q.subject}</span>
                                     <span className="px-2 py-0.5 bg-sky-500/10 text-sky-400 rounded-md border border-sky-500/20">Year: {q.paperYear}</span>
                                     <span className="px-2 py-0.5 bg-amber-500/10 text-amber-500 rounded-md border border-amber-500/20">{q.marks} Marks</span>

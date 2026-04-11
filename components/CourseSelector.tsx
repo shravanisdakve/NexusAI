@@ -14,7 +14,14 @@ const CourseSelector: React.FC<CourseSelectorProps> = ({ selectedCourse, onCours
     useEffect(() => {
         const fetchCourses = async () => {
             const fetchedCourses = await getCourses();
-            setCourses(fetchedCourses);
+            // Filter out stale/demo data and empty strings
+            const cleanCourses = fetchedCourses.filter(c => 
+                c.name &&                          
+                c.name.trim().length > 2 &&        
+                c.name.toLowerCase() !== 'ads' &&
+                c.name !== c.id
+            );
+            setCourses(cleanCourses);
         };
         fetchCourses();
     }, []);
@@ -29,9 +36,10 @@ const CourseSelector: React.FC<CourseSelectorProps> = ({ selectedCourse, onCours
             <select
                 id="course-selector"
                 name="courseSelector"
+                aria-label="Select subject theme"
                 value={selectedCourse || ''}
                 onChange={(e) => onCourseChange(e.target.value || null)}
-                className="bg-slate-800/50 border border-slate-700 rounded-md py-2 px-3 text-sm text-slate-200 focus:ring-violet-500 focus:border-violet-500"
+                className="bg-slate-800/50 border border-slate-700 rounded-md py-2 px-3 text-ui text-slate-200 focus:ring-violet-500 focus:border-violet-500"
             >
                 <option value="">No specific course</option>
                 {courses.map(course => (

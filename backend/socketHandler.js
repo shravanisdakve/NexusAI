@@ -7,7 +7,9 @@ const { processModeration } = require('./services/moderatorService');
 
 const roomActivity = new Map(); // Track messages per room for autonomous tips
 
-const devAllowedOrigins = [
+const allowedOrigins = [
+    'https://nexusai-e068c.web.app',
+    'https://nexusai-e068c.firebaseapp.com',
     'http://localhost:3000',
     'http://localhost:5173',
     'http://localhost:5174',
@@ -23,9 +25,15 @@ const devAllowedOrigins = [
 const socketHandler = (server) => {
     const io = socketIo(server, {
         cors: {
-            origin: process.env.NODE_ENV === 'production'
-                ? (process.env.FRONTEND_URL || 'https://yourdomain.com')
-                : devAllowedOrigins,
+            origin: function (origin, callback) {
+                // allow requests with no origin (like mobile apps or curl requests)
+                if (!origin) return callback(null, true);
+                if (allowedOrigins.indexOf(origin) === -1) {
+                    const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
+                    return callback(new Error(msg), false);
+                }
+                return callback(null, true);
+            },
             methods: ["GET", "POST"],
             credentials: true
         }

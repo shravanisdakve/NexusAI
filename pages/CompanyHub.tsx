@@ -18,21 +18,29 @@ const CompanyHub: React.FC = () => {
     const [searchParams, setSearchParams] = useSearchParams();
     const initialTab = (searchParams.get('tab') as Tab) || 'companies';
     const [activeTab, setActiveTab] = useState<Tab>(initialTab);
+    const [prefillData, setPrefillData] = useState<any>(null);
 
     const handleTabChange = (tab: Tab) => {
         setActiveTab(tab);
         setSearchParams({ tab });
+        setPrefillData(null);
+    };
+
+    const handleSwitchToTab = (tab: Tab, data?: any) => {
+        setActiveTab(tab);
+        setSearchParams({ tab });
+        setPrefillData(data);
     };
 
     return (
         <div className="space-y-4">
             {/* Tab Switcher */}
-            <div className="flex items-center gap-2 bg-slate-800/50 p-1.5 rounded-2xl border border-slate-700/50">
+            <div className="flex items-center gap-2 bg-slate-800/50 p-1.5 rounded-2xl border border-slate-700/50 overflow-x-auto no-scrollbar flex-nowrap touch-pan-x company-hub-tabs">
                 {TABS.map(tab => (
                     <button
                         key={tab.id}
                         onClick={() => handleTabChange(tab.id)}
-                        className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all border ${activeTab === tab.id
+                        className={`company-hub-tab flex items-center gap-2 px-4 py-2.5 rounded-xl text-[11px] md:text-sm font-black uppercase tracking-wider transition-all border whitespace-nowrap shrink-0 ${activeTab === tab.id
                                 ? tab.activeColor
                                 : `${tab.color} border-transparent`
                             }`}
@@ -45,9 +53,21 @@ const CompanyHub: React.FC = () => {
 
             {/* Tab Content */}
             <div className="min-h-[600px]">
-                {activeTab === 'companies' && <CompanyProfiles />}
-                {activeTab === 'tracker' && <PlacementTracker />}
-                {activeTab === 'predictor' && <PlacementPredictor />}
+                {activeTab === 'companies' && (
+                    <CompanyProfiles onSwitchToTab={handleSwitchToTab} />
+                )}
+                {activeTab === 'tracker' && (
+                    <PlacementTracker 
+                        prefillData={prefillData} 
+                        onPrefillConsumed={() => setPrefillData(null)} 
+                    />
+                )}
+                {activeTab === 'predictor' && (
+                    <PlacementPredictor 
+                        prefillData={prefillData} 
+                        onPrefillConsumed={() => setPrefillData(null)} 
+                    />
+                )}
             </div>
         </div>
     );

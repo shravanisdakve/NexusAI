@@ -13,7 +13,8 @@ import {
   generateQuizSet, 
   generatePersonalizedQuiz, 
   generateTimedChallenge, 
-  generateFlashcardChallenge 
+  generateFlashcardChallenge,
+  generateQuizFromFile
 } from '../services/geminiService';
 import { getPersonalizationRecommendations } from '../services/personalizationService';
 
@@ -43,10 +44,10 @@ const QuizPractice: React.FC = () => {
     setViewState('upload');
   };
 
-  const handleTextExtracted = async (text: string) => {
+  const handleFileProcessed = async (base64: string, mimeType: string) => {
     setIsGenerating(true);
     try {
-      const quizJson = await generateQuizSet(text, 10);
+      const quizJson = await generateQuizFromFile(base64, mimeType, 10);
       const parsedQuiz = JSON.parse(quizJson);
       
       setActiveQuiz({
@@ -56,7 +57,7 @@ const QuizPractice: React.FC = () => {
       setViewState('active-quiz');
     } catch (error) {
       console.error('Failed to generate quiz:', error);
-      showToast('Failed to generate quiz. Try a shorter snippet.', 'error');
+      showToast('Failed to generate quiz from this file. It might be too large or complex.', 'error');
     } finally {
       setIsGenerating(false);
     }
@@ -150,7 +151,8 @@ const QuizPractice: React.FC = () => {
 
           {/* AI Generator Hero Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="relative group bg-gradient-to-br from-violet-600/10 to-indigo-600/5 border border-violet-500/20 rounded-[2.5rem] p-8 md:p-10 transition-all hover:bg-violet-600/15">
+            <div className="relative group bg-gradient-to-br from-violet-600/10 to-indigo-600/5 border border-violet-500/20 rounded-[2rem] md:rounded-[2.5rem] p-6 md:p-10 transition-all hover:bg-violet-600/15 overflow-hidden">
+
                <div className="absolute -top-12 -right-12 p-32 bg-violet-500/10 blur-[60px] rounded-full group-hover:bg-violet-500/20 transition-all duration-700"></div>
                <div className="relative z-10">
                   <Wand2 className="text-violet-400 mb-6" size={40} />
@@ -168,7 +170,8 @@ const QuizPractice: React.FC = () => {
                </div>
             </div>
 
-            <div className="relative group bg-slate-900/50 border border-emerald-500/20 rounded-[2.5rem] p-8 md:p-10">
+            <div className="relative group bg-slate-900/50 border border-emerald-500/20 rounded-[2rem] md:rounded-[2.5rem] p-6 md:p-10 overflow-hidden">
+
                <div className="relative z-10">
                   <Target className="text-emerald-400 mb-6" size={40} />
                   <h2 className="text-2xl md:text-3xl font-black text-white mb-2 uppercase tracking-tighter">Adaptive Challenge</h2>
@@ -203,37 +206,38 @@ const QuizPractice: React.FC = () => {
             </h3>
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <div onClick={handleStartFlashcards} className="group cursor-pointer bg-slate-900/40 p-8 rounded-3xl border border-white/5 hover:border-violet-500/40 transition-all hover:translate-y-[-4px] backdrop-blur-sm">
-                   <div className="w-14 h-14 bg-violet-500/10 rounded-2xl flex items-center justify-center mb-6 ring-1 ring-violet-500/20 group-hover:bg-violet-500/20 transition-all">
-                      <Sparkles className="text-violet-400" size={28} />
+                <div onClick={handleStartFlashcards} className="group cursor-pointer bg-slate-900/40 p-4 md:p-8 rounded-2xl md:rounded-3xl border border-white/5 hover:border-violet-500/40 transition-all hover:translate-y-[-4px] backdrop-blur-sm">
+                   <div className="w-12 h-12 md:w-14 md:h-14 bg-violet-500/10 rounded-xl md:rounded-2xl flex items-center justify-center mb-4 md:mb-6 ring-1 ring-violet-500/20 group-hover:bg-violet-500/20 transition-all">
+                      <Sparkles className="text-violet-400" size={24} />
                    </div>
-                   <h3 className="text-xl font-black text-white mb-2 uppercase tracking-tighter">Memory Labs</h3>
-                   <p className="text-xs text-slate-500 font-bold uppercase tracking-widest opacity-60">Spaced Repetition & Repair</p>
+                   <h3 className="text-lg md:text-xl font-black text-white mb-1 md:mb-2 uppercase tracking-tighter">Memory Labs</h3>
+                   <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest opacity-60">Spaced Repetition</p>
                 </div>
 
-                <div onClick={handleStartAiQuiz} className="group cursor-pointer bg-slate-900/40 p-8 rounded-3xl border border-white/5 hover:border-indigo-500/40 transition-all hover:translate-y-[-4px] backdrop-blur-sm">
-                   <div className="w-14 h-14 bg-indigo-500/10 rounded-2xl flex items-center justify-center mb-6 ring-1 ring-indigo-500/20 group-hover:bg-indigo-500/20 transition-all">
-                      <FileText className="text-indigo-400" size={28} />
+                <div onClick={handleStartAiQuiz} className="group cursor-pointer bg-slate-900/40 p-4 md:p-8 rounded-2xl md:rounded-3xl border border-white/5 hover:border-indigo-500/40 transition-all hover:translate-y-[-4px] backdrop-blur-sm">
+                   <div className="w-12 h-12 md:w-14 md:h-14 bg-indigo-500/10 rounded-xl md:rounded-2xl flex items-center justify-center mb-4 md:mb-6 ring-1 ring-indigo-500/20 group-hover:bg-indigo-500/20 transition-all">
+                      <FileText className="text-indigo-400" size={24} />
                    </div>
-                   <h3 className="text-xl font-black text-white mb-2 uppercase tracking-tighter">Note Scanner</h3>
-                   <p className="text-xs text-slate-500 font-bold uppercase tracking-widest opacity-60">PDF to Quiz Conversion</p>
+                   <h3 className="text-lg md:text-xl font-black text-white mb-1 md:mb-2 uppercase tracking-tighter">Note Scanner</h3>
+                   <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest opacity-60">PDF to Quiz</p>
                 </div>
 
-                <div onClick={() => navigate('/sudoku')} className="group cursor-pointer bg-slate-900/40 p-8 rounded-3xl border border-white/5 hover:border-emerald-500/40 transition-all hover:translate-y-[-4px] backdrop-blur-sm">
-                   <div className="w-14 h-14 bg-emerald-500/10 rounded-2xl flex items-center justify-center mb-6 ring-1 ring-emerald-500/20 group-hover:bg-emerald-500/20 transition-all">
-                      <Grid3X3 className="text-emerald-400" size={28} />
+                <div onClick={() => navigate('/sudoku')} className="group cursor-pointer bg-slate-900/40 p-4 md:p-8 rounded-2xl md:rounded-3xl border border-white/5 hover:border-emerald-500/40 transition-all hover:translate-y-[-4px] backdrop-blur-sm">
+                   <div className="w-12 h-12 md:w-14 md:h-14 bg-emerald-500/10 rounded-xl md:rounded-2xl flex items-center justify-center mb-4 md:mb-6 ring-1 ring-emerald-500/20 group-hover:bg-emerald-500/20 transition-all">
+                      <Grid3X3 className="text-emerald-400" size={24} />
                    </div>
-                   <h3 className="text-xl font-black text-white mb-2 uppercase tracking-tighter">Logic Grid</h3>
-                   <p className="text-xs text-slate-500 font-bold uppercase tracking-widest opacity-60">Architectural Thinking</p>
+                   <h3 className="text-lg md:text-xl font-black text-white mb-1 md:mb-2 uppercase tracking-tighter">Logic Grid</h3>
+                   <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest opacity-60">Architectural Thinking</p>
                 </div>
 
-                <div onClick={() => navigate('/speed-math')} className="group cursor-pointer bg-slate-900/40 p-8 rounded-3xl border border-white/5 hover:border-rose-500/40 transition-all hover:translate-y-[-4px] backdrop-blur-sm">
-                   <div className="w-14 h-14 bg-rose-500/10 rounded-2xl flex items-center justify-center mb-6 ring-1 ring-rose-500/20 group-hover:bg-rose-500/20 transition-all">
-                      <Calculator className="text-rose-400" size={28} />
+                <div onClick={() => navigate('/speed-math')} className="group cursor-pointer bg-slate-900/40 p-4 md:p-8 rounded-2xl md:rounded-3xl border border-white/5 hover:border-rose-500/40 transition-all hover:translate-y-[-4px] backdrop-blur-sm">
+                   <div className="w-12 h-12 md:w-14 md:h-14 bg-rose-500/10 rounded-xl md:rounded-2xl flex items-center justify-center mb-4 md:mb-6 ring-1 ring-rose-500/20 group-hover:bg-rose-500/20 transition-all">
+                      <Calculator className="text-rose-400" size={24} />
                    </div>
-                   <h3 className="text-xl font-black text-white mb-2 uppercase tracking-tighter">Data Sprint</h3>
-                   <p className="text-xs text-slate-500 font-bold uppercase tracking-widest opacity-60">Number Crunching Labs</p>
+                   <h3 className="text-lg md:text-xl font-black text-white mb-1 md:mb-2 uppercase tracking-tighter">Data Sprint</h3>
+                   <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest opacity-60">Number Crunching</p>
                 </div>
+
             </div>
           </div>
         </>
@@ -267,7 +271,7 @@ const QuizPractice: React.FC = () => {
              </div>
            ) : (
              <>
-               {viewState === 'upload' && <PdfUpload onTextExtracted={handleTextExtracted} isProcessing={false} />}
+               {viewState === 'upload' && <PdfUpload onFileProcessed={handleFileProcessed} isProcessing={isGenerating} />}
                {viewState === 'active-quiz' && activeQuiz && <QuizInterface quizData={activeQuiz} onClose={() => setViewState('selection')} />}
                {viewState === 'adaptive-challenge' && activeChallenge && <AdaptiveChallengeInterface challengeData={activeChallenge} onClose={() => setViewState('selection')} onComplete={() => {}} />}
                {viewState === 'flashcard-mode' && activeFlashcards && <FlashcardInterface data={activeFlashcards} onClose={() => setViewState('selection')} />}

@@ -9,27 +9,51 @@ const getAuthHeaders = () => {
     return token ? { Authorization: `Bearer ${token}` } : {};
 };
 
-export const getCourses = async (): Promise<Course[]> => {
-    console.log("[courseService] Fetching courses from MongoDB backend");
-    try {
-        const response = await axios.get(`${API_URL}/api/courses`, {
-            headers: getAuthHeaders()
-        });
+let coursesCache: Course[] | null = null;
+let lastFetchTime = 0;
+let pendingPromise: Promise<Course[]> | null = null;
+const CACHE_STALE_TIME = 5000; // 5 seconds cache
 
-        if (response.data.success) {
-            console.log(`[courseService] Successfully fetched ${response.data.courses.length} courses`);
-            return response.data.courses;
-        }
-
-        console.error("[courseService] API returned success: false");
-        return [];
-    } catch (error) {
-        console.error("[courseService] Error fetching courses from backend:", error);
-        if (axios.isAxiosError(error) && error.response?.status === 401) {
-            console.error("[courseService] Unauthorized - user may not be logged in");
-        }
-        return [];
+export const getCourses = async (forceRefresh = false): Promise<Course[]> => {
+    const now = Date.now();
+    
+    // If not a forced refresh and we have valid cache, return it
+    if (!forceRefresh && coursesCache && (now - lastFetchTime < CACHE_STALE_TIME)) {
+        return coursesCache;
     }
+
+    // If a request is already in progress, return the pending promise instead of starting a new one
+    if (pendingPromise) {
+        return pendingPromise;
+    }
+
+    // Start a new request
+    pendingPromise = (async () => {
+        console.log("[courseService] Fetching courses from MongoDB backend");
+        try {
+            const response = await axios.get(`${API_URL}/api/courses`, {
+                headers: getAuthHeaders()
+            });
+
+            if (response.data.success) {
+                console.log(`[courseService] Successfully fetched ${response.data.courses.length} courses`);
+                coursesCache = response.data.courses;
+                lastFetchTime = Date.now();
+                return coursesCache || [];
+            }
+
+            console.error("[courseService] API returned success: false");
+            return [];
+        } catch (error) {
+            console.error("[courseService] Error fetching courses from backend:", error);
+            return [];
+        } finally {
+            // Clear the pending promise when the request completes (success or failure)
+            pendingPromise = null;
+        }
+    })();
+
+    return pendingPromise;
 };
 
 export const getCourse = async (id: string): Promise<Course | null> => {

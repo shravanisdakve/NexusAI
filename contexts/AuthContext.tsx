@@ -22,9 +22,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  axios.defaults.baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
-
   useEffect(() => {
+    axios.defaults.baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
     const token = localStorage.getItem('token');
     if (token) {
       validateToken(token);
@@ -33,7 +32,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   }, []);
 
-  const validateToken = async (token: string) => {
+  const validateToken = React.useCallback(async (token: string) => {
     try {
       const response = await axios.get('/api/auth/verify', {
         headers: { Authorization: `Bearer ${token}` }
@@ -49,9 +48,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const login = async (email: string, password: string) => {
+  const login = React.useCallback(async (email: string, password: string) => {
     try {
       const response = await axios.post('/api/auth/login', { email, password });
       if (response.data.success) {
@@ -64,9 +63,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Login failed');
     }
-  };
+  }, []);
 
-  const signup = async (displayName: string, email: string, password: string, college: string, branch: string, year: number, additionalData?: any) => {
+  const signup = React.useCallback(async (displayName: string, email: string, password: string, college: string, branch: string, year: number, additionalData?: any) => {
     try {
       const response = await axios.post('/api/auth/signup', { ...additionalData, displayName, email, password, college, branch, year });
       if (response.data.success) {
@@ -77,14 +76,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Signup failed');
     }
-  };
+  }, []);
 
-  const logout = () => {
+  const logout = React.useCallback(() => {
     localStorage.removeItem('token');
     setUser(null);
-  };
+  }, []);
 
-  const updateUserProfile = async (updates: Partial<User>) => {
+  const updateUserProfile = React.useCallback(async (updates: Partial<User>) => {
     if (!user) return;
     try {
       const response = await axios.put('/api/auth/profile', updates);
@@ -94,9 +93,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Update failed');
     }
-  };
+  }, [user]);
 
-  const updateMood = async (mood: string) => {
+  const updateMood = React.useCallback(async (mood: string) => {
     try {
       const response = await axios.post('/api/auth/mood', { mood });
       if (response.data.success && user) {
@@ -105,15 +104,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     } catch (error) {
       console.error('Mood update failed:', error);
     }
-  };
+  }, [user]);
 
-  const forgotPassword = async (email: string) => {
+  const forgotPassword = React.useCallback(async (email: string) => {
     await axios.post('/api/auth/forgot-password', { email });
-  };
+  }, []);
 
-  const resetPassword = async (token: string, password: string) => {
+  const resetPassword = React.useCallback(async (token: string, password: string) => {
     await axios.post(`/api/auth/reset-password/${token}`, { password });
-  };
+  }, []);
 
   return (
     <AuthContext.Provider value={{

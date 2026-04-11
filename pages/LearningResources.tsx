@@ -4,12 +4,15 @@ import { Button, Card } from '../components/ui';
 import {
     Play, BookOpen, Code2, Calculator, MessageCircle, UserCheck,
     Briefcase, Star, Clock, ChevronRight, ExternalLink, X,
-    Brain, FileText, Lightbulb, GraduationCap, TrendingUp, Zap, Settings, Globe
+    Brain, FileText, Lightbulb, GraduationCap, TrendingUp, Zap, Settings, Globe, Sparkles, Search
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { trackToolUsage } from '../services/personalizationService';
+import PageLayout from '../components/ui/PageLayout';
+import { motion, AnimatePresence } from 'framer-motion';
+import { getRecommendedResources, getNewArrivals } from '../services/resourceService';
 
-interface VideoResource {
+export interface VideoResource {
     id: string;
     title: string;
     channel: string;
@@ -24,7 +27,6 @@ interface VideoResource {
 interface ResourceCategory {
     id: string;
     label: string;
-    emoji: string;
     icon: React.ReactNode;
     color: string;
     gradient: string;
@@ -33,11 +35,10 @@ interface ResourceCategory {
     branches: string[]; // Supported branches: ['CS', 'IT', 'MECH', 'CIVIL', 'EXTC', 'ELEX', 'ELECT', 'all']
 }
 
-const RESOURCE_CATEGORIES: ResourceCategory[] = [
+export const RESOURCE_CATEGORIES: ResourceCategory[] = [
     {
         id: 'dsa',
         label: 'DSA & Coding',
-        emoji: '💻',
         icon: <Code2 className="w-5 h-5" />,
         color: 'text-violet-400',
         gradient: 'from-violet-600/20 to-indigo-600/10',
@@ -99,7 +100,6 @@ const RESOURCE_CATEGORIES: ResourceCategory[] = [
     {
         id: 'electronics',
         label: 'Electronics Core',
-        emoji: '⚡',
         icon: <Zap className="w-5 h-5" />, // Note: Need to import Zap if not there
         color: 'text-yellow-400',
         gradient: 'from-yellow-600/20 to-amber-600/10',
@@ -126,7 +126,6 @@ const RESOURCE_CATEGORIES: ResourceCategory[] = [
     {
         id: 'mechanical',
         label: 'Mechanical & Civil',
-        emoji: '⚙️',
         icon: <Settings className="w-5 h-5" />, // Note: Need to import Settings if not there
         color: 'text-orange-400',
         gradient: 'from-orange-600/20 to-red-600/10',
@@ -153,7 +152,6 @@ const RESOURCE_CATEGORIES: ResourceCategory[] = [
     {
         id: 'aptitude',
         label: 'Aptitude & Reasoning',
-        emoji: '🧮',
         icon: <Calculator className="w-5 h-5" />,
         color: 'text-blue-400',
         gradient: 'from-blue-600/20 to-cyan-600/10',
@@ -163,7 +161,7 @@ const RESOURCE_CATEGORIES: ResourceCategory[] = [
             {
                 id: 'apt-1', title: 'Quantitative Aptitude - Complete Course', channel: 'CareerRide',
                 description: 'Full aptitude course covering percentages, ratio, time & work, speed-distance, probability — everything for TCS/Infosys tests.',
-                youtubeUrl: 'zX38n2W8y8s', duration: '2 hr', tags: ['Quant', 'Percentages'], difficulty: 'Beginner', recommended: true,
+                youtubeUrl: '2nFp9S7n_0U', duration: '2 hr', tags: ['Quant', 'Percentages'], difficulty: 'Beginner', recommended: true,
             },
             {
                 id: 'apt-2', title: 'Logical Reasoning - Tricks & Shortcuts', channel: 'Placement Season',
@@ -195,7 +193,6 @@ const RESOURCE_CATEGORIES: ResourceCategory[] = [
     {
         id: 'interview',
         label: 'Interview Preparation',
-        emoji: '🎤',
         icon: <UserCheck className="w-5 h-5" />,
         color: 'text-emerald-400',
         gradient: 'from-emerald-600/20 to-teal-600/10',
@@ -237,7 +234,6 @@ const RESOURCE_CATEGORIES: ResourceCategory[] = [
     {
         id: 'gd',
         label: 'Group Discussion',
-        emoji: '💬',
         icon: <MessageCircle className="w-5 h-5" />,
         color: 'text-cyan-400',
         gradient: 'from-cyan-600/20 to-sky-600/10',
@@ -247,12 +243,12 @@ const RESOURCE_CATEGORIES: ResourceCategory[] = [
             {
                 id: 'gd-1', title: 'How to Win a Group Discussion', channel: 'TalentSprint',
                 description: 'Complete strategy for GDs — how to initiate, when to intervene, body language, and how to summarize effectively.',
-                youtubeUrl: 'HGdbuvNjm-U', duration: '22 min', tags: ['Strategy', 'Tips'], difficulty: 'Beginner', recommended: true,
+                youtubeUrl: '8-SBNXToXzI', duration: '22 min', tags: ['Strategy', 'Tips'], difficulty: 'Beginner', recommended: true,
             },
             {
                 id: 'gd-2', title: 'Top 20 GD Topics for 2025-26', channel: 'Unacademy',
                 description: 'Most frequently asked GD topics in campus placements — AI, WFH, startups vs MNCs, cryptocurrency, and more with sample arguments.',
-                youtubeUrl: 'Tr5tSaFrVoU', duration: '30 min', tags: ['Topics', 'Current Affairs'], difficulty: 'Beginner',
+                youtubeUrl: 'w_S9oD86pDk', duration: '30 min', tags: ['Topics', 'Current Affairs'], difficulty: 'Beginner',
             },
             {
                 id: 'gd-3', title: 'GD Dos and Don\'ts', channel: 'Leverage Edu',
@@ -262,14 +258,13 @@ const RESOURCE_CATEGORIES: ResourceCategory[] = [
             {
                 id: 'gd-4', title: 'How to Structure GD Arguments', channel: 'CareerRide',
                 description: 'Learn to build structured arguments using frameworks — pros/cons, stakeholder analysis, and data-driven points.',
-                youtubeUrl: 'HGdbuvNjm-U', duration: '18 min', tags: ['Arguments', 'Structure'], difficulty: 'Intermediate',
+                youtubeUrl: 'nS5W1O-2rB0', duration: '18 min', tags: ['Arguments', 'Structure'], difficulty: 'Intermediate',
             },
         ],
     },
     {
         id: 'resume',
         label: 'Resume & Profile',
-        emoji: '📄',
         icon: <FileText className="w-5 h-5" />,
         color: 'text-amber-400',
         gradient: 'from-amber-600/20 to-orange-600/10',
@@ -301,7 +296,6 @@ const RESOURCE_CATEGORIES: ResourceCategory[] = [
     {
         id: 'company',
         label: 'Company-Specific Prep',
-        emoji: '🏢',
         icon: <Briefcase className="w-5 h-5" />,
         color: 'text-rose-400',
         gradient: 'from-rose-600/20 to-pink-600/10',
@@ -358,8 +352,9 @@ const VideoThumbnail: React.FC<{ youtubeUrl: string, title: string, duration?: s
     const match = youtubeUrl.match(/(?:v=|youtu\.be\/|embed\/|shorts\/)([^&\s?]+)/);
     const youtubeId = match ? match[1] : (youtubeUrl.includes('://') ? null : youtubeUrl);
 
-    // Use hqdefault as primary because it's higher quality and more reliable for newer videos
-    const [thumbUrl, setThumbUrl] = React.useState(`https://img.youtube.com/vi/${youtubeId}/hqdefault.jpg`);
+    // Use '0.jpg' as primary because it is auto-generated and guaranteed to exist for all videos.
+    // This eliminates console 404 errors from missing custom thumbnail sizes.
+    const [thumbUrl, setThumbUrl] = React.useState(`https://i.ytimg.com/vi/${youtubeId}/0.jpg`);
 
     if (!youtubeId) return (
         <div className="relative aspect-video bg-slate-900 overflow-hidden flex items-center justify-center border-b border-slate-700">
@@ -375,17 +370,18 @@ const VideoThumbnail: React.FC<{ youtubeUrl: string, title: string, duration?: s
                     alt={title}
                     className="w-full aspect-video object-cover transition-transform duration-500 group-hover:scale-110"
                     onError={() => {
-                        if (thumbUrl.includes('hqdefault')) {
-                            setThumbUrl(`https://img.youtube.com/vi/${youtubeId}/mqdefault.jpg`);
-                        } else if (thumbUrl.includes('mqdefault')) {
-                            setThumbUrl(`https://img.youtube.com/vi/${youtubeId}/0.jpg`);
+                        if (thumbUrl.includes('/0.jpg')) {
+                            // Fallback to hqdefault as second best
+                            setThumbUrl(`https://i.ytimg.com/vi/${youtubeId}/hqdefault.jpg`);
+                        } else if (thumbUrl.includes('hqdefault')) {
+                            setThumbUrl(`https://i.ytimg.com/vi/${youtubeId}/default.jpg`);
                         } else {
                             setError(true);
                         }
                     }}
                 />
             ) : (
-                <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-slate-800 to-slate-900 border-b border-slate-700">
+                <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-slate-800 to-slate-900 border-b border-white/5">
                     <div className="w-12 h-12 rounded-full bg-violet-500/10 flex items-center justify-center mb-2">
                         <Play size={24} className="text-violet-400 ml-1" />
                     </div>
@@ -445,212 +441,330 @@ const LearningResources: React.FC = () => {
         setFilterDifficulty('all');
     };
 
-    return (
-        <div className="space-y-6 max-w-7xl mx-auto pb-12">
-            {/* Personalization Banner */}
-            {userBranch && (
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-800/80 p-4 rounded-2xl border border-slate-700">
-                    <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-violet-500/10 flex items-center justify-center">
-                            <GraduationCap className="text-violet-400 w-5 h-5" />
-                        </div>
-                        <div>
-                            <p className="text-xs text-slate-500 font-bold uppercase tracking-wider">Academic Profile</p>
-                            <p className="text-sm text-slate-200 font-semibold">{userBranch} Student</p>
-                        </div>
-                    </div>
+    const recommendations = getRecommendedResources(userBranch);
+    const newArrivals = getNewArrivals();
 
-                    <div className="flex items-center gap-2 bg-slate-900/50 p-1.5 rounded-xl border border-slate-700/50">
-                        <button
-                            onClick={() => setShowAllBranches(false)}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${!showAllBranches ? 'bg-violet-500 text-white shadow-lg shadow-violet-500/20' : 'text-slate-400 hover:text-white'}`}
-                        >
-                            🎯 Targeted
-                        </button>
-                        <button
-                            onClick={() => setShowAllBranches(true)}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${showAllBranches ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-white'}`}
-                        >
-                            🌐 Explore All
-                        </button>
-                    </div>
-                </div>
-            )}
-            {/* Video Player Modal */}
-            {playingVideo && (
-                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setPlayingVideo(null)}>
-                    <div className="w-full max-w-4xl" onClick={e => e.stopPropagation()}>
-                        <div className="flex justify-between items-start mb-4">
-                            <div>
-                                <h3 className="text-xl font-bold text-white">{playingVideo.title}</h3>
-                                <p className="text-sm text-slate-400 mt-1">{playingVideo.channel} • {playingVideo.duration}</p>
-                            </div>
-                            <button onClick={() => setPlayingVideo(null)} className="p-2 text-slate-400 hover:text-white transition-colors">
-                                <X size={24} />
-                            </button>
-                        </div>
-                        <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
-                            {getEmbedUrl(playingVideo.youtubeUrl) ? (
-                                <iframe
-                                    className="absolute inset-0 w-full h-full rounded-2xl"
-                                    src={`${getEmbedUrl(playingVideo.youtubeUrl)}?autoplay=1&rel=0`}
-                                    title={playingVideo.title}
-                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                    allowFullScreen
-                                />
-                            ) : (
-                                <div className="absolute inset-0 w-full h-full rounded-2xl bg-slate-900 flex flex-col items-center justify-center p-8 text-center border border-slate-700">
-                                    <Globe className="w-12 h-12 text-slate-500 mb-4" />
-                                    <h4 className="text-white font-bold mb-2">Direct Embed Unavailable</h4>
-                                    <p className="text-sm text-slate-400 max-w-md">This resource is hosted on an external site and cannot be previewed directly here.</p>
-                                </div>
-                            )}
-                        </div>
-                        <div className="mt-4 flex flex-col md:flex-row gap-4 items-center justify-between">
-                            <div className="flex-1 p-4 rounded-xl bg-slate-800/80 border border-slate-700 w-full">
-                                <p className="text-sm text-slate-300 leading-relaxed">{playingVideo.description}</p>
-                                <div className="flex flex-wrap gap-2 mt-3">
-                                    {playingVideo.tags.map(tag => (
-                                        <span key={tag} className="text-[10px] px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-300 border border-violet-500/20">{tag}</span>
-                                    ))}
-                                </div>
-                            </div>
-                            {playingVideo.youtubeUrl && (
-                                <a
-                                    href={playingVideo.youtubeUrl.includes('://') ? playingVideo.youtubeUrl : `https://www.youtube.com/watch?v=${playingVideo.youtubeUrl}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="flex items-center gap-2 px-6 py-3 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-sm shadow-lg shadow-red-600/20 transition-all whitespace-nowrap"
-                                >
-                                    <ExternalLink size={18} /> Open in YouTube
-                                </a>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Category Tabs */}
-            <div className="flex items-center gap-2 flex-wrap bg-slate-800/50 p-1.5 rounded-2xl border border-slate-700/50 overflow-x-auto">
-                {visibleCategories.map(cat => (
-                    <button
-                        key={cat.id}
-                        onClick={() => handleCategoryChange(cat.id)}
-                        className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all border whitespace-nowrap ${selectedCategory === cat.id
-                            ? `${cat.color} bg-slate-700/50 border-slate-600`
-                            : 'text-slate-400 border-transparent hover:text-white'
-                            }`}
+    const DiscoverySegment = (
+        <div className="space-y-4">
+            <h3 className="text-xs font-semibold text-amber-500 uppercase tracking-widest flex items-center gap-2 px-1">
+                <Sparkles size={14} /> Recommended for You
+            </h3>
+            <div className="flex gap-4 overflow-x-auto pb-2 no-scrollbar -mx-1 px-1">
+                {recommendations.map(video => (
+                    <div
+                        key={video.id}
+                        className="flex-shrink-0 w-72 group cursor-pointer"
+                        onClick={() => setPlayingVideo(video)}
                     >
-                        <span className="text-base">{cat.emoji}</span>
-                        <span className="hidden md:inline">{cat.label}</span>
-                    </button>
+                        <div className="relative rounded-xl overflow-hidden border border-white/[0.06] bg-slate-900/50 group-hover:border-violet-500/30 transition-all duration-300">
+                            <VideoThumbnail youtubeUrl={video.youtubeUrl} title={video.title} duration={video.duration} />
+                            <div className="p-4">
+                                <span className="text-[11px] font-medium uppercase tracking-widest text-violet-400 mb-1.5 block">{video.difficulty}</span>
+                                <h4 className="text-sm font-semibold text-slate-200 line-clamp-1 group-hover:text-white transition-colors">{video.title}</h4>
+                            </div>
+                        </div>
+                    </div>
                 ))}
             </div>
+        </div>
+    );
+
+    const MainContent = (
+        <div className="space-y-8 animate-fade-in">
+            {/* Discovery Segment */}
+            {DiscoverySegment}
 
             {/* Category Header */}
-            <div className={`p-6 rounded-2xl bg-gradient-to-r ${category.gradient} border border-slate-700/50`}>
-                <div className="flex items-center gap-4">
-                    <div className={`w-14 h-14 rounded-2xl bg-slate-800/80 border border-slate-700 flex items-center justify-center ${category.color}`}>
+            <div className={`p-6 rounded-2xl bg-gradient-to-br ${category.gradient} border border-white/[0.08] relative overflow-hidden group`}>
+                <div className="absolute top-0 right-0 p-6 opacity-5 group-hover:scale-110 transition-transform duration-700 pointer-events-none">
+                    {React.cloneElement(category.icon as React.ReactElement, { size: 100 } as any)}
+                </div>
+                <div className="relative flex items-center gap-5">
+                    <div className={`w-14 h-14 rounded-xl bg-slate-950/60 backdrop-blur-md border border-white/10 flex items-center justify-center ${category.color} shadow-xl`}>
                         {category.icon}
                     </div>
                     <div>
-                        <h2 className="text-2xl font-black text-white">{category.label}</h2>
-                        <p className="text-sm text-slate-400 mt-1">{category.description}</p>
-                        <p className="text-xs text-slate-500 mt-2">{category.videos.length} curated videos from top educators</p>
+                        <div className="flex items-center gap-2 mb-1">
+                            <span className="text-[10px] font-bold uppercase tracking-widest text-white/40">Curated Track</span>
+                            <div className="w-1 h-1 rounded-full bg-white/20" />
+                            <span className="text-[10px] font-bold uppercase tracking-widest text-white/40">{category.videos.length} Modules</span>
+                        </div>
+                        <h2 className="text-2xl font-bold text-white tracking-tight">{category.label}</h2>
+                        <p className="text-sm text-slate-400 mt-2 max-w-xl leading-relaxed">{category.description}</p>
                     </div>
                 </div>
             </div>
 
             {/* Filters */}
-            <div className="flex items-center gap-3">
-                <span className="text-xs text-slate-500 font-bold uppercase tracking-wider">Filter:</span>
-                {['all', 'Beginner', 'Intermediate', 'Advanced'].map(d => (
-                    <button
-                        key={d}
-                        onClick={() => setFilterDifficulty(d)}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${filterDifficulty === d
-                            ? 'bg-violet-500/20 text-violet-400 border border-violet-500/30'
-                            : 'text-slate-400 hover:text-white'
-                            }`}
-                    >
-                        {d === 'all' ? '📺 All' : d === 'Beginner' ? '🟢 Beginner' : d === 'Intermediate' ? '🟡 Intermediate' : '🔴 Advanced'}
-                    </button>
-                ))}
-            </div>
-
-            {/* Recommended Section */}
-            {filterDifficulty === 'all' && category.videos.some(v => v.recommended) && (
-                <div className="space-y-3">
-                    <h3 className="text-sm font-black uppercase text-amber-400 tracking-wider flex items-center gap-2">
-                        <Star size={14} /> Must Watch
-                    </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {category.videos.filter(v => v.recommended).map(video => (
+            <div className="flex items-center justify-between px-1">
+                <div className="flex items-center gap-2">
+                    <div className="p-1 bg-slate-900/60 rounded-lg border border-white/[0.05] flex items-center gap-1">
+                        {['all', 'Beginner', 'Intermediate', 'Advanced'].map(d => (
                             <button
-                                key={video.id}
-                                onClick={() => setPlayingVideo(video)}
-                                className="group text-left rounded-2xl overflow-hidden border border-amber-500/20 bg-amber-500/5 hover:border-amber-500/40 transition-all hover:scale-[1.02]"
+                                key={d}
+                                onClick={() => setFilterDifficulty(d)}
+                                className={`px-4 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-widest transition-all ${filterDifficulty === d
+                                    ? 'bg-violet-600 text-white shadow-md'
+                                    : 'text-slate-500 hover:text-slate-300'
+                                    }`}
                             >
-                                <div className="relative">
-                                    <VideoThumbnail youtubeUrl={video.youtubeUrl} title={video.title} duration={video.duration} />
-                                    <div className="absolute top-2 left-2 px-2 py-0.5 rounded bg-amber-500 text-[10px] text-white font-bold z-10">⭐ Recommended</div>
-                                </div>
-                                <div className="p-4">
-                                    <h4 className="font-bold text-white text-sm line-clamp-2 group-hover:text-amber-300 transition-colors">{video.title}</h4>
-                                    <p className="text-[11px] text-slate-500 mt-1">{video.channel}</p>
-                                    <p className="text-xs text-slate-400 mt-2 line-clamp-2">{video.description}</p>
-                                </div>
+                                {d === 'all' ? 'All' : d}
                             </button>
                         ))}
                     </div>
                 </div>
-            )}
+                <div className="flex items-center gap-2 text-slate-500">
+                    <Globe size={13} />
+                    <span className="text-[10px] font-bold uppercase tracking-widest">Global Library</span>
+                </div>
+            </div>
 
-            {/* All Videos Grid */}
-            <div className="space-y-3">
-                <h3 className="text-sm font-black uppercase text-slate-400 tracking-wider flex items-center gap-2">
-                    <BookOpen size={14} /> {filterDifficulty === 'all' ? 'All Videos' : `${filterDifficulty} Level`} ({filteredVideos.length})
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {filteredVideos.map(video => (
+            {/* Content Area */}
+            <AnimatePresence mode="wait">
+                <motion.div
+                    key={selectedCategory + filterDifficulty}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={{ duration: 0.2 }}
+                    className="space-y-10"
+                >
+                    {/* Recommended Section */}
+                    {filterDifficulty === 'all' && category.videos.some(v => v.recommended) && (
+                        <div className="space-y-4">
+                            <h3 className="text-xs font-semibold text-amber-500 uppercase tracking-widest flex items-center gap-2 px-1">
+                                <Sparkles size={14} /> Priority Learning
+                            </h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {category.videos.filter(v => v.recommended).map(video => (
+                                    <button
+                                        key={video.id}
+                                        onClick={() => setPlayingVideo(video)}
+                                        className="group text-left rounded-xl overflow-hidden border border-amber-500/10 bg-slate-900/30 hover:bg-slate-900/50 hover:border-amber-500/30 transition-all duration-300 hover:-translate-y-1 flex"
+                                    >
+                                        <div className="w-2/5 relative shrink-0">
+                                            <VideoThumbnail youtubeUrl={video.youtubeUrl} title={video.title} duration={video.duration} />
+                                            <div className="absolute top-2 left-2 px-2 py-0.5 rounded bg-amber-500 text-[10px] text-white font-bold uppercase tracking-tight">Essential</div>
+                                        </div>
+                                        <div className="p-4 flex-1 flex flex-col justify-center">
+                                            <h4 className="text-sm font-semibold text-slate-200 line-clamp-2 group-hover:text-amber-400 transition-colors leading-snug">{video.title}</h4>
+                                            <p className="text-[11px] text-slate-500 mt-1 font-medium">{video.channel}</p>
+                                            <p className="text-xs text-slate-400 mt-3 line-clamp-2 leading-relaxed">{video.description}</p>
+                                        </div>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* All Content */}
+                    <div className="space-y-4">
+                        <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-widest flex items-center gap-2 px-1">
+                            <BookOpen size={14} /> Knowledge Base ({filteredVideos.length})
+                        </h3>
+                        {filteredVideos.length === 0 ? (
+                            <div className="text-center py-16 rounded-2xl border border-dashed border-white/[0.08] bg-slate-900/20">
+                                <Search size={32} className="mx-auto text-slate-700 mb-3" />
+                                <p className="text-slate-500 text-[11px] font-medium uppercase tracking-widest">No resources found in this filter.</p>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                {filteredVideos.map(video => (
+                                    <button
+                                        key={video.id}
+                                        onClick={() => setPlayingVideo(video)}
+                                        className="group text-left rounded-2xl overflow-hidden border border-white/[0.06] bg-slate-900/40 hover:bg-slate-800/80 hover:border-violet-500/30 transition-all duration-300 hover:-translate-y-1"
+                                    >
+                                        <div className="relative">
+                                            <VideoThumbnail youtubeUrl={video.youtubeUrl} title={video.title} duration={video.duration} />
+                                            <div className={`absolute top-3 left-3 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-tight z-10 shadow-lg ${
+                                                video.difficulty === 'Beginner' ? 'bg-emerald-500 text-white' :
+                                                video.difficulty === 'Intermediate' ? 'bg-amber-500 text-white' :
+                                                'bg-rose-500 text-white'
+                                            }`}>{video.difficulty}</div>
+                                        </div>
+                                        <div className="p-4">
+                                            <h4 className="font-semibold text-slate-200 text-sm line-clamp-2 group-hover:text-white transition-colors leading-snug">{video.title}</h4>
+                                            <div className="flex items-center justify-between mt-4">
+                                                <span className="text-[11px] text-slate-500 font-medium truncate pr-2">{video.channel}</span>
+                                                <div className="flex items-center gap-1 text-slate-500 shrink-0">
+                                                    <Clock size={11} />
+                                                    <span className="text-[10px] font-mono">{video.duration}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </motion.div>
+            </AnimatePresence>
+        </div>
+    );
+
+    const SideContent = (
+        <div className="space-y-6">
+            {/* 1. SELECTION RAIL */}
+            <div className="p-4 bg-slate-900/40 rounded-xl border border-white/[0.05]">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-4 px-1">Library Category</p>
+                <div className="flex flex-col gap-1">
+                    {visibleCategories.map(cat => (
                         <button
-                            key={video.id}
-                            onClick={() => setPlayingVideo(video)}
-                            className="group text-left rounded-2xl overflow-hidden border border-slate-700/50 bg-slate-800/30 hover:border-slate-500 transition-all hover:scale-[1.02]"
+                            key={cat.id}
+                            onClick={() => handleCategoryChange(cat.id)}
+                            className={`flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-xs font-semibold transition-all border relative ${selectedCategory === cat.id
+                                ? 'text-violet-400 bg-violet-400/5 border-violet-400/20 active-glow'
+                                : 'text-slate-500 border-transparent hover:bg-white/[0.03] hover:text-slate-300'
+                                }`}
                         >
-                            <div className="relative">
-                                <VideoThumbnail youtubeUrl={video.youtubeUrl} title={video.title} duration={video.duration} />
-                                {video.difficulty && (
-                                    <div className={`absolute top-2 left-2 px-2 py-0.5 rounded text-[10px] font-bold z-10 ${video.difficulty === 'Beginner' ? 'bg-emerald-600 text-white' :
-                                        video.difficulty === 'Intermediate' ? 'bg-amber-600 text-white' :
-                                            'bg-rose-600 text-white'
-                                        }`}>{video.difficulty}</div>
-                                )}
-                            </div>
-                            <div className="p-4">
-                                <h4 className="font-bold text-white text-sm line-clamp-2 group-hover:text-violet-300 transition-colors">{video.title}</h4>
-                                <p className="text-[11px] text-slate-500 mt-1 flex items-center gap-2">
-                                    {video.channel} <span className="text-slate-600">•</span> <Clock size={10} /> {video.duration}
-                                </p>
-                                <p className="text-xs text-slate-400 mt-2 line-clamp-2">{video.description}</p>
-                                <div className="flex flex-wrap gap-1 mt-3">
-                                    {video.tags.map(tag => (
-                                        <span key={tag} className="text-[9px] px-1.5 py-0.5 rounded bg-slate-900 text-slate-500 border border-slate-700">{tag}</span>
-                                    ))}
-                                </div>
-                            </div>
+                            <span className={selectedCategory === cat.id ? 'opacity-100' : 'opacity-50'}>
+                                {React.cloneElement(cat.icon as React.ReactElement, { size: 14 } as any)}
+                            </span>
+                            <span className="flex-1 text-left">{cat.label}</span>
+                            {cat.id === 'company' && (
+                                <span className="absolute top-2.5 right-2.5 w-1.5 h-1.5 bg-rose-500 rounded-full border border-slate-900 animate-pulse" />
+                            )}
+                            {selectedCategory === cat.id && <ChevronRight size={12} className="opacity-40" />}
                         </button>
                     ))}
                 </div>
             </div>
 
-            {filteredVideos.length === 0 && (
-                <div className="text-center py-16">
-                    <BookOpen className="w-12 h-12 text-slate-600 mx-auto mb-4" />
-                    <p className="text-slate-400">No videos found with this filter</p>
+            {/* 2. ACADEMIC CONTEXT */}
+            {userBranch && (
+                <div className="p-4 bg-violet-600/5 border border-violet-500/10 rounded-xl">
+                    <div className="flex items-center gap-3 mb-4">
+                        <div className="w-10 h-10 rounded-lg bg-violet-600/10 flex items-center justify-center border border-violet-500/20">
+                            <GraduationCap className="text-violet-400 w-5 h-5" />
+                        </div>
+                        <div className="min-w-0">
+                            <p className="text-[10px] text-violet-400 font-bold uppercase tracking-widest">Academic Hub</p>
+                            <p className="text-xs text-slate-200 font-semibold truncate italic">{userBranch}</p>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                        <button
+                            onClick={() => setShowAllBranches(false)}
+                            className={`h-9 px-3 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all border ${!showAllBranches ? 'bg-violet-600 text-white border-violet-500' : 'text-slate-500 border-white/[0.05] bg-black/20 hover:text-slate-300'}`}
+                        >
+                            Aligned
+                        </button>
+                        <button
+                            onClick={() => setShowAllBranches(true)}
+                            className={`h-9 px-3 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all border ${showAllBranches ? 'bg-slate-700 text-white border-slate-600' : 'text-slate-500 border-white/[0.05] bg-black/20 hover:text-slate-300'}`}
+                        >
+                            Explore
+                        </button>
+                    </div>
                 </div>
             )}
+
+            {/* 3. QUICK STATS — computed from real data */}
+            <div className="p-5 bg-slate-900/40 rounded-2xl border border-white/[0.05]">
+                <p className="eyebrow-label mb-4">Library Stats</p>
+                <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Total Modules</span>
+                        <span className="text-xs font-black text-white">
+                            {RESOURCE_CATEGORIES.reduce((acc, cat) => acc + cat.videos.length, 0)}
+                        </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Categories</span>
+                        <span className="text-xs font-black text-white">{RESOURCE_CATEGORIES.length}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Recommended</span>
+                        <span className="text-[10px] font-black text-amber-400 uppercase bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
+                            {RESOURCE_CATEGORIES.reduce((acc, cat) => acc + cat.videos.filter(v => v.recommended).length, 0)} Essential
+                        </span>
+                    </div>
+                </div>
+            </div>
         </div>
+    );
+
+    return (
+        <>
+            {/* Video Player Modal */}
+            {playingVideo && (
+                <div className="fixed inset-0 bg-black/90 backdrop-blur-xl z-[60] flex items-center justify-center p-4 md:p-8" onClick={() => setPlayingVideo(null)}>
+                    <div className="w-full max-w-5xl bg-slate-950 rounded-2xl lg:rounded-3xl border border-white/10 overflow-hidden shadow-2xl flex flex-col max-h-full" onClick={e => e.stopPropagation()}>
+                        <div className="bg-slate-900/50 p-5 flex justify-between items-center border-b border-white/[0.06]">
+                            <div className="flex items-center gap-4">
+                                <div className="p-2 bg-violet-600/10 rounded-lg border border-violet-500/20">
+                                    <Play size={18} className="text-violet-400" />
+                                </div>
+                                <div className="min-w-0">
+                                    <h3 className="text-base font-bold text-white tracking-tight truncate">{playingVideo.title}</h3>
+                                    <p className="text-[11px] text-slate-500 uppercase tracking-widest font-medium mt-0.5">{playingVideo.channel} &middot; {playingVideo.duration}</p>
+                                </div>
+                            </div>
+                            <button onClick={() => setPlayingVideo(null)} className="h-9 w-9 flex items-center justify-center rounded-full bg-white/[0.05] text-slate-400 hover:text-white hover:bg-white/10 transition-all">
+                                <X size={18} />
+                            </button>
+                        </div>
+                        
+                        <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-6">
+                            <div className="relative w-full shadow-2xl rounded-xl overflow-hidden bg-black" style={{ paddingBottom: '56.25%' }}>
+                                {getEmbedUrl(playingVideo.youtubeUrl || '') ? (
+                                    <iframe
+                                        className="absolute inset-0 w-full h-full border-0"
+                                        src={`${getEmbedUrl(playingVideo.youtubeUrl || '')}?autoplay=1&rel=0&modestbranding=1`}
+                                        title={playingVideo.title}
+                                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                        allowFullScreen
+                                    />
+                                ) : (
+                                    <div className="absolute inset-0 w-full h-full flex flex-col items-center justify-center p-8 text-center">
+                                        <Globe className="w-12 h-12 text-slate-800 mb-4" />
+                                        <h4 className="text-white text-base font-semibold uppercase tracking-tight">External Stream Required</h4>
+                                        <p className="text-xs text-slate-500 uppercase tracking-widest mt-2 max-w-xs">Direct viewport capture restricted by provider.</p>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                                <div className="md:col-span-2 space-y-5">
+                                    <div>
+                                        <h4 className="text-[10px] font-bold uppercase text-slate-500 tracking-widest mb-2 px-0.5">Module Abstract</h4>
+                                        <p className="text-sm text-slate-400 leading-relaxed">{playingVideo.description}</p>
+                                    </div>
+                                    <div className="flex flex-wrap gap-1.5">
+                                        {playingVideo.tags.map(tag => (
+                                            <span key={tag} className="text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-md bg-slate-900 text-slate-500 border border-white/[0.05]">{tag}</span>
+                                        ))}
+                                    </div>
+                                </div>
+                                <div className="space-y-4">
+                                    <div className="p-5 bg-white/[0.03] rounded-2xl border border-white/[0.06] space-y-4">
+                                        <h4 className="text-[10px] font-bold uppercase text-slate-500 tracking-widest px-0.5">Actions</h4>
+                                        {playingVideo.youtubeUrl && (
+                                            <a
+                                                href={playingVideo.youtubeUrl.includes('://') ? playingVideo.youtubeUrl : `https://www.youtube.com/watch?v=${playingVideo.youtubeUrl}`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="w-full flex items-center justify-center gap-2 h-11 rounded-lg bg-red-600 hover:bg-red-500 text-white font-bold text-xs uppercase tracking-widest transition-all active:scale-[0.98] shadow-lg shadow-red-900/20"
+                                            >
+                                                <ExternalLink size={14} /> Open YouTube
+                                            </a>
+                                        )}
+                                        <p className="text-[10px] text-slate-600 text-center italic font-medium">Session ID: {playingVideo.id.toUpperCase()}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            <PageLayout 
+                main={MainContent}
+                side={SideContent}
+            />
+        </>
     );
 };
 

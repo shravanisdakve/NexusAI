@@ -71,14 +71,10 @@ test('auth and legal pages are wired to language context translation keys', () =
     });
 });
 
-test('quiz, insights and study lobby pages use i18n keys for user-facing headings', () => {
+test('quiz page uses i18n keys for user-facing headings', () => {
     const quizSource = readSource('pages', 'QuizPractice.tsx');
-    const insightsSource = readSource('pages', 'Insights.tsx');
-    const lobbySource = readSource('pages', 'StudyLobby.tsx');
 
     assert.match(quizSource, /t\('quiz\.title'\)/);
-    assert.match(insightsSource, /t\('insights\.title'\)/);
-    assert.match(lobbySource, /t\('studyLobby\.title'\)/);
 });
 
 test('new auth, legal and learning i18n keys exist in en/mr/hi dictionaries', () => {

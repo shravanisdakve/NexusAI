@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Card, Button } from '../components/ui';
-import { Target, TrendingUp, AlertCircle, Briefcase, GraduationCap, Code, Building2 } from 'lucide-react';
+import { Target, TrendingUp, AlertCircle, Briefcase, GraduationCap, Code, Building2, Check } from 'lucide-react';
 import { predictPlacement, PredictionResult } from '../services/placementService';
 
 const MU_COLLEGES = [
@@ -19,7 +19,12 @@ const COMMON_SKILLS = [
     'Java', 'Python', 'C++', 'JavaScript', 'React', 'Node', 'Spring Boot', 'SQL', 'DSA', 'AWS', 'System Design'
 ];
 
-const PlacementPredictor: React.FC = () => {
+interface PlacementPredictorProps {
+    prefillData?: any;
+    onPrefillConsumed?: () => void;
+}
+
+const PlacementPredictor: React.FC<PlacementPredictorProps> = ({ prefillData, onPrefillConsumed }) => {
     const [formParams, setFormParams] = useState({
         college: 'SPIT',
         branch: 'COMPUTER ENGINEERING',
@@ -30,6 +35,20 @@ const PlacementPredictor: React.FC = () => {
 
     const [loading, setLoading] = useState(false);
     const [prediction, setPrediction] = useState<PredictionResult | null>(null);
+
+    React.useEffect(() => {
+        if (prefillData && prefillData.targetCompany) {
+            // Find the closest match in TARGET_COMPANIES
+            const match = TARGET_COMPANIES.find(t => 
+                t.toLowerCase().includes(prefillData.targetCompany.toLowerCase()) ||
+                prefillData.targetCompany.toLowerCase().includes(t.toLowerCase())
+            );
+            if (match) {
+                setFormParams(prev => ({ ...prev, targetCompany: match }));
+            }
+            onPrefillConsumed?.();
+        }
+    }, [prefillData, onPrefillConsumed]);
 
     const handlePredict = async () => {
         setLoading(true);
@@ -66,83 +85,85 @@ const PlacementPredictor: React.FC = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <Card className="p-6 space-y-5 border-slate-700/50 bg-slate-800/40">
-                    <div>
-                        <label htmlFor="college-select" className="block text-sm font-bold text-slate-400 uppercase mb-2 flex items-center gap-1">
-                            <GraduationCap size={14}/> College (MU specific)
-                        </label>
-                        <select 
-                            id="college-select"
-                            name="college"
-                            value={formParams.college}
-                            onChange={(e) => setFormParams({...formParams, college: e.target.value})}
-                            className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm focus:border-amber-500/50 focus:outline-none"
-                        >
-                            {MU_COLLEGES.map(c => <option key={c} value={c}>{c}</option>)}
-                        </select>
-                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="col-span-2 md:col-span-1">
+                            <label htmlFor="college-select" className="block text-[10px] font-black text-slate-500 uppercase mb-1.5 flex items-center gap-1">
+                                <GraduationCap size={12}/> College (MU)
+                            </label>
+                            <select 
+                                id="college-select"
+                                name="college"
+                                value={formParams.college}
+                                onChange={(e) => setFormParams({...formParams, college: e.target.value})}
+                                className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white text-xs focus:border-amber-500/50 focus:outline-none"
+                            >
+                                {MU_COLLEGES.map(c => <option key={c} value={c}>{c}</option>)}
+                            </select>
+                        </div>
 
-                    <div>
-                        <label htmlFor="branch-select" className="block text-sm font-bold text-slate-400 uppercase mb-2">Branch</label>
-                        <select 
-                            id="branch-select"
-                            name="branch"
-                            value={formParams.branch}
-                            onChange={(e) => setFormParams({...formParams, branch: e.target.value})}
-                            className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm focus:border-amber-500/50 focus:outline-none"
-                        >
-                            {BRANCHES.map(b => <option key={b} value={b}>{b}</option>)}
-                        </select>
-                    </div>
+                        <div className="col-span-2 md:col-span-1">
+                            <label htmlFor="branch-select" className="block text-[10px] font-black text-slate-500 uppercase mb-1.5">Branch</label>
+                            <select 
+                                id="branch-select"
+                                name="branch"
+                                value={formParams.branch}
+                                onChange={(e) => setFormParams({...formParams, branch: e.target.value})}
+                                className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white text-xs focus:border-amber-500/50 focus:outline-none"
+                            >
+                                {BRANCHES.map(b => <option key={b} value={b}>{b}</option>)}
+                            </select>
+                        </div>
 
-                    <div>
-                        <label htmlFor="cgpa-range" className="block text-sm font-bold text-slate-400 uppercase mb-2 flex items-center justify-between">
-                            <span>Current CGPA: <span className="text-amber-400">{formParams.cgpa}</span></span>
-                        </label>
-                        <input 
-                            id="cgpa-range"
-                            name="cgpa"
-                            type="range" 
-                            min="5" max="10" step="0.1"
-                            value={formParams.cgpa}
-                            onChange={(e) => setFormParams({...formParams, cgpa: parseFloat(e.target.value)})}
-                            className="w-full accent-amber-500"
-                        />
-                    </div>
+                        <div className="col-span-2 md:col-span-1">
+                            <label htmlFor="company-select" className="block text-[10px] font-black text-slate-500 uppercase mb-1.5 flex items-center gap-1">
+                                <Briefcase size={12} /> Target Company
+                            </label>
+                            <select 
+                                id="company-select"
+                                name="targetCompany"
+                                value={formParams.targetCompany}
+                                onChange={(e) => setFormParams({...formParams, targetCompany: e.target.value})}
+                                className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white text-xs focus:border-amber-500/50 focus:outline-none"
+                            >
+                                {TARGET_COMPANIES.map(t => <option key={t} value={t}>{t}</option>)}
+                            </select>
+                        </div>
 
-                    <div>
-                        <label htmlFor="company-select" className="block text-sm font-bold text-slate-400 uppercase mb-2 flex items-center gap-1">
-                            <Briefcase size={14} /> Target Company / Tier
-                        </label>
-                        <select 
-                            id="company-select"
-                            name="targetCompany"
-                            value={formParams.targetCompany}
-                            onChange={(e) => setFormParams({...formParams, targetCompany: e.target.value})}
-                            className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm focus:border-amber-500/50 focus:outline-none"
-                        >
-                            {TARGET_COMPANIES.map(t => <option key={t} value={t}>{t}</option>)}
-                        </select>
-                    </div>
+                        <div className="col-span-2 md:col-span-1">
+                            <label htmlFor="cgpa-range" className="block text-[10px] font-black text-slate-500 uppercase mb-1.5 flex items-center justify-between">
+                                <span>CGPA: <span className="text-amber-400 font-mono">{formParams.cgpa}</span></span>
+                            </label>
+                            <input 
+                                id="cgpa-range"
+                                name="cgpa"
+                                type="range" 
+                                min="5" max="10" step="0.1"
+                                value={formParams.cgpa}
+                                onChange={(e) => setFormParams({...formParams, cgpa: parseFloat(e.target.value)})}
+                                className="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-amber-500 mt-2"
+                            />
+                        </div>
 
-                    <div>
-                        <label id="skills-label" className="block text-sm font-bold text-slate-400 uppercase mb-3 flex items-center gap-1">
-                            <Code size={14} /> Your Primary Skills
-                        </label>
-                        <div className="flex flex-wrap gap-2" role="group" aria-labelledby="skills-label">
-                            {COMMON_SKILLS.map(skill => {
-                                const active = formParams.skills.includes(skill);
-                                return (
-                                    <button
-                                        key={skill}
-                                        onClick={() => toggleSkill(skill)}
-                                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border ${
-                                            active ? 'bg-amber-500/20 text-amber-400 border-amber-500/40' : 'bg-slate-900 text-slate-400 border-slate-700 hover:border-slate-500'
-                                        }`}
-                                    >
-                                        {skill}
-                                    </button>
-                                );
-                            })}
+                        <div className="col-span-2 border-t border-slate-700/50 pt-4">
+                            <label id="skills-label" className="block text-[10px] font-black text-slate-500 uppercase mb-3 flex items-center gap-1">
+                                <Code size={12} /> Tech Skill Breakdown
+                            </label>
+                            <div className="flex flex-wrap gap-1.5" role="group" aria-labelledby="skills-label">
+                                {COMMON_SKILLS.map(skill => {
+                                    const active = formParams.skills.includes(skill);
+                                    return (
+                                        <button
+                                            key={skill}
+                                            onClick={() => toggleSkill(skill)}
+                                            className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all border ${
+                                                active ? 'bg-amber-500/20 text-amber-400 border-amber-500/40' : 'bg-slate-900 text-slate-500 border-slate-700 hover:border-slate-500'
+                                            }`}
+                                        >
+                                            {skill}
+                                        </button>
+                                    );
+                                })}
+                            </div>
                         </div>
                     </div>
 
@@ -194,7 +215,7 @@ const PlacementPredictor: React.FC = () => {
                                         const hasSkill = formParams.skills.some(userSkill => userSkill.toUpperCase() === s.toUpperCase());
                                         return (
                                             <span key={s} className={`text-xs px-2 py-1 rounded-md ${hasSkill ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-800 text-slate-400 border border-slate-700 line-through opacity-70'}`}>
-                                                {s} {hasSkill ? '✓' : ''}
+                                                {s} {hasSkill ? <Check className="inline-block ml-1" size={10} /> : ''}
                                             </span>
                                         );
                                     })}
@@ -253,10 +274,29 @@ const PlacementPredictor: React.FC = () => {
                             )}
                         </div>
                     ) : (
-                        <Card className="h-full min-h-[400px] border-slate-700/50 border-dashed flex flex-col items-center justify-center text-center p-8 text-slate-500 bg-slate-800/20">
-                            <TrendingUp className="w-12 h-12 mb-4 opacity-50" />
-                            <h3 className="text-lg font-bold text-slate-400 mb-2">Awaiting Parameters</h3>
-                            <p className="text-sm max-w-xs">Fill in your profile details and target company on the left to see your predicted selection probability and expectations.</p>
+                        <Card className="h-full border-slate-700/50 border-dashed bg-slate-800/10 p-6 flex flex-col justify-center">
+                            <div className="text-center mb-8">
+                                <TrendingUp className="w-10 h-10 text-slate-600 mx-auto mb-3" />
+                                <h3 className="text-lg font-bold text-slate-400 mb-1">Awaiting Parameters</h3>
+                                <p className="text-xs text-slate-500">Prediction logic assesses 4 primary factors:</p>
+                            </div>
+
+                            <div className="space-y-4">
+                                {[
+                                    { icon: <GraduationCap size={16} />, label: 'Academic Standing', desc: 'CGPA thresholds for MU colleges' },
+                                    { icon: <Code size={16} />, label: 'Technical Stack', desc: 'Skill-match with company requirements' },
+                                    { icon: <Building2 size={16} />, label: 'Market Trends', desc: 'Active hiring data for target tier' },
+                                    { icon: <Target size={16} />, label: 'Fit Analysis', desc: 'Profile strength vs. role expectations' }
+                                ].map((factor, i) => (
+                                    <div key={i} className="flex gap-4 p-3 rounded-xl bg-slate-900/40 border border-slate-800/50 opacity-60">
+                                        <div className="text-slate-400 shrink-0">{factor.icon}</div>
+                                        <div>
+                                            <p className="text-xs font-bold text-slate-300">{factor.label}</p>
+                                            <p className="text-[10px] text-slate-500">{factor.desc}</p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
                         </Card>
                     )}
                 </div>

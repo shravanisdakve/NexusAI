@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink, useNavigate, Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Modal, Input, Button, Tooltip, TooltipTrigger, TooltipContent } from './ui';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useToast } from '../contexts/ToastContext';
-import { useMode } from '../contexts/ModeContext';
+import { useSidebar } from '../contexts/SidebarContext';
 import {
     LayoutDashboard,
     MessageSquare,
@@ -16,287 +16,200 @@ import {
     GraduationCap,
     Briefcase,
     Bell,
-    BrainCircuit,
-    Calculator,
-    MessageCircle,
-    UserCheck,
-    Building2,
-    ClipboardList,
-    Play,
     Zap,
+    ChevronLeft,
+    ChevronRight,
+    ChevronDown,
+    Sparkles,
+    Calculator,
+    Building2,
+    Play,
+    BookOpen,
+    Bot,
+    Target,
 } from 'lucide-react';
 
-interface ProfileEditModalProps {
-    isOpen: boolean;
-    onClose: () => void;
-    currentName: string;
-    onSave: (newName: string) => Promise<void>;
-}
-
-const ProfileEditModal: React.FC<ProfileEditModalProps> = ({ isOpen, onClose, currentName, onSave }) => {
-    const { t } = useLanguage();
-    const [newName, setNewName] = useState(currentName);
-    const [isSaving, setIsSaving] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-
-    useEffect(() => {
-        if (isOpen) {
-            setNewName(currentName);
-            setError(null);
-        }
-    }, [isOpen, currentName]);
-
-    const handleSave = async () => {
-        if (!newName.trim() || newName === currentName) {
-            onClose();
-            return;
-        }
-
-        setIsSaving(true);
-        setError(null);
-        try {
-            await onSave(newName.trim());
-            onClose();
-        } catch (saveError) {
-            setError(saveError instanceof Error ? saveError.message : t('sidebar.profile.saveError'));
-        } finally {
-            setIsSaving(false);
-        }
-    };
-
-    return (
-        <Modal isOpen={isOpen} onClose={onClose} title={t('sidebar.profile.editTitle')}>
-            <div className="space-y-4">
-                <div>
-                    <label htmlFor="displayNameSidebar" className="block text-sm font-medium text-slate-300 mb-1">
-                        {t('sidebar.profile.displayName')}
-                    </label>
-                    <Input
-                        id="displayNameSidebar"
-                        name="displayName"
-                        value={newName}
-                        onChange={(event) => setNewName(event.target.value)}
-                        placeholder={t('sidebar.profile.displayNamePlaceholder')}
-                        disabled={isSaving}
-                    />
-                </div>
-                {error && <p className="text-sm text-red-400">{error}</p>}
-                <div className="flex justify-end gap-2">
-                    <Button variant="ghost" onClick={onClose} disabled={isSaving}>{t('sidebar.profile.cancel')}</Button>
-                    <Button
-                        onClick={handleSave}
-                        isLoading={isSaving}
-                        disabled={!newName.trim() || newName === currentName || isSaving}
-                    >
-                        {t('sidebar.profile.saveChanges')}
-                    </Button>
-                </div>
-            </div>
-        </Modal>
-    );
-};
-
-export const studyNavigation = [
-    { key: 'sidebar.nav.studyHub', href: '/', icon: LayoutDashboard },
-    { key: 'sidebar.nav.curriculum', href: '/curriculum', icon: GraduationCap },
-    { key: 'sidebar.nav.university', href: '/university-status', icon: Bell },
-    { key: 'sidebar.nav.notes', href: '/notes', icon: FileText },
-    { key: 'sidebar.nav.tutor', href: '/tutor', icon: MessageSquare },
-    { key: 'AI Insights', href: '/insights', icon: Zap, directTranslation: true },
-    { key: 'sidebar.nav.studyRoom', href: '/study-lobby', icon: Users },
+// Unified nav groups — always shown together, no mode switching
+export const navGroups = [
+    {
+        label: 'STUDY',
+        items: [
+            { key: 'sidebar.nav.studyHub',   href: '/',                icon: LayoutDashboard, label: 'Dashboard'      },
+            { key: 'sidebar.nav.curriculum', href: '/curriculum',      icon: GraduationCap,   label: 'MU Curriculum'  },
+            { key: 'sidebar.nav.university', href: '/university-status', icon: Bell,          label: 'University Hub' },
+            { key: 'sidebar.nav.notes',      href: '/notes',           icon: FileText,        label: 'Notes'          },
+            { key: 'sidebar.nav.tutor',      href: '/tutor',           icon: Bot,             label: 'AI Tutor'       },
+            { key: 'sidebar.nav.studyRoom',  href: '/study-lobby',     icon: Users,           label: 'Study Room'     },
+        ],
+    },
+    {
+        label: 'PLACEMENT',
+        items: [
+            { key: 'sidebar.nav.placement',  href: '/placement',         icon: Briefcase,   label: 'Arena'          },
+            { key: 'Prep Tools',             href: '/prep-tools',        icon: Target,      label: 'Prep Tools',     directTranslation: true },
+            { key: 'Practice Hub',           href: '/practice-hub',      icon: Calculator,  label: 'Practice Hub',   directTranslation: true },
+            { key: 'Resume Builder',         href: '/resume-builder',    icon: FileText,    label: 'Resume Builder', directTranslation: true },
+            { key: 'Companies & Tracking',   href: '/company-hub',       icon: Building2,   label: 'Companies',      directTranslation: true },
+            { key: 'Learning Resources',     href: '/learning-resources', icon: Play,       label: 'Resources',      directTranslation: true },
+        ],
+    },
 ];
 
-export const placementNavigation = [
-    { key: 'sidebar.nav.placement', href: '/placement', icon: Briefcase },
-    { key: 'Practice Hub', href: '/practice-hub', icon: Calculator, directTranslation: true },
-    { key: 'Resume Builder', href: '/resume-builder', icon: FileText, directTranslation: true },
-    { key: 'Companies & Tracking', href: '/company-hub', icon: Building2, directTranslation: true },
-    { key: 'Learning Resources', href: '/learning-resources', icon: Play, directTranslation: true },
-];
+// Legacy exports kept for backward-compat with Header.tsx searchItems logic
+export const studyNavigation = navGroups[0].items;
+export const placementNavigation = navGroups[1].items;
 
 const Sidebar: React.FC = () => {
-    const { user, logout, updateUserProfile } = useAuth();
-    const { language, setLanguage, t } = useLanguage();
-    const { showToast } = useToast();
-    const { mode } = useMode();
-    const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
-    const navigate = useNavigate();
+    const { user } = useAuth();
+    const { t } = useLanguage();
+    const { isCollapsed, toggleSidebar } = useSidebar();
+    const location = useLocation();
 
-    const handleLogout = async () => {
-        try {
-            await logout();
-            navigate('/login');
-        } catch (error) {
-            console.error('Failed to log out', error);
-        }
+    const [expandedGroups, setExpandedGroups] = useState<string[]>(navGroups.map(g => g.label));
+
+    const toggleGroup = (label: string) => {
+        setExpandedGroups(prev => prev.includes(label) ? prev.filter(g => g !== label) : [...prev, label]);
     };
 
-    const handleProfileSave = async (newName: string) => {
-        if (!updateUserProfile) {
-            throw new Error('Profile update function not loaded.');
-        }
-        await updateUserProfile({ displayName: newName });
-    };
+    const isAcademicView = location.pathname === '/curriculum' || location.pathname === '/notes';
 
     return (
         <>
-            <aside className="hidden xl:flex w-[280px] flex-shrink-0 bg-[#0F1117] border-r border-white/5 p-6 flex-col overflow-y-auto custom-scrollbar">
-                <div className="flex items-center mb-10">
-                    <div className="p-2 bg-violet-600 rounded-lg">
-                        <BrainCircuit className="w-7 h-7 text-white" />
+            <motion.aside
+                initial={false}
+                animate={{ width: isCollapsed ? 80 : 240 }}
+                transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                className="hidden lg:flex flex-shrink-0 bg-[#0F1117] border-r border-white/5 flex-col overflow-y-auto custom-scrollbar relative"
+            >
+                {/* Toggle Button */}
+                <button
+                    onClick={toggleSidebar}
+                    className={`absolute -right-3 top-20 z-50 p-1.5 border rounded-full text-white transition-all active:scale-95 ${
+                        isAcademicView
+                        ? 'bg-slate-700 border-slate-600/50 opacity-50 hover:opacity-100'
+                        : 'bg-brand-primary border-brand-border-focus/30 shadow-[0_0_15px_var(--brand-primary-glow)] hover:opacity-90 hover:scale-110'
+                    }`}
+                    title={isCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
+                >
+                    {isCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
+                </button>
+
+                {/* Logo */}
+                <Link
+                    to="/"
+                    className={`flex items-center mb-6 p-5 group transition-all ${isCollapsed ? 'justify-center px-0' : ''}`}
+                >
+                    <div className="relative flex-shrink-0">
+                        <div className={`absolute inset-0 bg-violet-600 blur-[24px] rounded-xl transition-opacity ${isAcademicView ? 'opacity-5' : 'opacity-15 group-hover:opacity-30'}`}></div>
+                        <img
+                            src="/nexusai-logo.png"
+                            alt="NexusAI Logo"
+                            className={`relative z-10 object-contain transition-all duration-500 ${isCollapsed ? 'w-9 h-9' : 'w-10 h-10'} ${isAcademicView ? 'opacity-80' : 'group-hover:scale-110'}`}
+                        />
                     </div>
-                    <h1 className="text-2xl font-bold ml-3 bg-gradient-to-r from-violet-400 to-cyan-400 text-transparent bg-clip-text">
-                        {t('sidebar.brand')}
-                    </h1>
-                </div>
-
-                <nav className="space-y-2">
-                    {(mode === 'study' ? studyNavigation : placementNavigation).map((item) => (
-                        <NavLink
-                            key={item.key}
-                            to={item.href}
-                            end={item.href === '/'}
-                            className={({ isActive }) =>
-                                `flex items-center px-4 py-3 text-sm font-medium transition-all duration-200 border-l-[3px] ${isActive
-                                    ? 'bg-violet-500/15 border-violet-500 text-white'
-                                    : 'border-transparent text-slate-400 hover:bg-white/5 hover:text-white'
-                                }`
-                            }
-                        >
-                            <item.icon className="mr-3 h-5 w-5" aria-hidden="true" />
-                            {(item as any).directTranslation ? item.key : t(item.key)}
-                        </NavLink>
-                    ))}
-
-                    {/* Neural Pulse Indicator */}
-                    <Tooltip>
-                        <TooltipTrigger asChild>
-                            <div className="mx-2 mt-8 p-4 bg-slate-900/80 rounded-2xl border border-white/5 relative overflow-hidden group hover:border-violet-500/30 transition-all cursor-help">
-                                <div className="absolute top-0 right-0 p-8 bg-violet-500/5 blur-[30px] rounded-full"></div>
-                                <div className="relative z-10">
-                                    <div className="flex items-center justify-between mb-2">
-                                        <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Neural Pulse</span>
-                                        <div className="flex gap-0.5">
-                                            <div className="w-1 h-3 bg-emerald-500/40 rounded-full"></div>
-                                            <div className="w-1 h-2 bg-emerald-500/60 rounded-full mt-1"></div>
-                                            <div className="w-1 h-4 bg-emerald-500 rounded-full mt-[-2px] animate-pulse"></div>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]"></div>
-                                        <span className="text-[11px] font-bold text-slate-300">Groq-L3-70B</span>
-                                    </div>
-                                    <div className="mt-2 flex items-center justify-between">
-                                        <span className="text-[9px] text-slate-500 font-mono">Lat: 142ms</span>
-                                        <span className="text-[9px] text-emerald-500/80 font-bold uppercase tracking-tighter">Live Sync</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                            <div className="space-y-1">
-                                <p className="font-bold text-violet-400">System Status</p>
-                                <p className="text-xs text-slate-300">
-                                    AI Model: Groq LLaMA 3 70B — Response latency is live.
-                                </p>
-                                <div className="flex items-center gap-2 mt-1">
-                                    <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
-                                    <p className="text-[10px] text-slate-400">Green = Healthy (&lt; 200ms)</p>
-                                </div>
-                            </div>
-                        </TooltipContent>
-                    </Tooltip>
-                </nav>
-
-                <div className="mt-10 pt-6 border-t border-white/5">
-                    <div className="px-3 py-3 rounded-xl bg-surface/50 border border-white/5">
-                        {user && (
-                            <div className="mb-6">
-                                <div className="flex items-center space-x-3 mb-2">
-                                    <img
-                                        src={`https://ui-avatars.com/api/?name=${user.displayName || 'User'}&background=random`}
-                                        alt="User avatar"
-                                        className="w-10 h-10 rounded-full border border-violet-500/20"
-                                    />
-                                    <div className="flex-1 overflow-hidden">
-                                        <p className="font-bold text-sm text-white truncate">{user.displayName || 'User'}</p>
-                                    </div>
-                                </div>
-                                <div className="flex items-center gap-4 ml-1">
-                                    <div className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-500/10 rounded-full border border-emerald-500/20 shadow-sm shadow-emerald-500/5">
-                                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
-                                        <span className="text-[10px] text-emerald-400 uppercase font-black tracking-widest leading-none">
-                                            {t('sidebar.profile.activeBranch', { branch: user.branch || 'CO' })}
-                                        </span>
-                                    </div>
-                                    <div className="w-[1.5px] h-3 bg-white/30 rounded-full shadow-[0_0_5px_rgba(255,255,255,0.1)]"></div>
-                                    <button
-                                        onClick={() => setIsProfileModalOpen(true)}
-                                        className="text-[10px] font-bold text-slate-400 hover:text-white transition-all uppercase tracking-widest flex items-center gap-1.5 group/edit"
-                                    >
-                                        <Edit3 size={11} className="group-hover/edit:text-violet-400 transition-colors" />
-                                        {t('sidebar.profile.editProfile')}
-                                    </button>
-                                </div>
+                    <AnimatePresence mode="wait">
+                        {!isCollapsed && (
+                            <div className="flex flex-col ml-3.5 overflow-hidden">
+                                <motion.div
+                                    initial={{ opacity: 0, x: 8 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    exit={{ opacity: 0, x: 8 }}
+                                    className="flex items-center"
+                                >
+                                    <span className="text-xl font-bold tracking-tight text-white group-hover:text-violet-400 transition-colors">NEXUS</span>
+                                    <span className="text-xl font-bold tracking-tight text-violet-400 group-hover:text-white transition-colors">AI</span>
+                                </motion.div>
+                                <motion.span
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    className="text-[9px] font-bold uppercase tracking-widest text-slate-500 leading-none mt-1"
+                                >
+                                    Intelligence Core
+                                </motion.span>
                             </div>
                         )}
+                    </AnimatePresence>
+                </Link>
 
-                        <div className="flex items-center justify-between p-2 mb-4 bg-slate-900/50 rounded-lg border border-white/5">
-                            <span className="text-[10px] font-bold text-slate-500 uppercase ml-1">{t('sidebar.profile.language')}</span>
-                            <div className="flex gap-1.5">
-                                {[
-                                    { key: 'en', label: 'EN', name: 'English' },
-                                    { key: 'mr', label: 'MR', name: 'Marathi' },
-                                    { key: 'hi', label: 'HI', name: 'Hindi' }
-                                ].map((l) => (
-                                    <button
-                                        key={l.key}
-                                        aria-pressed={language === l.key}
-                                        onClick={() => {
-                                            if (language !== l.key) {
-                                                setLanguage(l.key as any);
-                                                showToast(`Language set to ${l.name} ✓`, 'success');
-                                            }
-                                        }}
-                                        className={`px-3 py-1.5 rounded-lg text-[10px] font-black transition-all relative ${language === l.key
-                                            ? 'bg-violet-600/20 text-violet-400 shadow-sm shadow-violet-500/10'
-                                            : 'hover:bg-white/5 text-slate-500 hover:text-slate-300'
-                                            }`}
-                                    >
-                                        {l.label}
-                                        {language === l.key && (
-                                            <motion.span 
-                                                layoutId="active-lang-pill"
-                                                className="absolute inset-0 ring-1 ring-violet-500/50 rounded-lg"
-                                                initial={false}
-                                                transition={{ type: "spring", stiffness: 380, damping: 30 }}
-                                            />
-                                        )}
-                                    </button>
-                                ))}
+                {/* Unified Nav */}
+                <nav className={`flex-1 flex flex-col gap-1 ${isCollapsed ? 'px-3' : 'px-4'}`}>
+                    {navGroups.map((group) => {
+                        const isExpanded = expandedGroups.includes(group.label);
+                        return (
+                            <div key={group.label} className="mb-2">
+                                {/* Section label — hidden when collapsed */}
+                                <AnimatePresence>
+                                    {!isCollapsed && (
+                                        <motion.div
+                                            initial={{ opacity: 0 }}
+                                            animate={{ opacity: 1 }}
+                                            exit={{ opacity: 0 }}
+                                            className="flex items-center justify-between px-3 mt-5 mb-2 cursor-pointer group"
+                                            onClick={() => toggleGroup(group.label)}
+                                        >
+                                            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 group-hover:text-slate-300 transition-colors">
+                                                {group.label}
+                                            </p>
+                                            <ChevronDown size={12} className={`text-slate-600 group-hover:text-white transition-all duration-300 ${isExpanded ? 'rotate-180' : ''}`} />
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
+                                {isCollapsed && (
+                                    <div className="w-full h-px bg-white/5 my-3" />
+                                )}
+
+                                <AnimatePresence initial={false}>
+                                    {(isExpanded || isCollapsed) && (
+                                        <motion.div
+                                            initial={{ height: 0, opacity: 0 }}
+                                            animate={{ height: 'auto', opacity: 1 }}
+                                            exit={{ height: 0, opacity: 0 }}
+                                            transition={{ duration: 0.2 }}
+                                            className="space-y-0.5 overflow-hidden"
+                                        >
+                                            {group.items.map((item) => (
+                                                <div key={item.key} className="w-full">
+                                                    <Tooltip>
+                                                        <TooltipTrigger asChild>
+                                                            <NavLink
+                                                                to={item.href}
+                                                                end={item.href === '/'}
+                                                                className={({ isActive }) => {
+                                                                    const itemActive = isActive;
+                                                                    return `flex items-center px-3 py-2.5 text-sm font-medium transition-all duration-200 rounded-xl w-full border border-transparent ${isCollapsed ? 'justify-center px-0' : ''} ${
+                                                                        itemActive
+                                                                            ? isAcademicView
+                                                                                ? 'bg-slate-800 border-white/[0.05] text-white shadow-lg'
+                                                                                : 'bg-violet-600/10 border-violet-500/10 text-violet-400'
+                                                                            : 'text-slate-500 hover:bg-white/[0.03] hover:text-slate-200'
+                                                                    }`;
+                                                                }}
+                                                            >
+                                                                <item.icon className={`${isCollapsed ? 'mr-0' : 'mr-3'} h-[16px] w-[16px] flex-shrink-0 transition-colors`} aria-hidden="true" />
+                                                                {!isCollapsed && (
+                                                                    <span className="truncate text-xs font-semibold tracking-tight">
+                                                                        {(item as any).directTranslation ? item.label : t(item.key)}
+                                                                    </span>
+                                                                )}
+                                                            </NavLink>
+                                                        </TooltipTrigger>
+                                                        {isCollapsed && (
+                                                            <TooltipContent side="right">
+                                                                <p className="text-xs font-bold text-white">{item.label}</p>
+                                                            </TooltipContent>
+                                                        )}
+                                                    </Tooltip>
+                                                </div>
+                                            ))}
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
                             </div>
-                        </div>
+                        );
+                    })}
 
-                        <button
-                            onClick={handleLogout}
-                            className="w-full flex items-center justify-center px-4 py-2 text-sm font-medium rounded-lg transition-colors duration-200 text-slate-300 hover:bg-red-500/20 hover:text-red-400 border border-transparent hover:border-red-500/20"
-                        >
-                            <LogOut className="mr-2 h-5 w-5" />
-                            {t('sidebar.profile.logout')}
-                        </button>
-                    </div>
-                    <p className="text-center text-xs text-slate-500 mt-4">&copy; 2026 NexusAI. {t('sidebar.footer.rights')}</p>
-                </div>
-            </aside>
-
-            {user && (
-                <ProfileEditModal
-                    isOpen={isProfileModalOpen}
-                    onClose={() => setIsProfileModalOpen(false)}
-                    currentName={user.displayName || ''}
-                    onSave={handleProfileSave}
-                />
-            )}
+                </nav>
+            </motion.aside>
         </>
     );
 };

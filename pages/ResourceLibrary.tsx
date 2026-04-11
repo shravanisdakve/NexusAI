@@ -307,6 +307,7 @@ const ResourceLibrary: React.FC = () => {
                         <Select
                             id="resource-year-filter"
                             name="yearFilter"
+                            aria-label="Filter resources by academic year"
                             value={yearFilter}
                             onChange={(e) => setYearFilter(e.target.value)}
                             className="w-full md:w-auto"
@@ -320,6 +321,7 @@ const ResourceLibrary: React.FC = () => {
                         <Select
                             id="resource-type-filter"
                             name="typeFilter"
+                            aria-label="Filter resources by media type"
                             value={typeFilter}
                             onChange={(e) => setTypeFilter(e.target.value)}
                             className="w-full md:w-auto"
@@ -335,6 +337,7 @@ const ResourceLibrary: React.FC = () => {
                             <Input
                                 id="resource-search"
                                 name="subjectFilter"
+                                aria-label="Search resources by subject or title"
                                 placeholder={t('resources.searchPlaceholder')}
                                 value={subjectFilter}
                                 onChange={(e) => setSubjectFilter(e.target.value)}

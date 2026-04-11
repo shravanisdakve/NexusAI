@@ -7,13 +7,18 @@ interface PageHeaderProps {
     title: string;
     subtitle: string;
     icon?: React.ReactNode;
+    className?: string;
 }
-export const PageHeader: React.FC<PageHeaderProps> = ({ title, subtitle, icon }) => (
-    <div className="mb-8 flex items-start gap-4">
-        {icon && <div className="p-3 bg-slate-800/50 rounded-xl border border-slate-700/50 shadow-lg">{icon}</div>}
-        <div>
-            <h1 className="text-3xl font-extrabold text-white tracking-tight">{title}</h1>
-            <p className="mt-2 text-slate-400 text-base max-w-2xl">{subtitle}</p>
+export const PageHeader: React.FC<PageHeaderProps> = ({ title, subtitle, icon, className = '' }) => (
+    <div className={`mb-10 flex flex-col md:flex-row items-start md:items-center gap-5 ${className}`}>
+        {icon && (
+            <div className="p-3.5 bg-violet-500/10 rounded-2xl border border-violet-500/20 shadow-[0_0_15px_rgba(124,58,237,0.1)] shrink-0">
+                {React.cloneElement(icon as React.ReactElement<{ className?: string }>, { className: 'w-6 h-6 text-violet-400' })}
+            </div>
+        )}
+        <div className="space-y-1">
+            <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight italic uppercase">{title}</h1>
+            <p className="text-slate-500 text-xs font-bold uppercase tracking-[0.2em]">{subtitle}</p>
         </div>
     </div>
 );
@@ -21,7 +26,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({ title, subtitle, icon })
 // Button Component
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
     isLoading?: boolean;
-    variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger' | 'success';
+    variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger' | 'success' | 'link';
     size?: 'sm' | 'md' | 'lg';
     fullWidth?: boolean;
 }
@@ -37,13 +42,14 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
             ghost: 'bg-transparent text-slate-400 hover:bg-white/5 hover:text-white',
             danger: 'bg-red-600 hover:bg-red-700 text-white shadow-sm hover:shadow-md active:bg-red-800 focus:ring-red-500',
             success: 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm hover:shadow-md active:bg-emerald-800 focus:ring-emerald-500',
+            link: 'bg-transparent text-violet-400 hover:text-violet-300 underline-offset-4 hover:underline p-0 h-auto',
         };
 
         // Size styles
         const sizeStyles = {
-            sm: 'px-4 py-2 text-sm',
-            md: 'px-6 py-3.5 text-base', // More generous padding
-            lg: 'px-8 py-4 text-lg',
+            sm: 'px-4 py-2 text-ui',   // ~15px
+            md: 'px-6 py-3.5 text-base', // 16px
+            lg: 'px-8 py-4 text-lg',   // 18px
         };
 
         // Base styles - always applied
@@ -192,35 +198,56 @@ interface ModalProps {
     onClose: () => void;
     title: string;
     children: React.ReactNode;
-    idPrefix?: string; // Optional custom prefix
+    idPrefix?: string;
+    size?: 'md' | 'lg' | 'xl';
+    className?: string;
 }
 
-export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, idPrefix }) => {
+export const Modal: React.FC<ModalProps> = ({ 
+    isOpen, 
+    onClose, 
+    title, 
+    children, 
+    idPrefix, 
+    size = 'md',
+    className = ''
+}) => {
     const generatedId = React.useId();
     const modalTitleId = idPrefix ? `${idPrefix}-title` : `modal-title-${generatedId}`;
 
     if (!isOpen) return null;
 
+    const sizeClasses = {
+        md: 'max-w-md',      // 448px
+        lg: 'max-w-2xl',     // 672px
+        xl: 'max-w-4xl'      // 896px
+    };
+
     return (
         <div
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 transition-opacity duration-300"
+            className="fixed inset-0 bg-black/50 backdrop-blur-[6px] flex items-center justify-center z-[100] transition-opacity duration-300 p-4"
             aria-labelledby={modalTitleId}
             role="dialog"
             aria-modal="true"
             onClick={onClose}
         >
             <div
-                className="bg-slate-800 rounded-xl shadow-2xl w-full max-w-md m-4 ring-1 ring-slate-700 p-6 transform transition-all duration-300 scale-95 opacity-0 animate-in"
+                className={`bg-slate-900 rounded-[2rem] shadow-2xl w-full ${sizeClasses[size]} ring-1 ring-white/10 flex flex-col max-h-[90vh] overflow-hidden transform transition-all duration-300 scale-95 opacity-0 animate-in ${className}`}
                 onClick={(e) => e.stopPropagation()}
                 style={{ animationName: 'modal-enter', animationDuration: '0.2s', animationFillMode: 'forwards' }}
             >
-                <div className="flex justify-between items-center mb-4">
-                    <h2 id={modalTitleId} className="text-xl font-bold text-white">{title}</h2>
-                    <button onClick={onClose} className="text-slate-400 hover:text-white p-1 rounded-full hover:bg-slate-700 transition-colors">
+                {/* Sticky Header */}
+                <div className="flex justify-between items-center px-8 py-6 border-b border-white/[0.04] bg-slate-900 sticky top-0 z-20">
+                    <h2 id={modalTitleId} className="text-xl font-black text-white italic uppercase tracking-tight">{title}</h2>
+                    <button onClick={onClose} className="text-slate-500 hover:text-white p-2 rounded-xl hover:bg-white/5 transition-all">
                         <X size={20} />
                     </button>
                 </div>
-                {children}
+                
+                {/* Scrollable Body */}
+                <div className="flex-1 overflow-y-auto custom-scrollbar p-8">
+                    {children}
+                </div>
             </div>
             <style>{`
                 @keyframes modal-enter {
@@ -228,6 +255,19 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, 
                         transform: scale(1);
                         opacity: 1;
                     }
+                }
+                .custom-scrollbar::-webkit-scrollbar {
+                    width: 6px;
+                }
+                .custom-scrollbar::-webkit-scrollbar-track {
+                    background: transparent;
+                }
+                .custom-scrollbar::-webkit-scrollbar-thumb {
+                    background: rgba(255, 255, 255, 0.05);
+                    border-radius: 10px;
+                }
+                .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+                    background: rgba(255, 255, 255, 0.1);
                 }
             `}</style>
         </div>
@@ -267,12 +307,19 @@ export const Toast: React.FC<ToastProps> = ({ message, type = 'info', onClose })
 interface CardProps {
     children: React.ReactNode;
     className?: string;
+    variant?: 'default' | 'open';
 }
-export const Card: React.FC<CardProps> = ({ children, className = '' }) => (
-    <div className={`bg-slate-800/40 backdrop-blur-md border border-slate-700/50 rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 ${className}`}>
-        {children}
-    </div>
-);
+export const Card: React.FC<CardProps> = ({ children, className = '', variant = 'default' }) => {
+    const baseStyles = variant === 'default' 
+        ? 'bg-slate-800/40 backdrop-blur-md border border-slate-700/50 shadow-xl p-6 hover:border-slate-600/50 hover:shadow-2xl transition-all duration-300' 
+        : 'bg-transparent border-none shadow-none p-0';
+        
+    return (
+        <div className={`${baseStyles} rounded-2xl ${className}`}>
+            {children}
+        </div>
+    );
+};
 
 export const ToastContainer: React.FC<{ toasts: { id: string; message: string; type: any }[]; onRemove: (id: string) => void }> = ({ toasts, onRemove }) => (
     <div className="fixed bottom-6 right-6 z-[100] flex flex-col gap-3">
@@ -314,16 +361,28 @@ export const Tooltip: React.FC<{ children: React.ReactNode }> = ({ children }) =
     );
 };
 
-export const TooltipTrigger: React.FC<{ children: React.ReactElement; asChild?: boolean; isVisible?: boolean }> = ({ children, asChild }) => {
+export const TooltipTrigger: React.FC<{ children: React.ReactElement; asChild?: boolean; isVisible?: boolean }> = ({ children }) => {
     return children;
 };
 
-export const TooltipContent: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className = '' }) => {
+export const TooltipContent: React.FC<{ children: React.ReactNode; className?: string; side?: 'top' | 'right' | 'bottom' | 'left' }> = ({ children, className = '', side = 'top' }) => {
+    const sideClasses = {
+        top: 'bottom-full left-1/2 -translate-x-1/2 mb-2',
+        bottom: 'top-full left-1/2 -translate-x-1/2 mt-2',
+        left: 'right-full top-1/2 -translate-y-1/2 mr-2',
+        right: 'left-full top-1/2 -translate-y-1/2 ml-2'
+    };
+
     return (
-        <div className={`absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-[60] animate-in fade-in slide-in-from-bottom-1 duration-200 ${className}`}>
+        <div className={`absolute ${sideClasses[side]} z-[60] animate-in fade-in slide-in-from-bottom-1 duration-200 ${className}`}>
             <div className="bg-slate-900 border border-slate-700 rounded-lg p-3 shadow-2xl min-w-[200px] text-left">
                 {children}
-                <div className="absolute top-full left-1/2 -translate-x-1/2 w-2 h-2 bg-slate-900 border-r border-b border-slate-700 rotate-45 -mt-1"></div>
+                <div className={`absolute w-2 h-2 bg-slate-900 border-slate-700 rotate-45 ${
+                    side === 'top' ? 'top-full left-1/2 -translate-x-1/2 -mt-1 border-r border-b' :
+                    side === 'bottom' ? 'bottom-full left-1/2 -translate-x-1/2 -mb-1 border-l border-t' :
+                    side === 'left' ? 'left-full top-1/2 -translate-y-1/2 -ml-1 border-t border-r' :
+                    'right-full top-1/2 -translate-y-1/2 -mr-1 border-b border-l'
+                }`}></div>
             </div>
         </div>
     );

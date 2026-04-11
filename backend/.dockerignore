@@ -1,0 +1,28 @@
+node_modules
+npm-debug.log
+.env
+.git
+.gitignore
+# Dockerfile
+# .dockerignore
+tests
+scripts/*.test.js
+api_health_result.txt
+seed_out.txt
+test_out.txt
+rest_api_result.txt
+non_streaming_test_result.txt
+streaming_test_result.txt
+models_list.txt
+models_full_list.txt
+api_health_result.txt
+check_api_health.js
+check_models.js
+check_rest_api.js
+list_available_models.js
+testScrapingUrls.js
+test_gemini.js
+test_non_streaming.js
+test_special_model.js
+test_streaming.js
+test_streaming_v2.js

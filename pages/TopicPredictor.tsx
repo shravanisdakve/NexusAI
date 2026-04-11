@@ -85,7 +85,7 @@ const TopicPredictor: React.FC = () => {
             <div className="bg-slate-800/40 rounded-[2rem] p-8 border border-white/5 shadow-2xl backdrop-blur-md no-print">
                 <div className="flex flex-col md:flex-row gap-4 items-end">
                     <div className="flex-1">
-                        <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3 ml-1">Subject Neural Target</label>
+                        <label className="block text-xs font-black uppercase tracking-widest text-slate-500 mb-3 ml-1">Subject Neural Target</label>
                         <Input
                             value={subject}
                             onChange={(e) => setSubject(e.target.value)}
@@ -114,7 +114,7 @@ const TopicPredictor: React.FC = () => {
                         <div className="w-24 h-24 border-b-4 border-violet-500 rounded-full animate-spin" />
                         <Brain className="absolute inset-0 m-auto text-violet-400/30 animate-pulse" size={32} />
                     </motion.div>
-                    <div className="bg-black/50 border border-emerald-500/20 px-6 py-4 rounded-2xl font-mono text-[11px] text-emerald-400 max-w-md w-full shadow-inner flex items-center gap-4">
+                    <div className="bg-black/50 border border-emerald-500/20 px-6 py-4 rounded-2xl font-mono text-xs text-emerald-400 max-w-md w-full shadow-inner flex items-center gap-4">
                         <span className="w-3 h-3 bg-emerald-500 rounded-full animate-ping shrink-0" />
                         {thinkingLogs[thinkingStep]}
                     </div>
@@ -146,7 +146,7 @@ const TopicPredictor: React.FC = () => {
                                                     <div className="bg-violet-600/10 text-violet-400 px-3 py-1 rounded-lg text-xs font-black uppercase tracking-widest border border-violet-500/20">
                                                         Module 0{p.module}
                                                     </div>
-                                                    <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                                                    <div className="text-xs font-black text-slate-500 uppercase tracking-widest">
                                                         Estimated Marks: <span className="text-white">{p.estimatedMarks}</span>
                                                     </div>
                                                 </div>
@@ -188,11 +188,11 @@ const TopicPredictor: React.FC = () => {
                                                         transition={{ duration: 1, delay: i * 0.1 }}
                                                         className="w-full max-w-[40px] bg-gradient-to-t from-sky-600 to-sky-400 rounded-t-lg relative group-hover:from-violet-600 group-hover:to-violet-400 transition-colors cursor-pointer"
                                                     >
-                                                        <div className="absolute -top-8 left-1/2 -translate-x-1/2 text-[10px] font-black text-white bg-slate-900 px-2 py-1 rounded border border-white/10 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        <div className="absolute -top-8 left-1/2 -translate-x-1/2 text-xs font-black text-white bg-slate-900 px-2 py-1 rounded border border-white/10 opacity-0 group-hover:opacity-100 transition-opacity">
                                                             {p.estimatedMarks}M
                                                         </div>
                                                     </motion.div>
-                                                    <span className="text-[10px] font-black text-slate-500 uppercase">M{p.module}</span>
+                                                    <span className="text-xs font-black text-slate-500 uppercase">M{p.module}</span>
                                                 </div>
                                             ))}
                                         </div>
@@ -230,7 +230,7 @@ const TopicPredictor: React.FC = () => {
                                             />
                                             <div className="absolute inset-0 m-auto w-32 h-32 bg-slate-900 rounded-full flex flex-col items-center justify-center border border-white/10 shadow-inner">
                                                 <span className="text-3xl font-black text-white">{totalMarks}</span>
-                                                <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest leading-none">Total Marks</span>
+                                                <span className="text-xs font-black text-slate-500 uppercase tracking-widest leading-none">Total Marks</span>
                                             </div>
                                         </div>
 
@@ -276,14 +276,14 @@ const TopicPredictor: React.FC = () => {
                                     {likelyQuestions.length > 0 ? (
                                         likelyQuestions.slice(0, 4).map((q, i) => (
                                             <div key={i} className="group cursor-default">
-                                                <div className="flex justify-between items-center text-[9px] font-black uppercase tracking-[0.2em] text-slate-500 mb-1">
+                                                <div className="flex justify-between items-center text-xs font-black uppercase tracking-[0.2em] text-slate-500 mb-1">
                                                     <span>Question Pattern</span>
                                                     <span className="text-emerald-400">{q.frequency}x Repeat</span>
                                                 </div>
                                                 <p className="text-sm text-slate-400 font-medium leading-snug group-hover:text-white transition-colors">
                                                     {q.questionText}
                                                 </p>
-                                                <div className="mt-2 text-[10px] font-bold text-sky-500">
+                                                <div className="mt-2 text-xs font-bold text-sky-500">
                                                     Estimated Marks: {q.marks}
                                                 </div>
                                             </div>
@@ -327,9 +327,9 @@ const LegendItem: React.FC<{ color: string; label: string; percent: string }> = 
     <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
             <div className={`w-2 h-2 rounded-full ${color}`} />
-            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{label}</span>
+            <span className="text-xs font-black text-slate-400 uppercase tracking-widest">{label}</span>
         </div>
-        <span className="text-[10px] font-black text-white">{percent}</span>
+        <span className="text-xs font-black text-white">{percent}</span>
     </div>
 );
 

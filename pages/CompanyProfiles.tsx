@@ -34,7 +34,7 @@ interface CompanyProfile {
 
 const COMPANIES: CompanyProfile[] = [
     {
-        name: 'TCS', logo: '🟦', sector: 'IT Services & Consulting',
+        name: 'TCS', logo: '', sector: 'IT Services & Consulting',
         ctcRange: '3.36 – 11 LPA', eligibility: '60% throughout, no active backlogs',
         testPattern: {
             sections: [
@@ -56,7 +56,7 @@ const COMPANIES: CompanyProfile[] = [
         ]
     },
     {
-        name: 'Infosys', logo: '🟪', sector: 'IT Services & Digital',
+        name: 'Infosys', logo: '', sector: 'IT Services & Digital',
         ctcRange: '3.6 – 9.5 LPA', eligibility: '60% throughout, no active backlogs',
         testPattern: {
             sections: [
@@ -77,7 +77,7 @@ const COMPANIES: CompanyProfile[] = [
         ]
     },
     {
-        name: 'Wipro', logo: '🟩', sector: 'IT Services & Consulting',
+        name: 'Wipro', logo: '', sector: 'IT Services & Consulting',
         ctcRange: '3.5 – 6.5 LPA', eligibility: '60% throughout, no active backlogs',
         testPattern: {
             sections: [
@@ -94,7 +94,7 @@ const COMPANIES: CompanyProfile[] = [
         website: 'https://careers.wipro.com', difficulty: 'Easy',
     },
     {
-        name: 'Accenture', logo: '🟣', sector: 'Consulting & IT Services',
+        name: 'Accenture', logo: '', sector: 'Consulting & IT Services',
         ctcRange: '4.5 – 12 LPA', eligibility: '60% throughout, no backlogs',
         testPattern: {
             sections: [
@@ -115,7 +115,7 @@ const COMPANIES: CompanyProfile[] = [
         ]
     },
     {
-        name: 'Cognizant', logo: '🔵', sector: 'IT Services & Digital',
+        name: 'Cognizant', logo: '', sector: 'IT Services & Digital',
         ctcRange: '4 – 8 LPA', eligibility: '60% throughout, no active backlogs',
         testPattern: {
             sections: [
@@ -136,7 +136,7 @@ const COMPANIES: CompanyProfile[] = [
         ]
     },
     {
-        name: 'Capgemini', logo: '🟡', sector: 'IT Services & Consulting',
+        name: 'Capgemini', logo: '', sector: 'IT Services & Consulting',
         ctcRange: '3.8 – 7.5 LPA', eligibility: '60% throughout, no backlogs',
         testPattern: {
             sections: [
@@ -153,7 +153,7 @@ const COMPANIES: CompanyProfile[] = [
         website: 'https://www.capgemini.com/careers', difficulty: 'Medium',
     },
     {
-        name: 'Tech Mahindra', logo: '🔴', sector: 'IT Services & Telecom',
+        name: 'Tech Mahindra', logo: '', sector: 'IT Services & Telecom',
         ctcRange: '3.25 – 7 LPA', eligibility: '60% throughout',
         testPattern: {
             sections: [
@@ -169,7 +169,7 @@ const COMPANIES: CompanyProfile[] = [
         website: 'https://careers.techmahindra.com', difficulty: 'Easy',
     },
     {
-        name: 'L&T Infotech (LTIMindtree)', logo: '🟠', sector: 'IT Services & Engineering',
+        name: 'L&T Infotech (LTIMindtree)', logo: '', sector: 'IT Services & Engineering',
         ctcRange: '4.5 – 9 LPA', eligibility: '65% throughout, no active backlogs',
         testPattern: {
             sections: [
@@ -185,7 +185,7 @@ const COMPANIES: CompanyProfile[] = [
         website: 'https://www.ltimindtree.com/careers', difficulty: 'Hard',
     },
     {
-        name: 'Persistent Systems', logo: '🟤', sector: 'Product Engineering & Digital',
+        name: 'Persistent Systems', logo: '', sector: 'Product Engineering & Digital',
         ctcRange: '5.1 – 9 LPA', eligibility: '60% throughout, based in Pune/Mumbai',
         testPattern: {
             sections: [
@@ -200,7 +200,7 @@ const COMPANIES: CompanyProfile[] = [
         website: 'https://www.persistent.com/careers', difficulty: 'Hard',
     },
     {
-        name: 'Godrej', logo: '🟩', sector: 'Conglomerate (IT/Manufacturing)',
+        name: 'Godrej', logo: '', sector: 'Conglomerate (IT/Manufacturing)',
         ctcRange: '5 – 10 LPA', eligibility: '65% throughout, no active backlogs',
         testPattern: {
             sections: [
@@ -215,7 +215,7 @@ const COMPANIES: CompanyProfile[] = [
         website: 'https://www.godrej.com/careers', difficulty: 'Hard',
     },
     {
-        name: 'JP Morgan Chase', logo: '🏦', sector: 'Investment Banking & Fintech',
+        name: 'JP Morgan Chase', logo: '', sector: 'Investment Banking & Fintech',
         ctcRange: '14 – 20 LPA', eligibility: '7.5 CGPA +, no backlogs',
         testPattern: {
             sections: [
@@ -234,7 +234,7 @@ const COMPANIES: CompanyProfile[] = [
         ]
     },
     {
-        name: 'Barclays', logo: '🛡️', sector: 'Financial Services',
+        name: 'Barclays', logo: '', sector: 'Financial Services',
         ctcRange: '12 – 18 LPA', eligibility: '60% throughout, no active backlogs',
         testPattern: {
             sections: [
@@ -254,14 +254,34 @@ const COMPANIES: CompanyProfile[] = [
     },
 ];
 
-const CompanyProfiles: React.FC = () => {
+interface CompanyProfilesProps {
+    onSwitchToTab?: (tab: 'tracker' | 'predictor', data?: any) => void;
+}
+
+const CompanyProfiles: React.FC<CompanyProfilesProps> = ({ onSwitchToTab }) => {
     const navigate = useNavigate();
     const [selectedCompany, setSelectedCompany] = useState<CompanyProfile | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
+    const [difficultyFilter, setDifficultyFilter] = useState<string>('All');
+    const [ctcFilter, setCtcFilter] = useState<string>('All');
 
     React.useEffect(() => { trackToolUsage('placement'); }, []);
 
-    const filtered = COMPANIES.filter(c => c.name.toLowerCase().includes(searchQuery.toLowerCase()) || c.sector.toLowerCase().includes(searchQuery.toLowerCase()));
+    const filtered = COMPANIES.filter(c => {
+        const matchesSearch = c.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                             c.sector.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesDifficulty = difficultyFilter === 'All' || c.difficulty === difficultyFilter;
+        
+        let matchesCtc = true;
+        if (ctcFilter !== 'All') {
+            const val = parseFloat(c.ctcRange.split('–')[0]);
+            if (ctcFilter === 'High (>10 LPA)') matchesCtc = val >= 10;
+            else if (ctcFilter === 'Mid (5-10 LPA)') matchesCtc = val >= 5 && val < 10;
+            else if (ctcFilter === 'Entry (<5 LPA)') matchesCtc = val < 5;
+        }
+
+        return matchesSearch && matchesDifficulty && matchesCtc;
+    });
 
     return (
         <div className="space-y-6 max-w-7xl mx-auto pb-12">
@@ -279,16 +299,40 @@ const CompanyProfiles: React.FC = () => {
 
             {!selectedCompany ? (
                 <div className="space-y-6">
-                    <div className="relative max-w-md">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 w-4 h-4" />
-                        <input
-                            id="company-search"
-                            name="companySearch"
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            placeholder="Search companies..."
-                            className="w-full pl-10 pr-4 py-3 bg-slate-800/50 border border-slate-700 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500/50"
-                        />
+                    <div className="flex flex-col md:flex-row gap-4 items-end">
+                        <div className="relative flex-1 max-w-md w-full">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 w-4 h-4" />
+                            <input
+                                id="company-search"
+                                name="companySearch"
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                placeholder="Search companies..."
+                                className="w-full pl-10 pr-4 py-2.5 bg-slate-800/50 border border-slate-700 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500/50"
+                            />
+                        </div>
+                        <div className="flex gap-2 w-full md:w-auto">
+                            <select 
+                                value={difficultyFilter} 
+                                onChange={(e) => setDifficultyFilter(e.target.value)}
+                                className="bg-slate-800/50 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-300 focus:outline-none"
+                            >
+                                <option value="All">All Difficulties</option>
+                                <option value="Easy">Easy</option>
+                                <option value="Medium">Medium</option>
+                                <option value="Hard">Hard</option>
+                            </select>
+                            <select 
+                                value={ctcFilter} 
+                                onChange={(e) => setCtcFilter(e.target.value)}
+                                className="bg-slate-800/50 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-300 focus:outline-none"
+                            >
+                                <option value="All">All Packages</option>
+                                <option value="High (>10 LPA)">High (&gt;10 LPA)</option>
+                                <option value="Mid (5-10 LPA)">Mid (5-10 LPA)</option>
+                                <option value="Entry (<5 LPA)">Entry (&lt;5 LPA)</option>
+                            </select>
+                        </div>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -296,14 +340,16 @@ const CompanyProfiles: React.FC = () => {
                             <button
                                 key={company.name}
                                 onClick={() => setSelectedCompany(company)}
-                                className="p-6 rounded-2xl bg-slate-800/50 border border-slate-700/50 hover:border-slate-500 transition-all text-left group hover:scale-[1.02]"
+                                className="p-4 rounded-2xl bg-slate-800/50 border border-slate-700/50 hover:border-slate-500 transition-all text-left group hover:scale-[1.01]"
                             >
-                                <div className="flex items-center justify-between mb-4">
+                                <div className="flex items-center justify-between mb-3">
                                     <div className="flex items-center gap-3">
-                                        <span className="text-3xl">{company.logo}</span>
+                                        <div className="w-9 h-9 rounded-xl bg-slate-700/50 flex items-center justify-center">
+                                            <Building2 className="w-5 h-5 text-slate-400" />
+                                        </div>
                                         <div>
-                                            <h3 className="text-lg font-bold text-white">{company.name}</h3>
-                                            <p className="text-[10px] text-slate-500 uppercase tracking-wider">{company.sector}</p>
+                                            <h3 className="text-base font-bold text-white leading-tight">{company.name}</h3>
+                                            <p className="text-[10px] text-slate-500 uppercase tracking-wider">{company.sector.split(' & ')[0]}</p>
                                         </div>
                                     </div>
                                     <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${company.difficulty === 'Easy' ? 'bg-emerald-500/20 text-emerald-400' : company.difficulty === 'Medium' ? 'bg-amber-500/20 text-amber-400' : 'bg-rose-500/20 text-rose-400'}`}>
@@ -311,16 +357,16 @@ const CompanyProfiles: React.FC = () => {
                                     </span>
                                 </div>
 
-                                <div className="flex items-center justify-between text-sm mb-3">
-                                    <span className="text-slate-400 flex items-center gap-1"><IndianRupee size={12} />{company.ctcRange}</span>
-                                    <span className="text-slate-500 flex items-center gap-1"><Clock size={12} />{company.testPattern.totalDuration}</span>
+                                <div className="flex items-center justify-between text-xs mb-3">
+                                    <span className="text-slate-400 flex items-center gap-1 font-medium"><IndianRupee size={12} />{company.ctcRange.split(' – ')[0]}</span>
+                                    <span className="text-slate-500 flex items-center gap-1"><Clock size={12} />{company.testPattern.totalDuration.split(' ')[0]}m</span>
                                 </div>
 
-                                <div className="flex flex-wrap gap-1.5">
-                                    {company.testPattern.sections.slice(0, 3).map(s => (
-                                        <span key={s.name} className="text-[10px] px-2 py-0.5 rounded-full bg-slate-900 text-slate-400 border border-slate-700">{s.name}</span>
+                                <div className="flex flex-wrap gap-1">
+                                    {company.testPattern.sections.slice(0, 2).map(s => (
+                                        <span key={s.name} className="text-[10px] px-2 py-0.5 rounded bg-slate-900 text-slate-400 border border-slate-700/50">{s.name}</span>
                                     ))}
-                                    {company.testPattern.sections.length > 3 && <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-900 text-slate-500">+{company.testPattern.sections.length - 3}</span>}
+                                    {company.testPattern.sections.length > 2 && <span className="text-[10px] px-2 py-0.5 rounded bg-slate-900 text-slate-500">+{company.testPattern.sections.length - 2}</span>}
                                 </div>
 
                                 <div className="mt-4 flex items-center text-xs text-amber-400 group-hover:text-amber-300 transition-colors">
@@ -335,17 +381,17 @@ const CompanyProfiles: React.FC = () => {
                     {/* CTC & Eligibility */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <Card className="p-5 text-center">
-                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">CTC Range</p>
+                            <p className="text-xs font-black text-slate-500 uppercase tracking-widest">CTC Range</p>
                             <p className="text-2xl font-black text-emerald-400 mt-2">{selectedCompany.ctcRange}</p>
                         </Card>
                         <Card className="p-5 text-center">
-                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Test Duration</p>
+                            <p className="text-xs font-black text-slate-500 uppercase tracking-widest">Test Duration</p>
                             <p className="text-2xl font-black text-blue-400 mt-2">{selectedCompany.testPattern.totalDuration}</p>
                         </Card>
                         <Card className="p-5 text-center">
-                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Negative Marking</p>
+                            <p className="text-xs font-black text-slate-500 uppercase tracking-widest">Negative Marking</p>
                             <p className={`text-2xl font-black mt-2 ${selectedCompany.testPattern.negativeMarking ? 'text-rose-400' : 'text-emerald-400'}`}>
-                                {selectedCompany.testPattern.negativeMarking ? 'Yes ⚠️' : 'No ✅'}
+                                {selectedCompany.testPattern.negativeMarking ? 'Yes' : 'No'}
                             </p>
                         </Card>
                     </div>
@@ -363,13 +409,13 @@ const CompanyProfiles: React.FC = () => {
                                     <div className="flex justify-between items-start mb-3">
                                         <div>
                                             <h4 className="font-bold text-white text-sm">{section.name}</h4>
-                                            <p className="text-[10px] text-slate-500">{section.questions} questions • {section.duration}</p>
+                                            <p className="text-xs text-slate-500">{section.questions} questions • {section.duration}</p>
                                         </div>
-                                        <span className="text-[10px] px-2 py-0.5 rounded bg-slate-800 text-slate-400 font-mono">{section.duration}</span>
+                                        <span className="text-xs px-2 py-0.5 rounded bg-slate-800 text-slate-400 font-mono">{section.duration}</span>
                                     </div>
                                     <div className="flex flex-wrap gap-1.5">
                                         {section.topics.map(topic => (
-                                            <span key={topic} className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/20">{topic}</span>
+                                            <span key={topic} className="text-xs px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/20">{topic}</span>
                                         ))}
                                     </div>
                                 </div>
@@ -404,10 +450,10 @@ const CompanyProfiles: React.FC = () => {
                                 <table className="w-full text-sm">
                                     <thead>
                                         <tr className="text-slate-500 border-b border-slate-700/50">
-                                            <th className="pb-2 text-left font-bold uppercase text-[10px]">College</th>
-                                            <th className="pb-2 text-center font-bold uppercase text-[10px]">Avg Package</th>
-                                            <th className="pb-2 text-center font-bold uppercase text-[10px]">Highest</th>
-                                            <th className="pb-2 text-right font-bold uppercase text-[10px]">Offers</th>
+                                            <th className="pb-2 text-left font-bold uppercase text-xs">College</th>
+                                            <th className="pb-2 text-center font-bold uppercase text-xs">Avg Package</th>
+                                            <th className="pb-2 text-center font-bold uppercase text-xs">Highest</th>
+                                            <th className="pb-2 text-right font-bold uppercase text-xs">Offers</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-700/30">
@@ -422,7 +468,7 @@ const CompanyProfiles: React.FC = () => {
                                     </tbody>
                                 </table>
                             </div>
-                            <p className="text-[10px] text-slate-500 italic mt-4 flex items-center gap-1">
+                            <p className="text-xs text-slate-500 italic mt-4 flex items-center gap-1">
                                 <Target size={12} /> Live placement data aggregated from MU 2024-25 session records.
                             </p>
                         </Card>
@@ -441,12 +487,36 @@ const CompanyProfiles: React.FC = () => {
                     </Card>
 
                     {/* Actions */}
-                    <div className="grid grid-cols-2 gap-4">
-                        <Button variant="outline" onClick={() => window.open(selectedCompany.website, '_blank')} className="gap-2 border-amber-500/30 text-amber-400">
-                            Visit Careers Page <ExternalLink className="w-4 h-4" />
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                        <Button 
+                            variant="outline" 
+                            onClick={() => window.open(selectedCompany.website, '_blank')} 
+                            className="gap-2 border-slate-700 text-slate-400"
+                        >
+                            Website <ExternalLink className="w-4 h-4" />
                         </Button>
-                        <Button onClick={() => navigate('/aptitude-trainer')} className="gap-2 bg-gradient-to-r from-blue-600 to-violet-600">
-                            <Code className="w-4 h-4" /> Practice Aptitude
+                        <Button 
+                            variant="outline"
+                            onClick={() => onSwitchToTab?.('tracker', { 
+                                company: selectedCompany.name, 
+                                role: 'Software Engineer', 
+                                ctc: selectedCompany.ctcRange 
+                            })} 
+                            className="gap-2 border-rose-500/30 text-rose-400 hover:bg-rose-500/10"
+                        >
+                            Add to Tracker
+                        </Button>
+                        <Button 
+                            variant="outline"
+                            onClick={() => onSwitchToTab?.('predictor', { 
+                                targetCompany: selectedCompany.name 
+                            })} 
+                            className="gap-2 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10"
+                        >
+                            Predict Fit
+                        </Button>
+                        <Button onClick={() => navigate('/aptitude-trainer')} className="gap-2 bg-gradient-to-r from-blue-600 to-violet-600 shadow-lg shadow-blue-600/20">
+                            Practice <Code className="w-4 h-4" />
                         </Button>
                     </div>
                 </div>

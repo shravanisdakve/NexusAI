@@ -1,14 +1,13 @@
 import React, { useState } from 'react';
 import { Upload, FileText, X, Wand2, AlertCircle } from 'lucide-react';
-import { Button, Spinner } from '../ui';
-import { extractTextFromFile } from '../../services/geminiService';
+import { Button } from '../ui';
 
 interface PdfUploadProps {
-  onTextExtracted: (text: string) => void;
+  onFileProcessed: (base64: string, mimeType: string) => void;
   isProcessing: boolean;
 }
 
-const PdfUpload: React.FC<PdfUploadProps> = ({ onTextExtracted, isProcessing }) => {
+const PdfUpload: React.FC<PdfUploadProps> = ({ onFileProcessed, isProcessing }) => {
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [localProcessing, setLocalProcessing] = useState(false);
@@ -35,13 +34,9 @@ const PdfUpload: React.FC<PdfUploadProps> = ({ onTextExtracted, isProcessing }) 
     reader.onload = async () => {
       try {
         const base64 = (reader.result as string).split(',')[1];
-        const text = await extractTextFromFile(base64, file.type);
-        if (!text || text.trim().length === 0) {
-          throw new Error('No text could be extracted from this file.');
-        }
-        onTextExtracted(text);
+        onFileProcessed(base64, file.type);
       } catch (err: any) {
-        setError(err.message || 'Failed to extract text from file');
+        setError(err.message || 'Failed to process file');
       } finally {
         setLocalProcessing(false);
       }
@@ -119,7 +114,7 @@ const PdfUpload: React.FC<PdfUploadProps> = ({ onTextExtracted, isProcessing }) 
               disabled={localProcessing || isProcessing}
             >
               {(localProcessing || isProcessing) ? (
-                <><Spinner size="sm" className="mr-2" /> AI Analyzing Content...</>
+                <><div className="animate-spin mr-2 w-4 h-4 border-2 border-white/20 border-t-white rounded-full" /> AI Analyzing Content...</>
               ) : (
                 <><Wand2 size={20} className="mr-2" /> Generate AI Practice Quiz</>
               )}

@@ -8,6 +8,13 @@
 
 const Groq = require('groq-sdk');
 
+// Global Mumbai University Expert Persona
+const MU_IDENTITY_PROMPT = `You are an expert AI Tutor specifically for MUMBAI UNIVERSITY (MU) engineering students. 
+You provide extremely precise, exam-oriented answers following the MU syllabus (Rev-2019/2024 C-Scheme) and marking scheme. 
+You MUST NOT use any emojis in your responses. Maintain a professional, academic, and formal tone at all times.
+Priority Topics: MU Semester Exams, Internal Assessments (IA), and Practical Viva. 
+Maintain a helpful, academic, and encouraging tone. Use MU-specific academic terms where appropriate.`;
+
 // Provider Configuration
 const PROVIDERS = {
     NVIDIA: 'nvidia',   // Primary
@@ -42,17 +49,17 @@ const MODEL_CONFIG = {
     [PROVIDERS.NVIDIA]: {
         default: 'meta/llama-3.1-70b-instruct',
         fast: 'meta/llama-3.1-8b-instruct',
-        json: 'meta/llama-3.1-70b-instruct',
+        json: 'meta/llama-3.1-8b-instruct', // Faster for JSON
     },
     [PROVIDERS.GROQ]: {
         default: 'llama-3.3-70b-versatile',
         fast: 'llama-3.1-8b-instant',
-        json: 'llama-3.3-70b-versatile',
+        json: 'llama-3.1-8b-instant', // Faster for JSON
     },
     [PROVIDERS.OPENROUTER]: {
-        default: 'meta-llama/llama-3.1-8b-instruct:free',
-        fast: 'meta-llama/llama-3.1-8b-instruct:free',
-        json: 'meta-llama/llama-3.1-8b-instruct:free',
+        default: 'meta-llama/llama-3.1-8b-instruct',
+        fast: 'meta-llama/llama-3.1-8b-instruct',
+        json: 'meta-llama/llama-3.1-8b-instruct',
     },
     // Virtual configurations (routed via OpenRouter)
     [PROVIDERS.MISTRAL]: {
@@ -572,14 +579,39 @@ async function generate(prompt, options = {}) {
 
         console.log(`[AIProvider] Attempting ${provider} for feature: ${options.feature || 'default'}`);
 
+        // Use MU Identity only for relevant features, otherwise just use systemInstruction
+        // Study Buddy and Chat are allowed personality/emojis, formal MU rigor kept for exam tasks
+        const isAcademicStrict = ['mockPaper', 'studyPlan', 'topicPredictor'].includes(options.feature);
+        const baseIdentity = isAcademicStrict ? MU_IDENTITY_PROMPT : MU_IDENTITY_PROMPT.replace('You MUST NOT use any emojis in your responses. Maintain a professional, academic, and formal tone at all times.', 'Maintain a helpful, academic, and encouraging tone. Use MU-specific academic terms where appropriate.');
+
+        const mergedOptions = { ...options };
+        if (options.systemInstruction && baseIdentity) {
+            mergedOptions.systemInstruction = `${baseIdentity}\n\nAdditional Task Context: ${options.systemInstruction}`;
+        } else {
+            mergedOptions.systemInstruction = options.systemInstruction || baseIdentity;
+        }
+
         try {
+            let resultText = '';
             switch (provider) {
-                case PROVIDERS.NVIDIA: return await generateWithNvidia(prompt, options);
-                case PROVIDERS.GROQ: return await generateWithGroq(prompt, options);
-                case PROVIDERS.OPENROUTER: return await generateWithOpenRouter(prompt, options);
-                case PROVIDERS.GEMINI: return await generateWithGemini(prompt, options);
-                case PROVIDERS.OLLAMA: return await generateWithOllama(prompt, options);
+                case PROVIDERS.NVIDIA: resultText = await generateWithNvidia(prompt, mergedOptions); break;
+                case PROVIDERS.GROQ: resultText = await generateWithGroq(prompt, mergedOptions); break;
+                case PROVIDERS.OPENROUTER: resultText = await generateWithOpenRouter(prompt, mergedOptions); break;
+                case PROVIDERS.GEMINI: resultText = await generateWithGemini(prompt, mergedOptions); break;
+                case PROVIDERS.OLLAMA: resultText = await generateWithOllama(prompt, mergedOptions); break;
             }
+            if (options.json && typeof resultText === 'string') {
+                // Remove potential markdown blocks first
+                resultText = resultText.replace(/```json|```/g, '').trim();
+                
+                // Then try to extract the outermost JSON array or object
+                const jsonMatch = resultText.match(/[\{\[][\s\S]*[\}\]]/);
+                if (jsonMatch) {
+                    resultText = jsonMatch[0];
+                }
+            }
+            console.log(`[AIProvider] Success with ${provider}. Result length: ${resultText?.length || 0}`);
+            return resultText;
         } catch (error) {
             console.error(`[AIProvider] Error with ${provider}:`, error.message);
             lastError = error;
@@ -608,26 +640,37 @@ async function* stream(prompt, options = {}) {
 
         console.log(`[AIProvider] Attempting stream with ${provider} for feature: ${options.feature || 'default'}`);
 
+        // Use MU Identity only for relevant features, otherwise just use systemInstruction
+        const isAcademicStrict = ['mockPaper', 'studyPlan', 'topicPredictor'].includes(options.feature);
+        const baseIdentity = isAcademicStrict ? MU_IDENTITY_PROMPT : MU_IDENTITY_PROMPT.replace('You MUST NOT use any emojis in your responses. Maintain a professional, academic, and formal tone at all times.', 'Maintain a helpful, academic, and encouraging tone. Use MU-specific academic terms where appropriate.');
+
+        const mergedOptions = { ...options };
+        if (options.systemInstruction && baseIdentity) {
+            mergedOptions.systemInstruction = `${baseIdentity}\n\nAdditional Task Context: ${options.systemInstruction}`;
+        } else {
+            mergedOptions.systemInstruction = options.systemInstruction || baseIdentity;
+        }
+
         try {
             switch (provider) {
                 case PROVIDERS.NVIDIA:
-                    yield* streamWithNvidia(prompt, options);
+                    yield* streamWithNvidia(prompt, mergedOptions);
                     anySuccess = true;
                     return;
                 case PROVIDERS.GROQ:
-                    yield* streamWithGroq(prompt, options);
+                    yield* streamWithGroq(prompt, mergedOptions);
                     anySuccess = true;
                     return;
                 case PROVIDERS.OPENROUTER:
-                    yield* streamWithOpenRouter(prompt, options);
+                    yield* streamWithOpenRouter(prompt, mergedOptions);
                     anySuccess = true;
                     return;
                 case PROVIDERS.GEMINI:
-                    yield* streamWithGemini(prompt, options);
+                    yield* streamWithGemini(prompt, mergedOptions);
                     anySuccess = true;
                     return;
                 case PROVIDERS.OLLAMA:
-                    yield* streamWithOllama(prompt, options);
+                    yield* streamWithOllama(prompt, mergedOptions);
                     anySuccess = true;
                     return;
             }
@@ -669,4 +712,6 @@ module.exports = {
     streamWithOpenRouter,
     generateWithOllama,
     streamWithOllama,
+    generateWithGemini,
+    streamWithGemini,
 };

@@ -13,6 +13,14 @@ const FALLBACK_CURRICULUM = {
                 { subjectCode: "BSC102", name: "Applied Physics-I", credits: 3, category: "Basic Science" },
                 { subjectCode: "ESC101", name: "Engineering Mechanics", credits: 3, category: "Engineering Science" }
             ]
+        },
+        {
+            semesterNumber: 2,
+            subjects: [
+                { subjectCode: "BSC201", name: "Applied Mathematics-II", credits: 4, category: "Basic Science" },
+                { subjectCode: "ESC201", name: "Engineering Graphics", credits: 3, category: "Engineering Science" },
+                { subjectCode: "ESC202", name: "C Programming", credits: 3, category: "Engineering Science" }
+            ]
         }
     ]
 };

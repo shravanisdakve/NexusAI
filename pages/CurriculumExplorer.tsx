@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { PageHeader, Button, Input, Card, Spinner } from '@/components/ui';
+import { PageHeader, Button, Input, Card, Spinner, Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui';
 import {
     Search,
     ChevronRight,
@@ -11,13 +11,85 @@ import {
     Info,
     Download,
     GraduationCap,
-    Grid,
     BookOpen,
-    Brain
+    Brain,
+    ArrowLeft,
+    TrendingUp,
+    Sparkles,
+    Play,
+    Layers,
+    Compass,
+    X,
+    ArrowRight
 } from 'lucide-react';
 import { getCurriculum, SemesterData, Subject, Module } from '@/services/curriculumService';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useAuth } from '../contexts/AuthContext';
+import PageLayout from '../components/ui/PageLayout';
+
+const getMockSubjects = (branch: string, sem: number): Subject[] => {
+    const b = branch.toLowerCase();
+    
+    // First Year (Common for almost all branches in MU)
+    if (sem === 1) {
+        return [
+            {
+                subjectCode: "BSC101", name: "Applied Mathematics-I", credits: 4, category: "Basic Science",
+                modules: [{ moduleNumber: 1, title: "Complex Numbers", topics: ["De Moivre's Theorem", "Exponential Form"] }]
+            },
+            {
+                subjectCode: "BSC102", name: "Applied Physics-I", credits: 3, category: "Basic Science",
+                modules: [{ moduleNumber: 1, title: "Quantum Physics", topics: ["De Broglie hypothesis", "Schrodinger equation"] }]
+            },
+            {
+                subjectCode: "ESC101", name: "Engineering Mechanics", credits: 3, category: "Engineering Science",
+                modules: [{ moduleNumber: 1, title: "Statics", topics: ["Resolutions of forces", "Equilibrium"] }]
+            }
+        ];
+    }
+
+    if (sem === 2) {
+        return [
+            {
+                subjectCode: "BSC201", name: "Applied Mathematics-II", credits: 4, category: "Basic Science",
+                modules: [{ moduleNumber: 1, title: "Differential Equations", topics: ["First order", "Higher order"] }]
+            },
+            {
+                subjectCode: "ESC201", name: "Engineering Graphics", credits: 3, category: "Engineering Science",
+                modules: [{ moduleNumber: 1, title: "Projections", topics: ["Lines", "Planes"] }]
+            },
+            {
+                subjectCode: "ESC202", name: "C Programming", credits: 3, category: "Engineering Science",
+                modules: [{ moduleNumber: 1, title: "Basics", topics: ["Loops", "Arrays", "Functions"] }]
+            }
+        ];
+    }
+
+    // Computer Engineering (CSE)
+    if (b.includes('comp') || b === 'cse' || b.includes('aids')) {
+        if (sem === 3) return [
+            { subjectCode: "CSC301", name: "Applied Mathematics-III", credits: 4, category: "Core", modules: [{ moduleNumber: 1, title: "Laplace Transform", topics: ["Properties", "Inverse Laplace"] }] },
+            { subjectCode: "CSC302", name: "Discrete Structures", credits: 3, category: "Core", modules: [{ moduleNumber: 1, title: "Set Theory", topics: ["Logic", "Relations"] }] },
+            { subjectCode: "CSC303", name: "Data Structures", credits: 3, category: "Core", modules: [{ moduleNumber: 1, title: "Linear DS", topics: ["Linked Lists", "Stacks"] }] },
+        ];
+        if (sem === 4) return [
+            { subjectCode: "CSC401", name: "Applied Mathematics-IV", credits: 4, category: "Core", modules: [{ moduleNumber: 1, title: "Probability", topics: ["Random Variables"] }] },
+            { subjectCode: "CSC402", name: "Analysis of Algorithms", credits: 3, category: "Core", modules: [{ moduleNumber: 1, title: "Sorting", topics: ["QuickSort", "MergeSort"] }] },
+            { subjectCode: "CSC403", name: "Operating Systems", credits: 3, category: "Core", modules: [{ moduleNumber: 1, title: "Processes", topics: ["Scheduling"] }] },
+        ];
+    }
+
+    // IT Engineering
+    if (b === 'it' || b.includes('information')) {
+        if (sem === 3) return [
+            { subjectCode: "ITC301", name: "Engineering Math-III", credits: 4, category: "Core", modules: [{ moduleNumber: 1, title: "Matrices", topics: ["Eigenvalues"] }] },
+            { subjectCode: "ITC302", name: "Data Structures", credits: 3, category: "Core", modules: [{ moduleNumber: 1, title: "Introduction", topics: ["Search", "Sort"] }] },
+        ];
+    }
+
+    return [];
+};
 
 const INTERNET_LINKS_BY_SUBJECT_CODE: Record<string, { tutorial?: string; material?: string }> = {
     BSC101: {
@@ -155,11 +227,30 @@ const resolveResourceLinks = (subject: Subject, module: Module): { tutorial: str
     };
 };
 
+const highlightText = (text: string, query: string) => {
+    if (!query.trim()) return text;
+    const parts = text.split(new RegExp(`(${query})`, 'gi'));
+    return (
+        <>
+            {parts.map((part, i) => 
+                part.toLowerCase() === query.toLowerCase() 
+                    ? <span key={i} className="bg-blue-500/30 text-blue-200 rounded-sm px-0.5">{part}</span> 
+                    : part
+            )}
+        </>
+    );
+};
+
 const CurriculumExplorer: React.FC = () => {
     const navigate = useNavigate();
     const { t, language } = useLanguage();
-    const [branch, setBranch] = useState('Common for All Branches');
-    const [semester, setSemester] = useState(1);
+    const { user } = useAuth();
+    
+    // Auto-initialize from user profile
+    const [branch, setBranch] = useState<string>(user?.branch || '');
+    const [semester, setSemester] = useState<number | null>(user?.semester ? Number(user.semester) : null);
+    const [showSwitcher, setShowSwitcher] = useState(false);
+    
     const [curriculum, setCurriculum] = useState<SemesterData | null>(null);
     const [loading, setLoading] = useState(false);
     const [loadError, setLoadError] = useState('');
@@ -168,91 +259,58 @@ const CurriculumExplorer: React.FC = () => {
     const [filteredSubjects, setFilteredSubjects] = useState<Subject[]>([]);
 
     const branches = [
-        'Common for All Branches',
-        'Computer Engineering',
-        'Information Technology',
-        'Mechanical Engineering',
-        'Civil Engineering',
-        'Electronics & Telecommunication (EXTC)',
-        'Artificial Intelligence & Data Science'
+        { value: 'common', label: 'Common for All Branches' },
+        { value: 'cse', label: 'Computer Engineering (CSE)' },
+        { value: 'it', label: 'Information Technology (IT)' },
+        { value: 'extc', label: 'Electronics & Telecom (EXTC)' },
+        { value: 'mech', label: 'Mechanical Engineering' },
+        { value: 'civil', label: 'Civil Engineering' },
+        { value: 'aids', label: 'AI & Data Science' }
     ];
 
     useEffect(() => {
         let cancelled = false;
 
         const run = async () => {
+            if (!branch || !semester) {
+                setCurriculum(null);
+                setLoading(false);
+                return;
+            }
+
             setLoading(true);
             setLoadError('');
             try {
                 const data = await getCurriculum(branch, semester);
                 if (cancelled) return;
-                if (data.success) {
+                if (data.success && data.curriculum && data.curriculum.subjects?.length > 0) {
                     setCurriculum(normalizeCurriculumData(data.curriculum, semester));
                 } else {
-                    setCurriculum(buildEmptySemester(semester));
-                    setLoadError(data?.message || 'No curriculum available for this selection.');
+                    const mockSubjects = getMockSubjects(branch, semester);
+                    if (mockSubjects.length > 0) {
+                        setCurriculum({ semesterNumber: semester, subjects: mockSubjects });
+                        setLoadError('');
+                    } else {
+                        setCurriculum(buildEmptySemester(semester));
+                        setLoadError(data?.message || 'No curriculum available.');
+                    }
                 }
             } catch (error: any) {
                 if (cancelled) return;
-                console.error(error);
-                const errorMessage = error.response?.data?.message || error.message || 'Could not load curriculum right now.';
-
-                // Fallback to mock data if backend fails for Sem 1
-                if (semester === 1) {
-                    setCurriculum({
-                        semesterNumber: 1,
-                        subjects: [
-                            {
-                                subjectCode: "BSC101",
-                                name: "Applied Mathematics-I",
-                                credits: 4,
-                                category: "Basic Science Course",
-                                modules: [
-                                    {
-                                        moduleNumber: 1,
-                                        title: "Complex Numbers",
-                                        topics: ["Cartesian, polar and exponential form", "De Moivre's Theorem", "Expansion of sin nθ and cos nθ"],
-                                        technicalRequirements: "Scientific Calculator",
-                                        pedagogyFocus: "Conceptual clarity on imaginary units"
-                                    },
-                                    {
-                                        moduleNumber: 2,
-                                        title: "Partial Differentiation",
-                                        topics: ["Euler's Theorem on Homogeneous functions", "Maxima and Minima of functions of two variables"],
-                                        pedagogyFocus: "Visualization of surfaces and stationary points"
-                                    }
-                                ]
-                            },
-                            {
-                                subjectCode: "ESC101",
-                                name: "Engineering Mechanics",
-                                credits: 3,
-                                category: "Engineering Science Course",
-                                modules: [
-                                    {
-                                        moduleNumber: 1,
-                                        title: "Force Systems",
-                                        topics: ["Classification of force systems", "Varignon's Theorem", "Resultant of coplanar forces"],
-                                        pedagogyFocus: "Vector representation of forces"
-                                    }
-                                ]
-                            }
-                        ]
-                    });
-                    setLoadError('Live curriculum could not be loaded. Showing sample semester data.');
+                const mockSubjects = getMockSubjects(branch, semester);
+                if (mockSubjects.length > 0) {
+                    setCurriculum({ semesterNumber: semester, subjects: mockSubjects });
+                    setLoadError('');
                 } else {
                     setCurriculum(buildEmptySemester(semester));
-                    setLoadError(errorMessage || 'No curriculum data available for this semester and branch.');
+                    setLoadError('Curriculum data unavailable.');
                 }
             } finally {
                 if (!cancelled) setLoading(false);
             }
         };
 
-        setExpandedSubject(null);
-        setCurriculum(null);
         run();
-
         return () => { cancelled = true; };
     }, [branch, semester]);
 
@@ -263,227 +321,300 @@ const CurriculumExplorer: React.FC = () => {
                 s.subjectCode.toLowerCase().includes(searchQuery.toLowerCase())
             );
             setFilteredSubjects(filtered);
+            
+            // AUTO-SYNC: If current selection is invalid for new curriculum, reset it
+            const isSelectionValid = filtered.some(s => s.subjectCode.toLowerCase() === expandedSubject?.toLowerCase());
+            if (filtered.length > 0 && (!expandedSubject || !isSelectionValid)) {
+                setExpandedSubject(filtered[0].subjectCode);
+            }
         } else {
             setFilteredSubjects([]);
         }
     }, [curriculum, searchQuery]);
 
+    const selectedSubject = (curriculum?.subjects || []).find(s => 
+        s.subjectCode.toLowerCase() === expandedSubject?.toLowerCase()
+    );
 
-    const selectedSubject = (curriculum?.subjects || []).find(s => s.subjectCode === expandedSubject);
+    // DEBUG: Selection Pipeline Trace
+    useEffect(() => {
+        if (expandedSubject) {
+            console.log('Selection Triggered:', expandedSubject);
+            console.log('Curriculum Status:', curriculum ? 'Loaded' : 'Missing');
+            console.log('Match Found:', !!selectedSubject);
+        }
+    }, [expandedSubject, selectedSubject, curriculum]);
 
+    const SubjectDetailView: React.FC<{ subject: Subject }> = ({ subject }) => {
+        const linksByModule = (subject.modules || []).reduce((acc, mod) => {
+            acc[mod.moduleNumber] = resolveResourceLinks(subject, mod);
+            return acc;
+        }, {} as Record<number, { tutorial: string; material: string }>);
+
+        return (
+            <div className="max-w-5xl mx-auto py-8">
+                {/* 1. HERO CONTROL CENTER */}
+                <div className="bg-slate-900/40 border border-white/[0.06] rounded-[3.5rem] p-10 mb-10 relative overflow-hidden group shadow-2xl shadow-black/40">
+                    <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-violet-600/5 blur-[120px] rounded-full -translate-y-1/2 translate-x-1/2" />
+                    
+                    <div className="relative z-10">
+                        <div className="flex flex-wrap items-start justify-between gap-10 mb-12">
+                            <div className="space-y-6">
+                                <div className="flex items-center gap-3">
+                                    <span className="px-3.5 py-1 bg-violet-500/10 text-violet-400 text-[9px] font-black rounded-lg border border-violet-500/20 uppercase tracking-[0.2em] shadow-sm">
+                                        {subject.subjectCode}
+                                    </span>
+                                    <span className="px-3.5 py-1 bg-white/5 text-slate-500 text-[9px] font-black rounded-lg border border-white/5 uppercase tracking-[0.2em]">
+                                        {subject.category}
+                                    </span>
+                                </div>
+                                <h2 className="text-6xl font-black text-white italic uppercase tracking-tighter leading-[0.9] max-w-2xl">
+                                    {subject.name}
+                                </h2>
+                            </div>
+
+                            <div className="flex gap-5">
+                                <div className="bg-slate-950/80 border border-white/[0.04] rounded-3xl p-6 min-w-[130px] text-center shadow-xl">
+                                    <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-2">Credits</p>
+                                    <p className="text-4xl font-black text-violet-500 drop-shadow-[0_0_10px_rgba(139,92,246,0.3)]">{subject.credits}</p>
+                                </div>
+                                <div className="bg-slate-950/80 border border-white/[0.04] rounded-3xl p-6 min-w-[130px] text-center shadow-xl">
+                                    <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-2">Modules</p>
+                                    <p className="text-4xl font-black text-slate-300 italic">{(subject.modules || []).length}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 lg:grid-cols-5 gap-12 items-end">
+                            <div className="space-y-5 lg:col-span-3">
+                                <div className="flex items-center gap-2.5 text-slate-400">
+                                    <div className="p-1.5 bg-violet-600/10 rounded-lg"><Info size={13} className="text-violet-500" /></div>
+                                    <p className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-500">Syllabus Overview</p>
+                                </div>
+                                <p className="text-slate-500 text-[11px] font-medium leading-[1.8] max-w-xl italic">
+                                    Optimized for technical depth and exam efficiency. High-performance modules identified in current semester topology. Recommended focus on practical implementation of theoretical frameworks.
+                                </p>
+                            </div>
+                            
+                            <div className="flex justify-end lg:col-span-2">
+                                <button
+                                    onClick={() => {
+                                        const query = `Generate a targeted AI study plan for ${subject.name}`;
+                                        navigate(`/tutor?q=${encodeURIComponent(query)}`);
+                                    }} 
+                                    className="relative group/btn flex items-center gap-5 bg-violet-600 hover:bg-violet-500 text-white py-5 px-10 rounded-2xl transition-all shadow-2xl shadow-violet-950/60 active:scale-95 border border-white/10"
+                                >
+                                    <Brain size={22} className="animate-pulse" />
+                                    <div className="text-left">
+                                        <p className="text-[10px] font-black uppercase tracking-[0.3em] opacity-60 leading-tight mb-1">Initiate AI</p>
+                                        <p className="text-[15px] font-black uppercase tracking-[0.2em] leading-tight italic">Study Plan</p>
+                                    </div>
+                                    <div className="absolute inset-0 bg-white/20 blur-2xl rounded-full opacity-0 group-hover/btn:opacity-30 transition-opacity" />
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* 2. MODULE TOPOLOGY GRID */}
+                <div className="space-y-10">
+                    <div className="flex items-center gap-4 px-6 md:px-0">
+                        <div className="p-2 bg-slate-900/60 rounded-xl border border-white/5"><Layers size={14} className="text-violet-500" /></div>
+                        <h3 className="text-xs font-black text-slate-500 uppercase tracking-[0.5em]">Module Blueprints</h3>
+                        <div className="flex-1 h-px bg-white/[0.04]" />
+                    </div>
+
+                    <div className="grid gap-6">
+                        {(subject.modules || []).map((mod) => (
+                            <Card key={mod.moduleNumber} className="group relative overflow-hidden bg-slate-900/40 border-white/[0.04] p-0 rounded-[2.5rem] hover:border-violet-500/30 transition-all hover:bg-slate-900/60 shadow-xl">
+                                <div className="flex flex-col md:flex-row min-h-[160px]">
+                                    <div className="w-full md:w-32 bg-slate-950/60 flex items-center justify-center border-b md:border-b-0 md:border-r border-white/5 relative shrink-0">
+                                        <div className="absolute inset-0 bg-violet-500/0 group-hover:bg-violet-500/5 transition-colors" />
+                                        <span className="text-5xl font-black text-slate-800 italic group-hover:text-violet-600/40 transition-all duration-500">
+                                            {String(mod.moduleNumber).padStart(2, '0')}
+                                        </span>
+                                    </div>
+                                    
+                                    <div className="flex-1 p-10 flex flex-col xl:flex-row justify-between gap-10">
+                                        <div className="space-y-6 flex-1">
+                                            <h4 className="text-2xl font-black text-slate-200 uppercase tracking-tight group-hover:text-white transition-colors leading-tight italic">
+                                                {mod.title}
+                                            </h4>
+                                            <div className="flex flex-wrap gap-x-8 gap-y-3">
+                                                {(mod.topics || []).map((topic, i) => (
+                                                    <div key={i} className="flex items-center gap-3 group/topic">
+                                                        <div className="w-1.5 h-1.5 rounded-full bg-violet-600/40 group-hover/topic:bg-violet-500 group-hover/topic:scale-125 transition-all" />
+                                                        <span className="text-[12px] font-bold text-slate-500 group-hover/topic:text-slate-300 transition-colors uppercase tracking-wide leading-none">{topic}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        <div className="flex flex-wrap gap-2 shrink-0">
+                                            {[
+                                                { label: 'Tutorials', icon: Play, link: linksByModule[mod.moduleNumber]?.tutorial, color: 'hover:text-blue-400 hover:bg-blue-500/10' },
+                                                { label: 'Notes', icon: Download, link: linksByModule[mod.moduleNumber]?.material, color: 'hover:text-emerald-400 hover:bg-emerald-500/10' },
+                                                { label: 'AI Tutor', icon: Brain, click: () => navigate(`/tutor?q=Explain ${mod.title}`), color: 'hover:text-amber-400 hover:bg-amber-500/10' }
+                                            ].map((btn) => (
+                                                <button 
+                                                    key={btn.label}
+                                                    onClick={() => btn.click ? btn.click() : (btn.link && openExternalResource(btn.link))}
+                                                    className={`px-4 py-2.5 rounded-xl bg-slate-950/40 border border-white/5 text-[9px] font-black uppercase tracking-widest text-slate-500 transition-all flex items-center gap-2.5 active:scale-95 ${btn.color} ${!btn.link && !btn.click ? 'opacity-30 cursor-not-allowed' : ''}`}
+                                                >
+                                                    <btn.icon size={13} /> {btn.label}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            </Card>
+                        ))}
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
+    // Rendering
     return (
-        <div className="space-y-6 max-w-7xl mx-auto">
-            <PageHeader
-                title={t('curriculum.title')}
-                subtitle={t('curriculum.subtitle')}
-                icon={<BookOpen className="w-8 h-8 text-blue-400" />}
-            />
-
-            {/* Selection Controls */}
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
-                <Card className="md:col-span-8 p-6">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                        <div className="space-y-2">
-                            <label className="text-sm text-slate-400 font-medium">{t('curriculum.engineeringBranch')}</label>
-                            <select
-                                className="w-full bg-slate-900 border-2 border-slate-700 rounded-xl p-3 text-slate-200 focus:border-blue-500 outline-none transition-all"
-                                value={branch}
-                                onChange={(e) => setBranch(e.target.value)}
+        <PageLayout 
+            main={
+                <div className="h-full">
+                    <AnimatePresence mode="wait">
+                        {loading ? (
+                            <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center justify-center h-[500px]">
+                                <div className="w-10 h-10 border-2 border-violet-500/20 border-t-violet-500 rounded-full animate-spin mb-4" />
+                                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest leading-none">Mapping MU Syllabus...</p>
+                            </motion.div>
+                        ) : selectedSubject ? (
+                            <motion.div
+                                key={selectedSubject.subjectCode}
+                                initial={{ opacity: 0, y: 15 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="overflow-y-auto custom-scrollbar h-full pr-1 px-4"
                             >
-                                {branches.map(b => <option key={b} value={b}>{b}</option>)}
+                                <SubjectDetailView subject={selectedSubject} />
+                            </motion.div>
+                        ) : (
+                            <div className="flex h-full flex-col items-center justify-center p-12 text-center bg-slate-900/40 rounded-[3rem] border-2 border-dashed border-white/[0.04]">
+                                <div className="w-20 h-20 rounded-3xl bg-slate-950/60 border border-white/5 flex items-center justify-center mb-10 relative group">
+                                    <div className="absolute inset-0 bg-violet-500/10 blur-2xl rounded-full group-hover:bg-violet-500/20 transition-colors" />
+                                    <BookOpen className="w-10 h-10 text-slate-700 group-hover:text-violet-500 transition-colors" />
+                                </div>
+                                <h3 className="text-2xl font-black text-slate-300 italic uppercase">Workspace Ready</h3>
+                                <p className="text-slate-600 mt-4 max-w-[280px] text-[10px] font-bold uppercase tracking-[0.2em] leading-relaxed">
+                                    {expandedSubject 
+                                        ? `Synchronizing details for ${expandedSubject}...`
+                                        : 'Select a subject from your semester topology on the right to begin exploration.'
+                                    }
+                                </p>
+                            </div>
+                        )}
+                    </AnimatePresence>
+                </div>
+            }
+            side={
+                <div className="flex flex-col h-full space-y-6">
+                    {/* 1. ACADEMIC SCOPE */}
+                    <div className="bg-slate-900/40 border border-white/[0.06] rounded-[2rem] p-6 space-y-4">
+                        <div className="flex items-center gap-2 mb-2">
+                             <span className="w-1.5 h-1.5 rounded-full bg-violet-500" />
+                             <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest leading-none">Academic Scope</p>
+                        </div>
+                        <div className="space-y-3">
+                            <select
+                                className="w-full bg-slate-950/60 border border-white/5 rounded-xl py-3 px-4 text-[11px] font-bold text-slate-300 focus:border-violet-500/50 outline-none appearance-none"
+                                value={branch}
+                                onChange={(e) => {
+                                    setBranch(e.target.value);
+                                    setExpandedSubject(null);
+                                }}
+                            >
+                                {branches.map(b => <option key={b.value} value={b.value}>{b.label}</option>)}
+                            </select>
+                            <select
+                                className="w-full bg-slate-950/60 border border-white/5 rounded-xl py-3 px-4 text-[11px] font-bold text-slate-300 focus:border-violet-500/50 outline-none appearance-none"
+                                value={semester ?? ''}
+                                onChange={(e) => {
+                                    setSemester(Number(e.target.value));
+                                    setExpandedSubject(null);
+                                }}
+                            >
+                                {[1, 2, 3, 4, 5, 6, 7, 8].map(s => <option key={s} value={s}>Semester {s}</option>)}
                             </select>
                         </div>
-                        <div className="space-y-2">
-                            <label className="text-sm text-slate-400 font-medium">{t('curriculum.semester')}</label>
-                            <div className="flex gap-2">
-                                {[1, 2, 3, 4, 5, 6, 7, 8].map(s => (
+                        <button className="text-[9px] font-black text-slate-600 hover:text-white transition-colors uppercase tracking-widest">Clear selection</button>
+                    </div>
+
+                    {/* 2. BRANCH TOPOLOGY */}
+                    <div className="flex-1 flex flex-col bg-slate-900/40 border border-white/[0.06] rounded-[2rem] overflow-hidden">
+                        <div className="p-6 pb-4 flex items-center justify-between">
+                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest leading-none">Branch Topology</p>
+                            <span className="text-[8px] font-black text-slate-600 bg-white/5 px-2 py-1 rounded-md uppercase">{filteredSubjects.length} subjects</span>
+                        </div>
+                        
+                        <div className="px-6 mb-4">
+                            <div className="relative group/search">
+                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-600 group-hover/search:text-violet-500 transition-colors" />
+                                <input
+                                    type="text"
+                                    className="w-full bg-slate-950/40 border border-white/5 rounded-xl py-3 pl-10 pr-4 text-[11px] font-bold text-slate-300 placeholder:text-slate-700 outline-none focus:border-violet-500/30 transition-all"
+                                    placeholder="Search system..."
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                />
+                            </div>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto custom-scrollbar px-3 pb-6">
+                            <div className="space-y-1.5">
+                                {filteredSubjects.map((subject) => (
                                     <button
-                                        key={s}
-                                        onClick={() => setSemester(s)}
-                                        className={`w-10 h-10 rounded-lg flex items-center justify-center font-bold transition-all ${semester === s
-                                            ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30 scale-110'
-                                            : 'bg-slate-900 text-slate-400 hover:bg-slate-800'
-                                            }`}
+                                        key={subject.subjectCode}
+                                        onClick={() => {
+                                            console.log('SELECTING:', subject.subjectCode);
+                                            setExpandedSubject(subject.subjectCode);
+                                        }}
+                                        className={`w-full group relative flex flex-col p-4 rounded-2xl transition-all border text-left ${expandedSubject?.toLowerCase() === subject.subjectCode.toLowerCase()
+                                            ? 'bg-violet-600/10 border-violet-500/20 shadow-lg shadow-violet-900/10'
+                                            : 'bg-transparent border-transparent hover:bg-white/[0.03]'}`}
                                     >
-                                        {s}
+                                        <div className="flex flex-col gap-1.5">
+                                            <span className={`text-[11px] font-black transition-colors uppercase leading-tight truncate ${expandedSubject?.toLowerCase() === subject.subjectCode.toLowerCase() ? 'text-white' : 'text-slate-500 group-hover:text-slate-300'}`}>
+                                                {subject.name}
+                                            </span>
+                                            <p className="text-[8px] font-black text-slate-700 uppercase tracking-widest leading-none">
+                                                {subject.subjectCode} • {subject.credits} CR
+                                            </p>
+                                        </div>
+                                        {expandedSubject?.toLowerCase() === subject.subjectCode.toLowerCase() && (
+                                            <div className="absolute right-3 top-1/2 -translate-y-1/2 w-1 h-8 bg-violet-500 rounded-full" />
+                                        )}
                                     </button>
                                 ))}
                             </div>
                         </div>
                     </div>
-                </Card>
 
-                <Card className="md:col-span-4 p-6">
-                    <div className="space-y-2">
-                        <label className="text-sm text-slate-400 font-medium">{t('curriculum.quickSearch')}</label>
-                        <div className="relative">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
-                            <Input
-                                className="pl-10"
-                                placeholder={t('curriculum.searchPlaceholder')}
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                            />
+                    {/* 3. RESOURCE HUB */}
+                    <div className="bg-slate-900/40 border border-white/[0.06] rounded-[2rem] p-6">
+                        <div className="flex items-center gap-2 mb-4">
+                             <BookOpen className="w-3.5 h-3.5 text-violet-500" />
+                             <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest leading-none">Resource Hub</p>
                         </div>
-                    </div>
-                </Card>
-            </div>
-
-            {/* Main Content Area */}
-            {loading ? (
-                <div className="h-64 flex flex-col items-center justify-center gap-4">
-                    <Spinner size="lg" className="text-blue-500" />
-                    <p className="text-slate-400 animate-pulse font-medium">{t('curriculum.retrieving')}</p>
-                </div>
-            ) : (
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    {loadError && (
-                        <div className="lg:col-span-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
-                            {loadError}
-                        </div>
-                    )}
-                    {/* Subject List */}
-                    <div className="lg:col-span-1 space-y-4">
-                        <h3 className="text-lg font-bold text-slate-300 flex items-center gap-2 px-2">
-                            <Grid className="w-5 h-5 text-blue-400" />
-                            {t('curriculum.coreSubjects')}
-                        </h3>
-                        <div className="space-y-3">
-                            {filteredSubjects.map((subject) => (
-                                <motion.div
-                                    key={subject.subjectCode}
-                                    layoutId={subject.subjectCode}
-                                    onClick={() => setExpandedSubject(subject.subjectCode)}
-                                    className={`p-4 rounded-2xl cursor-pointer transition-all border-2 ${expandedSubject === subject.subjectCode
-                                        ? 'bg-blue-600/10 border-blue-500/50 shadow-lg'
-                                        : 'bg-slate-800/40 border-slate-700/50 hover:border-slate-500'
-                                        }`}
-                                >
-                                    <div className="flex justify-between items-start mb-2">
-                                        <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-slate-900/80 text-blue-400">
-                                            {subject.subjectCode}
-                                        </span>
-                                        <span className="text-[10px] font-bold text-slate-500">
-                                            {subject.credits} {t('curriculum.credits')}
-                                        </span>
-                                    </div>
-                                    <h4 className={`font-bold transition-colors ${expandedSubject === subject.subjectCode ? 'text-white' : 'text-slate-200'
-                                        }`}>
-                                        {subject.name}
-                                    </h4>
-                                    <p className="text-xs text-slate-500 mt-1 uppercase tracking-wider font-semibold">
-                                        {subject.category}
-                                    </p>
-                                </motion.div>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Module Detail View */}
-                    <div className="lg:col-span-2">
-                        <AnimatePresence mode="wait">
-                            {expandedSubject ? (
-                                <motion.div
-                                    key={expandedSubject}
-                                    initial={{ opacity: 0, y: 20 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    exit={{ opacity: 0, y: -20 }}
-                                    className="space-y-6"
-                                >
-                                    {(selectedSubject?.modules || []).map((module) => {
-                                        const links = resolveResourceLinks(selectedSubject as Subject, module);
-                                        return (
-                                            <Card key={module.moduleNumber} className="p-6 border-slate-700/40 overflow-hidden relative group">
-                                                <div className="absolute right-0 top-0 p-8 opacity-5 text-slate-200 group-hover:opacity-10 transition-opacity">
-                                                    <span className="text-9xl font-black">{module.moduleNumber}</span>
-                                                </div>
-
-                                                <div className="flex items-start gap-4 mb-4">
-                                                    <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center font-bold text-white shrink-0 shadow-lg shadow-blue-500/20">
-                                                        M{module.moduleNumber}
-                                                    </div>
-                                                    <div>
-                                                        <h3 className="text-xl font-bold text-white mb-1">{module.title}</h3>
-                                                        <div className="flex flex-wrap gap-2">
-                                                            {module.technicalRequirements && (
-                                                                <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-900 border border-slate-700 text-slate-400 flex items-center gap-1">
-                                                                    <Settings className="w-3 h-3" /> {module.technicalRequirements}
-                                                                </span>
-                                                            )}
-                                                            {module.pedagogyFocus && (
-                                                                <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-900 border border-slate-700 text-slate-400 flex items-center gap-1">
-                                                                    <Cpu className="w-3 h-3" /> {module.pedagogyFocus}
-                                                                </span>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                </div>
-
-                                                <div className="space-y-3 pl-14">
-                                                    <h4 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 flex items-center gap-2">
-                                                        <Book className="w-3 h-3" />
-                                                        {t('curriculum.syllabusTopics')}
-                                                    </h4>
-                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                                                        {(module.topics || []).map((topic, i) => (
-                                                            <div key={i} className="flex items-start gap-2 text-sm text-slate-300">
-                                                                <ChevronRight className="w-4 h-4 text-blue-500 mt-0.5 shrink-0" />
-                                                                {topic}
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                </div>
-
-                                                <div className="mt-6 pl-14 flex gap-4">
-                                                    <Button
-                                                        type="button"
-                                                        size="sm"
-                                                        variant="outline"
-                                                        className="text-[10px] h-8 gap-2"
-                                                        onClick={() => openExternalResource(links.tutorial)}
-                                                    >
-                                                        <Code className="w-3 h-3" /> {t('curriculum.tutorials')}
-                                                    </Button>
-                                                    <Button
-                                                        type="button"
-                                                        size="sm"
-                                                        variant="outline"
-                                                        className="text-[10px] h-8 gap-2"
-                                                        onClick={() => openExternalResource(links.material)}
-                                                    >
-                                                        <Download className="w-3 h-3" /> {t('curriculum.material')}
-                                                    </Button>
-                                                    <Button
-                                                        type="button"
-                                                        size="sm"
-                                                        variant="primary"
-                                                        className="text-[10px] h-8 gap-2 bg-emerald-600 hover:bg-emerald-500 shadow-md shadow-emerald-500/20"
-                                                        onClick={() => {
-                                                            const query = `Generate a complete study roadmap for: ${module.title} (${selectedSubject?.name})`;
-                                                            navigate(`/tutor?q=${encodeURIComponent(query)}`);
-                                                        }}
-                                                    >
-                                                        <Brain className="w-3 h-3" /> Generate AI Roadmap
-                                                    </Button>
-                                                </div>
-                                            </Card>
-                                        )
-                                    })}
-                                </motion.div>
-                            ) : (
-                                <div className="h-full flex flex-col items-center justify-center p-12 text-center bg-slate-800/20 rounded-3xl border-2 border-dashed border-slate-700/50">
-                                    <BookOpen className="w-20 h-20 text-slate-700 mb-6" />
-                                    <h3 className="text-2xl font-bold text-slate-600">{t('curriculum.selectSubjectTitle')}</h3>
-                                    <p className="text-slate-500 mt-4 max-w-md">
-                                        {t('curriculum.selectSubjectSubtitle')}
-                                    </p>
-                                </div>
-                            )}
-                        </AnimatePresence>
+                        <p className="text-[9px] font-medium text-slate-600 leading-relaxed mb-4">
+                            Need previous year papers or targeted lecture notes?
+                        </p>
+                        <button 
+                            onClick={() => navigate('/paper-bank')}
+                            className="w-full py-4 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-[11px] font-black uppercase tracking-[0.2em] text-white rounded-xl transition-all shadow-lg shadow-violet-950/40 active:scale-[0.98]"
+                        >
+                            Access Paper Bank
+                        </button>
                     </div>
                 </div>
-            )}
-        </div>
+            }
+        />
     );
 };
 

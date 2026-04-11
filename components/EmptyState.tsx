@@ -1,5 +1,5 @@
 import React from 'react';
-import { LucideIcon } from 'lucide-react';
+import { LucideIcon, Lightbulb } from 'lucide-react';
 import { Button } from './ui';
 
 interface EmptyStateProps {
@@ -81,7 +81,10 @@ const EmptyState: React.FC<EmptyStateProps> = ({
             {/* Helpful Tips */}
             {tips && tips.length > 0 && (
                 <div className="bg-slate-800/30 rounded-xl p-6 max-w-lg ring-1 ring-slate-700/50">
-                    <p className="text-sm font-semibold text-slate-300 mb-3">💡 Pro Tips:</p>
+                    <p className="text-sm font-semibold text-slate-300 mb-3 flex items-center gap-2">
+                        <Lightbulb size={16} className="text-amber-400 shrink-0" />
+                        Pro Tips:
+                    </p>
                     <ul className="space-y-2 text-left">
                         {tips.map((tip, index) => (
                             <li key={index} className="text-sm text-slate-400 flex items-start">
