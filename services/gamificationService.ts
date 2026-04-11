@@ -77,3 +77,18 @@ export const updateStreak = async () => {
         return { success: false };
     }
 };
+export const getLeaderboard = async () => {
+    try {
+        const token = localStorage.getItem('token');
+        const config = {
+            headers: {
+                Authorization: `Bearer ${token}`
+            }
+        };
+        const response = await axios.get(`${API_URL}/leaderboard`, config);
+        return response.data;
+    } catch (error) {
+        console.error('Error fetching leaderboard:', error);
+        return { success: false, leaderboard: [] };
+    }
+};

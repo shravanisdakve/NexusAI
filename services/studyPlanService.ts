@@ -21,6 +21,18 @@ export const getStudyPlan = async (courseId: string): Promise<StudyPlan | null> 
     }
 };
 
+export const getLatestStudyPlan = async (): Promise<StudyPlan | null> => {
+    try {
+        const response = await axios.get(`${API_URL}/api/study-plan/latest`, {
+            headers: getAuthHeaders()
+        });
+        return response.data;
+    } catch (error) {
+        console.error("Error fetching latest study plan:", error);
+        return null;
+    }
+};
+
 export const saveStudyPlan = async (plan: Omit<StudyPlan, 'id' | 'createdAt'>): Promise<StudyPlan | null> => {
     try {
         const response = await axios.post(`${API_URL}/api/study-plan`, plan, {

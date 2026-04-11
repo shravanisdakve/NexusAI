@@ -281,6 +281,29 @@ export const generateQuizSet = async (context: string, count: number = 5, langua
     return data.quizSet;
 };
 
+export const generateQuizFromFile = async (base64Data: string, mimeType: string, count: number = 5, language?: string): Promise<string> => {
+    const requestBody = { base64Data, mimeType, count, language };
+    const response = await fetch(`${API_URL}/api/gemini/generateQuizFromFile`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify(requestBody),
+    });
+
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    if (!data.quizSet) {
+        throw new Error('Quiz set not found in response');
+    }
+    return data.quizSet;
+};
+
 // --- AI STUDY SUGGESTIONS SERVICE ---
 export const getStudySuggestions = async (reportJson: string): Promise<string> => {
     const requestBody: GeminiRequest = { reportJson };
@@ -344,6 +367,29 @@ export const generateFlashcards = async (context: string, language?: string): Pr
     }
 
     const data: GeminiResponse = await response.json();
+    if (!data.flashcards) {
+        throw new Error('Flashcards not found in response');
+    }
+    return data.flashcards;
+};
+
+export const generateFlashcardsFromFile = async (base64Data: string, mimeType: string, language?: string): Promise<string> => {
+    const requestBody = { base64Data, mimeType, language };
+    const response = await fetch(`${API_URL}/api/gemini/generateFlashcardsFromFile`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify(requestBody),
+    });
+
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
     if (!data.flashcards) {
         throw new Error('Flashcards not found in response');
     }
@@ -468,7 +514,8 @@ export const streamVivaChat = async (message: string, subject: string, branch: s
 };
 
 // --- STUDY PLAN GENERATION SERVICE ---
-export const generateStudyPlan = async (goal: string, durationDays: number, notesContext: string, language?: string): Promise<string> => {
+export const generateStudyPlan = async (config: { goal: string; durationDays: number; notesContext?: string; language?: string }): Promise<any> => {
+    const { goal, durationDays, notesContext = "", language } = config;
     const response = await fetch(`${API_URL}/api/study-plan/generate`, {
         method: 'POST',
         headers: {
@@ -482,8 +529,7 @@ export const generateStudyPlan = async (goal: string, durationDays: number, note
         throw new Error(`HTTP error! status: ${response.status}`);
     }
 
-    const data = await response.json();
-    return normalizeJsonString(data.planJson);
+    return response.json();
 };
 
 // --- FEYNMAN TECHNIQUE SERVICE ---
@@ -568,7 +614,14 @@ export const simplifyText = async (text: string, language?: string): Promise<str
     return data.simplifiedText || '';
 };
 
-export const generateResumeAnalysis = async (candidateData: any): Promise<{ summary: string; keywords: string[] }> => {
+export const generateResumeAnalysis = async (candidateData: any): Promise<{ 
+    summary: string; 
+    keywords: string[];
+    extractedSkills?: string;
+    extractedProjects?: string;
+    extractedAchievements?: string;
+    name?: string;
+}> => {
     const response = await fetch(`${API_URL}/api/gemini/generateResumeAnalysis`, {
         method: 'POST',
         headers: {

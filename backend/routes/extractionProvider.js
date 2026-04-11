@@ -10,6 +10,8 @@ const ocrService = require('../services/ocrService');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const pdf = require('pdf-parse');
 const mammoth = require('mammoth');
+const pdfService = require('../services/pdfService');
+const geminiService = require('../services/geminiService');
 
 // --- GEMINI KEY POOL MANAGER (OCR Fallback) ---
 const getGeminiKeys = () => {
@@ -39,18 +41,25 @@ const getGeminiModel = (modelName = 'gemini-1.5-flash', forceNext = false) => {
     return genAI.getGenerativeModel({ model: modelName });
 };
 
-const callGeminiWithRetry = async (prompt, dataPart, retries = keyPool.length) => {
+const callGeminiWithRetry = async (prompt, dataPart, retries = keyPool.length * 2) => {
     let lastError;
     for (let i = 0; i < retries; i++) {
+        // Try 2.0 first, then rotate and try 1.5 if it fails.
+        const modelName = i < keyPool.length ? 'gemini-2.0-flash' : 'gemini-1.5-flash';
+        const forceNext = i > 0;
+        
         try {
-            const model = getGeminiModel('gemini-2.0-flash', i > 0);
+            const model = getGeminiModel(modelName, forceNext);
             if (!model) throw new Error('No Gemini model available');
+            
+            console.log(`[GeminiPool] Attempting ${modelName} with key index ${currentKeyIndex}...`);
             const result = await model.generateContent([prompt, dataPart]);
             return result.response.text().trim();
         } catch (error) {
             lastError = error;
             if (error.status === 429 || error.message?.includes('429')) {
-                console.warn(`[GeminiPool] Key ${currentKeyIndex} hit 429. Retrying with next key...`);
+                console.warn(`[GeminiPool] Key ${currentKeyIndex} (${modelName}) hit 429. Retrying...`);
+                // Move to next key on 429
             } else {
                 throw error; // If it's not a rate limit error, throw immediately
             }
@@ -68,9 +77,18 @@ const auth = require('../middleware/auth');
 
 router.post('/streamChat', async (req, res) => {
     try {
-        const { message, language } = req.body;
-        console.log(`[StreamChat] Lang: ${language}`);
-        let systemInstruction = 'You are an expert AI Tutor specifically for MUMBAI UNIVERSITY (MU) engineering students. You provide extremely precise, concise answers following the MU syllabus and marking scheme. Priority: MU Rev-2019/2024 C-Scheme.';
+        const { message, language, feature, systemInstruction: customInstruction } = req.body;
+        console.log(`[StreamChat] Lang: ${language}, Feature: ${feature}`);
+        let systemInstruction = customInstruction || 'You are an expert AI Tutor specifically for MUMBAI UNIVERSITY (MU) engineering students. You provide extremely precise, concise answers following the MU syllabus and marking scheme. Priority: MU Rev-2019/2024 C-Scheme.';
+        
+        if (message && message.includes('You are an HR interviewer')) {
+            systemInstruction = '';
+            req.body.feature = 'hr';
+        } else if (message && message.includes('3 participants respond')) {
+            systemInstruction = '';
+            req.body.feature = 'gd';
+        }
+        
         if (language === 'mr') systemInstruction += ' Respond ONLY in MARATHI (मराठी).';
         else if (language === 'hi') systemInstruction += ' Respond ONLY in HINDI (हिंदी).';
 
@@ -78,7 +96,7 @@ router.post('/streamChat', async (req, res) => {
         res.setHeader('Cache-Control', 'no-cache');
         res.setHeader('Connection', 'keep-alive');
 
-        const stream = aiProvider.stream(message, { feature: 'chat', systemInstruction });
+        const stream = aiProvider.stream(message, { feature: feature || 'chat', systemInstruction });
         for await (const chunk of stream) {
             res.write(`data: ${JSON.stringify({ text: chunk })}\n\n`);
         }
@@ -151,46 +169,105 @@ router.post('/generateCode', async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+const getFullTextFromFile = async (base64Data, mimeType) => {
+    if (!base64Data) throw new Error('No file data');
+    
+    const isPdf = mimeType === 'application/pdf' || (base64Data.startsWith('JVBERi') && !mimeType);
+    const isImage = mimeType?.includes('image');
+
+    // --- MULTIMODAL PDF CHUNKING STRATEGY ---
+    if (isPdf) {
+        try {
+            console.log("[Extraction] PDF detected. Using Smart Chunking...");
+            const buffer = Buffer.from(base64Data, 'base64');
+            const chunks = await pdfService.splitPdfIntoChunks(buffer, 5);
+            let fullText = '';
+
+            for (let i = 0; i < chunks.length; i++) {
+                console.log(`[Extraction] Processing PDF Chunk ${i + 1}/${chunks.length}...`);
+                const chunkBase64 = chunks[i].toString('base64');
+                const dataPart = { inlineData: { data: chunkBase64, mimeType: 'application/pdf' } };
+                const chunkText = await callGeminiWithRetry(FILE_EXTRACTION_PROMPT, dataPart);
+                fullText += chunkText + '\n\n';
+            }
+
+            if (fullText.trim().length > 100) {
+                return fullText.trim();
+            }
+        } catch (pdfErr) {
+            console.error(`[Extraction] Chunked PDF processing failed: ${pdfErr.message}. Falling back...`);
+        }
+    }
+
+    // --- MULTIMODAL IMAGE STRATEGY ---
+    if (isImage) {
+        try {
+            console.log("[Extraction] Image detected. Using Multimodal Vision...");
+            const dataPart = { inlineData: { data: base64Data, mimeType: mimeType } };
+            const extractedText = await callGeminiWithRetry(FILE_EXTRACTION_PROMPT, dataPart);
+            if (extractedText?.length > 50) return extractedText;
+        } catch (imgErr) {
+            console.warn(`[Extraction] Multimodal Image fail: ${imgErr.message}`);
+        }
+    }
+
+    // --- LEGACY/FALLBACK EXTRACTION (Word/Text/Small Files) ---
+    const buffer = Buffer.from(base64Data, 'base64');
+    let localText = '';
+
+    try {
+        if (mimeType?.includes('word')) localText = (await mammoth.extractRawText({ buffer })).value || '';
+        else if (mimeType?.includes('text')) localText = buffer.toString('utf-8');
+        
+        if (localText.trim().length > 300) return localText.trim();
+    } catch (e) { }
+
+    // Last resort: standard Gemini call for other types
+    const dataPart = { inlineData: { data: base64Data, mimeType: mimeType || 'application/pdf' } };
+    return await callGeminiWithRetry(FILE_EXTRACTION_PROMPT, dataPart);
+};
+
 router.post('/extractTextFromFile', async (req, res) => {
     try {
-        let { base64Data, mimeType } = req.body;
-        if (!base64Data) throw new Error('No file data');
-        const buffer = Buffer.from(base64Data, 'base64');
-        let localText = '';
-
-        try {
-            if (mimeType === 'application/pdf') localText = (await pdf(buffer)).text || '';
-            else if (mimeType?.includes('word')) localText = (await mammoth.extractRawText({ buffer })).value || '';
-            else if (mimeType?.includes('text')) localText = buffer.toString('utf-8');
-            
-            if (localText.trim().length > 300) return res.json({ text: localText.trim() });
-        } catch (e) { }
-
-        // NEW: Local OCR fallback for Images (Zero API Keys)
-        if (mimeType?.includes('image')) {
-            try {
-                const localOcrText = await ocrService.extractFromImage(base64Data);
-                if (localOcrText?.length > 50) return res.json({ text: localOcrText });
-            } catch (e) {
-                console.warn(`[LocalOCR-Image] Failed: ${e.message}`);
-            }
-        }
-
-        // Cloud OCR Fallback (NVIDIA/Groq/Gemini as last resort)
-        if (mimeType?.includes('image') && process.env.GROQ_API_KEY) {
-            try {
-                const text = await aiProvider.extractTextWithGroqVision(base64Data, mimeType, FILE_EXTRACTION_PROMPT);
-                if (text?.length > 50) return res.json({ text });
-            } catch (e) {}
-        }
-
-        const dataPart = { inlineData: { data: base64Data, mimeType: mimeType || 'application/pdf' } };
-        const extractedText = await callGeminiWithRetry(FILE_EXTRACTION_PROMPT, dataPart);
-        res.json({ text: extractedText });
+        const { base64Data, mimeType } = req.body;
+        const text = await getFullTextFromFile(base64Data, mimeType);
+        res.json({ text });
     } catch (e) { 
         console.error(`[ExtractFromFile Error]: ${e.message}`, e.stack);
         res.status(500).json({ error: `AI Extraction Failed: ${e.message}` }); 
     }
+});
+
+router.post('/generateQuizFromFile', async (req, res) => {
+    try {
+        let { base64Data, mimeType, count = 5, language } = req.body;
+        const text = await getFullTextFromFile(base64Data, mimeType);
+        if (!text) throw new Error("Could not extract content from file for quiz generation.");
+
+        const prompt = `Generate ${count} multiple choice questions from this context.
+        RETURN ONLY RAW JSON ARRAY of objects with the following keys:
+        'question' (string), 'options' (array of 4 strings), 'correctAnswer' (string, must exactly match one of the options), 'explanation' (string).
+        Do not wrap in markdown or code blocks.
+        Context: "${text.substring(0, 50000)}"`;
+        
+        const r = await aiProvider.generate(prompt, { feature: 'quiz', json: true });
+        res.json({ quizSet: r });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+router.post('/generateFlashcardsFromFile', async (req, res) => {
+    try {
+        let { base64Data, mimeType, language } = req.body;
+        const text = await getFullTextFromFile(base64Data, mimeType);
+        if (!text) throw new Error("Could not extract content from file for flashcards.");
+
+        const prompt = `Based on the following context, generate a list of flashcards. Each flashcard should have a 'front' (a question or term) and a 'back' (the answer or definition).
+        RETURN ONLY RAW JSON ARRAY of objects with keys 'front' and 'back'. Do not wrap in markdown or code blocks.
+        Context: "${text.substring(0, 50000)}"`;
+        
+        const r = await aiProvider.generate(prompt, { feature: 'flashcards', json: true });
+        res.json({ flashcards: r });
+    } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 router.post('/generateQuizQuestion', async (req, res) => {
@@ -206,8 +283,13 @@ router.post('/generateQuizQuestion', async (req, res) => {
 router.post('/generateQuizSet', async (req, res) => {
     try {
         const { context, count = 5, language } = req.body;
-        const p = `Generate ${count} MCQs JSON: "${context}"`;
-        const r = await aiProvider.generate(p, { feature: 'quiz', json: true });
+        const prompt = `Generate ${count} multiple choice questions from this context.
+        RETURN ONLY RAW JSON ARRAY of objects with the following keys:
+        'question' (string), 'options' (array of 4 strings), 'correctAnswer' (string, must exactly match one of the options), 'explanation' (string).
+        Do not wrap in markdown or code blocks.
+        Context: "${context}"`;
+
+        const r = await aiProvider.generate(prompt, { feature: 'quiz', json: true });
         res.json({ quizSet: r });
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -231,7 +313,10 @@ router.post('/generateKnowledgeMap', async (req, res) => {
 router.post('/generateFlashcards', async (req, res) => {
     try {
         const { context } = req.body;
-        const r = await aiProvider.generate(`JSON flashcards for: "${context}"`, { feature: 'flashcards', json: true });
+        const prompt = `Based on the following context, generate a list of flashcards. Each flashcard should have a 'front' (a question or term) and a 'back' (the answer or definition).
+        RETURN ONLY RAW JSON ARRAY of objects with keys 'front' and 'back'. Do not wrap in markdown or code blocks.
+        Context: "${context}"`;
+        const r = await aiProvider.generate(prompt, { feature: 'flashcards', json: true });
         res.json({ flashcards: r });
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -255,7 +340,17 @@ router.post('/breakDownGoal', async (req, res) => {
 router.post('/generateProjectIdeas', async (req, res) => {
     try {
         const { branch, interest, difficulty } = req.body;
-        const r = await aiProvider.generate(`5 innovative project ideas for ${branch} interested in ${interest}. JSON.`, { feature: 'projectIdeas', json: true });
+        const prompt = `Generate 5 unique and innovative engineering project ideas.
+        Branch: ${branch}
+        Area of Interest: ${interest}
+        Difficulty Level: ${difficulty}
+
+        Context: The student is likely from Mumbai University. innovative projects that solve local problems (Mumbai/India) or follow current industry trends are highly appreciated.
+        Ensure a mix of software, hardware (if applicable), and research-based ideas.
+
+        Return ONLY a JSON array of objects with the exact keys: "title", "description", "techStack" (array of strings).`;
+        
+        const r = await aiProvider.generate(prompt, { feature: 'projectIdeas', json: true });
         res.json({ ideas: r });
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -263,7 +358,25 @@ router.post('/generateProjectIdeas', async (req, res) => {
 router.post('/generateMockPaper', async (req, res) => {
     try {
         const { branch, subject } = req.body;
-        const r = await aiProvider.generate(`MU Mock Paper for ${subject} (${branch}) as JSON.`, { feature: 'mockPaper', json: true });
+        const prompt = `Generate a comprehensive engineering exam mock question paper for Mumbai University.
+        Branch: ${branch}
+        Subject: ${subject}
+        Format: JSON
+        
+        The JSON should exactly have this structure:
+        {
+          "subject": "${subject}",
+          "duration": "3 Hours",
+          "totalMarks": 80,
+          "instructions": ["Q1 is compulsory", "Attempt any 3 from Q2 to Q6"],
+          "questions": [
+            {
+               "qNo": 1,
+               "subQuestions": [ { "id": "a", "text": "Question text", "marks": 5, "module": "1" } ]
+            }
+          ]
+        }`;
+        const r = await aiProvider.generate(prompt, { feature: 'mockPaper', json: true });
         res.json({ paper: JSON.parse(r) });
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -285,6 +398,15 @@ router.post('/streamFeynmanChat', async (req, res) => {
         const stream = aiProvider.stream(message, { feature: 'chat', systemInstruction: `Act as a 10yr old student named Nino learning about ${topic}.` });
         for await (const chunk of stream) res.write(`data: ${JSON.stringify({ text: chunk })}\n\n`);
         res.end();
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+router.post('/getFeynmanFeedback', async (req, res) => {
+    try {
+        const { topic, explanation, notes, language } = req.body;
+        const p = `Evaluate Feynman Technique explanation for "${topic}". Context: "${notes || ''}". Student explanation: "${explanation}". Return JSON with clarityScore(1-10), jargon(array), gaps(array), analogySuggestions(array), verdict(string), improvement(string).`;
+        const r = await aiProvider.generate(p, { feature: 'chat', json: true });
+        res.json(JSON.parse(r));
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -311,30 +433,59 @@ router.post('/simplify', async (req, res) => {
 
 router.post('/generateResumeAnalysis', async (req, res) => {
     try {
-        const r = await aiProvider.generate(`Analyze resume: ${JSON.stringify(req.body)}. Return JSON with summary and keywords.`, { feature: 'code', json: true });
-        res.json(JSON.parse(r));
+        const prompt = `Analyze this candidate data and generate a professional resume profile. 
+If the candidate data contains raw extracted text (e.g. from a PDF), also extract and structure their technical skills, projects, and achievements.
+
+Candidate Data:
+Target Role: ${req.body.targetRole}
+Extracted Text/Context: ${req.body.skills} ${req.body.projects || ''}
+
+Output ONLY valid JSON:
+{ 
+  "summary": "3-sentence professional summary focus on outcomes", 
+  "keywords": ["ATS", "Keywords", "15 total"],
+  "extractedSkills": "Technical Skills (comma separated)",
+  "extractedProjects": "Detailed Project List (newline separated)",
+  "extractedAchievements": "Achievements (newline separated)",
+  "name": "Full Name if found in notes"
+}`;
+
+        const result = await aiProvider.generate(prompt, { feature: 'code', json: true });
+        res.json(typeof result === 'string' ? JSON.parse(result) : result);
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 router.post('/generatePersonalizedQuiz', async (req, res) => {
     try {
-        const r = await aiProvider.generate(`Personalized MU quiz for: ${JSON.stringify(req.body)}. JSON format.`, { feature: 'quiz', json: true });
-        res.json({ quiz: JSON.parse(r) });
-    } catch (e) { res.status(500).json({ error: e.message }); }
+        const result = await geminiService.generatePersonalizedQuiz(req.body);
+        if (!result) throw new Error('AI Engine failed to generate personalized quiz.');
+        res.json({ quiz: result });
+    } catch (e) { 
+        console.error(`[AI Quiz Error]: ${e.message}`);
+        res.status(500).json({ error: e.message }); 
+    }
 });
 
 router.post('/generateTimedChallenge', async (req, res) => {
     try {
-        const r = await aiProvider.generate(`Personalized timed challenge for: ${JSON.stringify(req.body)}. JSON format.`, { feature: 'quiz', json: true });
-        res.json({ challenge: JSON.parse(r) });
-    } catch (e) { res.status(500).json({ error: e.message }); }
+        const result = await geminiService.generateTimedChallenge(req.body);
+        if (!result) throw new Error('AI Engine failed to generate timed challenge.');
+        res.json({ challenge: result });
+    } catch (e) { 
+        console.error(`[AI Challenge Error]: ${e.message}`);
+        res.status(500).json({ error: e.message }); 
+    }
 });
 
 router.post('/generateFlashcardChallenge', async (req, res) => {
     try {
-        const r = await aiProvider.generate(`Flashcard challenge for: ${JSON.stringify(req.body)}. JSON format.`, { feature: 'flashcards', json: true });
-        res.json({ data: JSON.parse(r) });
-    } catch (e) { res.status(500).json({ error: e.message }); }
+        const result = await geminiService.generateFlashcardChallenge(req.body);
+        if (!result) throw new Error('AI Engine failed to generate flashcard challenge.');
+        res.json({ data: result });
+    } catch (e) { 
+        console.error(`[AI Flashcard Error]: ${e.message}`);
+        res.status(500).json({ error: e.message }); 
+    }
 });
 
 module.exports = router;

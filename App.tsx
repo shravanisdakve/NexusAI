@@ -10,7 +10,6 @@ import Signup from './pages/Signup';
 import PersonalizationQuiz from './pages/PersonalizationQuiz';
 import StudyRoom from './pages/StudyRoom';
 import StudyLobby from './pages/StudyLobby';
-import Insights from './pages/Insights';
 import Notes from './pages/Notes';
 import CourseCommunity from './pages/CourseCommunity';
 import Quizzes from './pages/QuizPractice'; // Renamed QuizPractice to Quizzes
@@ -29,8 +28,14 @@ import MockPaperGenerator from './pages/MockPaperGenerator';
 import ATKTCalculator from './pages/ATKTCalculator';
 import CurriculumExplorer from './pages/CurriculumExplorer';
 import ResumeBuilder from './pages/ResumeBuilder';
+import ResumePrint from './pages/ResumePrint';
 import TopicPredictor from './pages/TopicPredictor';
 import MUPaperBank from './pages/MUPaperBank';
+import TimerPage from './pages/TimerPage';
+import Offline from './pages/Offline';
+import Leaderboard from './pages/Leaderboard';
+
+
 
 import PlacementArena from './pages/PlacementArena';
 import TCSNQTSimulator from './pages/TCSNQTSimulator';
@@ -45,11 +50,18 @@ import PlacementTracker from './pages/PlacementTracker';
 import PracticeHub from './pages/PracticeHub';
 import CompanyHub from './pages/CompanyHub';
 import LearningResources from './pages/LearningResources';
+import PrepTools from './pages/PrepTools';
 import SmartStudy from './pages/SmartStudy';
 import { useAuth } from './contexts/AuthContext';
 import { Spinner } from '@/components/ui';
 import { ModeProvider } from './contexts/ModeContext';
 import Header from './components/Header';
+import { SidebarProvider } from './contexts/SidebarContext';
+import MobileBottomNav from './components/MobileBottomNav';
+import ViewProfilePage from './pages/profile/ViewProfilePage';
+import EditProfilePage from './pages/profile/EditProfilePage';
+import ProfileSettingsPage from './pages/profile/ProfileSettingsPage';
+import { TimerProvider } from './contexts/TimerContext';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated, loading } = useAuth(); // Using isAuthenticated and loading from useAuth
@@ -63,16 +75,19 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
   }
 
   return isAuthenticated ? (
-    <div className="flex h-screen bg-slate-900 text-slate-200 overflow-hidden">
-      <div className="z-40 relative flex-shrink-0">
-        <Sidebar />
-      </div>
-      <main className="flex-1 overflow-y-auto flex flex-col relative w-full z-0">
-        <Header />
-        <div className="p-4 sm:p-6 lg:p-8 flex-1 h-full">
-          {children}
+    <div className="bg-[#050608] min-h-screen w-full flex items-center justify-center overflow-hidden">
+      <div className="flex h-screen bg-slate-900 text-slate-200 overflow-hidden w-full max-w-[177.78vh] shadow-2xl relative ring-1 ring-white/5">
+        <div className="z-50 relative flex-shrink-0">
+          <Sidebar />
         </div>
-      </main>
+        <main className="flex-1 flex flex-col relative w-full h-screen overflow-hidden z-20">
+          <Header />
+          <div className="flex-1 relative overflow-hidden">
+            {children}
+          </div>
+        </main>
+        <MobileBottomNav />
+      </div>
     </div>
   ) : (
     <Navigate to="/login" replace />
@@ -100,17 +115,21 @@ const AppContent: React.FC = () => {
       '/resources': { title: 'Resource Library | NexusAI', desc: 'Access comprehensive study materials and university resources.' },
       '/placement': { title: 'Placement Arena | NexusAI', desc: 'Prepare for top companies with AI-simulated tests and resources.' },
       '/notes': { title: 'My Notes | NexusAI', desc: 'Organize and analyze your study notes with AI flashcards.' },
-      '/tutor': { title: 'AI Neural Tutor | NexusAI', desc: 'Get 24/7 academic assistance from our proprietary AI engine.' },
-      '/insights': { title: 'AI Insights | NexusAI', desc: 'Deep analytics on your learning patterns and performance.' },
-      '/curriculum': { title: 'Curriculum Explorer | NexusAI', desc: 'Navigate your course syllabus with university-specific insights.' },
+      '/tutor': { title: 'AI Study Buddy | NexusAI', desc: 'Personalized AI tutoring for Mumbai University courses.' },
+      '/timer': { title: 'Focus Timer | NexusAI', desc: 'Boost productivity with our integrated Pomodoro study timer.' },
+      '/curriculum': { title: 'Exam Blueprints | NexusAI', desc: 'Navigate your course syllabus with university-specific insights.' },
       '/study-lobby': { title: 'Study Rooms | NexusAI', desc: 'Join collaborative study sessions with peers.' },
-      '/quizzes': { title: 'Practice Center | NexusAI', desc: 'Test your knowledge with AI-generated custom quizzes.' },
+      '/quizzes': { title: 'Practice Lab | NexusAI', desc: 'Test your knowledge with AI-generated custom quizzes.' },
       '/study-guru': { title: 'Smart Study | NexusAI', desc: 'Strategic study recommendations based on your unique profile.' },
       '/login': { title: 'Login | NexusAI', desc: 'Securely access your personalized learning dashboard.' },
       '/signup': { title: 'Join NexusAI', desc: 'Create your account to start your AI-powered academic journey.' },
+      '/offline': { title: 'Slow Connection | NexusAI', desc: 'You are currently disconnected from our neural engines.' },
       '/terms': { title: 'Terms of Service | NexusAI', desc: 'Read our platform usage policies and conditions.' },
       '/privacy': { title: 'Privacy Policy | NexusAI', desc: 'Understand how we protect your data and privacy.' },
-      '/personalization': { title: 'Customize Your Experience | NexusAI', desc: 'Tailor your learning path with our personalization engine.' }
+      '/personalization': { title: 'Customize Your Experience | NexusAI', desc: 'Tailor your learning path with our personalization engine.' },
+      '/leaderboard': { title: 'Global Arena | Leaderboard', desc: 'Compete with peers and climb the Nexus global rankings.' }
+
+
     };
 
     const route = Object.entries(routeMap).find(([p]) => path === p || (p !== '/' && path.startsWith(p)));
@@ -133,61 +152,81 @@ const AppContent: React.FC = () => {
   }, [location]);
 
   return (
-    <ModeProvider>
-        <Routes>
-          {/* Public Routes */}
-          <Route path="/login" element={<Login />} />
-          <Route path="/signup" element={<Signup />} />
-          <Route path="/personalization" element={<PersonalizationQuiz />} />
-          <Route path="/forgot-password" element={<ForgotPassword />} />
-          <Route path="/reset-password/:token" element={<ResetPassword />} />
-          <Route path="/terms" element={<Terms />} />
-          <Route path="/privacy" element={<Privacy />} />
+    <SidebarProvider>
+      <TimerProvider>
+        <ModeProvider>
+            <Routes>
+            {/* Public Routes */}
+            <Route path="/login" element={<Login />} />
+            <Route path="/signup" element={<Signup />} />
+            <Route path="/personalization" element={<PersonalizationQuiz />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password/:token" element={<ResetPassword />} />
+            <Route path="/terms" element={<Terms />} />
+            <Route path="/privacy" element={<Privacy />} />
+            <Route path="/offline" element={<Offline />} />
 
-          {/* Protected Routes */}
-          <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-          <Route path="/resources" element={<ProtectedRoute><ResourceLibrary /></ProtectedRoute>} />
-          <Route path="/curriculum" element={<ProtectedRoute><CurriculumExplorer /></ProtectedRoute>} />
+            {/* Protected Routes */}
+            <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+            <Route path="/resources" element={<ProtectedRoute><ResourceLibrary /></ProtectedRoute>} />
+            <Route path="/curriculum" element={<ProtectedRoute><CurriculumExplorer /></ProtectedRoute>} />
 
-          <Route path="/placement" element={<ProtectedRoute><PlacementArena /></ProtectedRoute>} />
-          <Route path="/resume-builder" element={<ProtectedRoute><ResumeBuilder /></ProtectedRoute>} />
-          <Route path="/placement/tcs-nqt" element={<ProtectedRoute><TCSNQTSimulator /></ProtectedRoute>} />
-          <Route path="/placement/:simulatorSlug" element={<ProtectedRoute><TCSNQTSimulator /></ProtectedRoute>} />
-          <Route path="/university-status" element={<ProtectedRoute><UniversityStatus /></ProtectedRoute>} />
-          <Route path="/practice-hub" element={<ProtectedRoute><PracticeHub /></ProtectedRoute>} />
-          <Route path="/company-hub" element={<ProtectedRoute><CompanyHub /></ProtectedRoute>} />
-          <Route path="/learning-resources" element={<ProtectedRoute><LearningResources /></ProtectedRoute>} />
-          {/* Keep direct routes as fallbacks */}
-          <Route path="/aptitude-trainer" element={<ProtectedRoute><PracticeHub /></ProtectedRoute>} />
-          <Route path="/gd-simulator" element={<ProtectedRoute><PracticeHub /></ProtectedRoute>} />
-          <Route path="/hr-interview" element={<ProtectedRoute><PracticeHub /></ProtectedRoute>} />
-          <Route path="/company-profiles" element={<ProtectedRoute><CompanyHub /></ProtectedRoute>} />
-          <Route path="/placement-tracker" element={<ProtectedRoute><CompanyHub /></ProtectedRoute>} />
-          <Route path="/gpa-calculator" element={<ProtectedRoute><GPACalculator /></ProtectedRoute>} />
-          <Route path="/project-generator" element={<ProtectedRoute><ProjectGenerator /></ProtectedRoute>} />
-          <Route path="/kt-calculator" element={<ProtectedRoute><ATKTCalculator /></ProtectedRoute>} />
-          <Route path="/mock-paper" element={<ProtectedRoute><MockPaperGenerator /></ProtectedRoute>} />
-          <Route path="/topic-predictor" element={<ProtectedRoute><TopicPredictor /></ProtectedRoute>} />
-          <Route path="/paper-bank" element={<ProtectedRoute><MUPaperBank /></ProtectedRoute>} />
-          <Route path="/viva-simulator" element={<ProtectedRoute><VivaSimulator /></ProtectedRoute>} />
-          <Route path="/insights" element={<ProtectedRoute><Insights /></ProtectedRoute>} />
-          <Route path="/notes" element={<ProtectedRoute><Notes /></ProtectedRoute>} />
-          <Route path="/tutor" element={<ProtectedRoute><AITutor /></ProtectedRoute>} />
-          <Route path="/study-lobby" element={<ProtectedRoute><StudyLobby /></ProtectedRoute>} />
-          <Route path="/study-room/:id" element={<ProtectedRoute><StudyRoom /></ProtectedRoute>} />
-          <Route path="/quizzes" element={<ProtectedRoute><Quizzes /></ProtectedRoute>} />
-          <Route path="/community/:courseId" element={<ProtectedRoute><CourseCommunity /></ProtectedRoute>} />
-          <Route path="/interview" element={<ProtectedRoute><InterviewQuiz /></ProtectedRoute>} />
-          <Route path="/sudoku" element={<ProtectedRoute><SudokuGame /></ProtectedRoute>} />
-          <Route path="/zip" element={<ProtectedRoute><ZipGame /></ProtectedRoute>} />
-          <Route path="/speed-math" element={<ProtectedRoute><SpeedMathGame /></ProtectedRoute>} />
-          <Route path="/study-plan" element={<ProtectedRoute><StudyPlan /></ProtectedRoute>} />
-          <Route path="/study-guru" element={<ProtectedRoute><SmartStudy /></ProtectedRoute>} />
+            <Route path="/placement" element={<ProtectedRoute><PlacementArena /></ProtectedRoute>} />
+            <Route path="/prep-tools" element={<ProtectedRoute><PrepTools /></ProtectedRoute>} />
+            <Route path="/resume-builder" element={<ProtectedRoute><ResumeBuilder /></ProtectedRoute>} />
+            <Route path="/resume-print" element={<ResumePrint />} />
+            <Route path="/placement/tcs-nqt" element={<ProtectedRoute><TCSNQTSimulator /></ProtectedRoute>} />
+            <Route path="/placement/companies" element={<Navigate to="/company-hub" replace />} />
+            <Route path="/placement/:simulatorSlug" element={<ProtectedRoute><TCSNQTSimulator /></ProtectedRoute>} />
+            <Route path="/university-status" element={<ProtectedRoute><UniversityStatus /></ProtectedRoute>} />
+            <Route path="/practice-hub" element={<ProtectedRoute><PracticeHub /></ProtectedRoute>} />
+            <Route path="/company-hub" element={<ProtectedRoute><CompanyHub /></ProtectedRoute>} />
+            <Route path="/learning-resources" element={<ProtectedRoute><LearningResources /></ProtectedRoute>} />
+            {/* Keep direct routes as fallbacks */}
+            <Route path="/aptitude-trainer" element={<ProtectedRoute><PracticeHub /></ProtectedRoute>} />
+            <Route path="/gd-simulator" element={<ProtectedRoute><PracticeHub /></ProtectedRoute>} />
+            <Route path="/hr-interview" element={<ProtectedRoute><PracticeHub /></ProtectedRoute>} />
+            <Route path="/company-profiles" element={<ProtectedRoute><CompanyHub /></ProtectedRoute>} />
+            <Route path="/placement-tracker" element={<ProtectedRoute><CompanyHub /></ProtectedRoute>} />
+            <Route path="/gpa-calculator" element={<ProtectedRoute><GPACalculator /></ProtectedRoute>} />
+            <Route path="/project-generator" element={<ProtectedRoute><ProjectGenerator /></ProtectedRoute>} />
+            <Route path="/kt-calculator" element={<ProtectedRoute><ATKTCalculator /></ProtectedRoute>} />
+            <Route path="/mock-paper" element={<ProtectedRoute><MockPaperGenerator /></ProtectedRoute>} />
+            <Route path="/topic-predictor" element={<ProtectedRoute><TopicPredictor /></ProtectedRoute>} />
+            <Route path="/paper-bank" element={<ProtectedRoute><MUPaperBank /></ProtectedRoute>} />
+            <Route path="/viva-simulator" element={<ProtectedRoute><VivaSimulator /></ProtectedRoute>} />
+            <Route path="/notes" element={<ProtectedRoute><Notes /></ProtectedRoute>} />
+            <Route path="/tutor" element={<ProtectedRoute><AITutor /></ProtectedRoute>} />
+            <Route path="/ai-tutor" element={<Navigate to="/tutor" replace />} />
+            <Route path="/practice-hub" element={<ProtectedRoute><PracticeHub /></ProtectedRoute>} />
+            <Route path="/practice" element={<Navigate to="/practice-hub" replace />} />
+            <Route path="/timer" element={<ProtectedRoute><TimerPage /></ProtectedRoute>} />
+            <Route path="/leaderboard" element={<ProtectedRoute><Leaderboard /></ProtectedRoute>} />
 
-          {/* Fallback */}
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </ModeProvider>
+            <Route path="/study-lobby" element={<ProtectedRoute><StudyLobby /></ProtectedRoute>} />
+            <Route path="/study-room" element={<Navigate to="/study-lobby" replace />} />
+
+            <Route path="/study-room/:id" element={<ProtectedRoute><StudyRoom /></ProtectedRoute>} />
+            <Route path="/quizzes" element={<ProtectedRoute><Quizzes /></ProtectedRoute>} />
+            <Route path="/community/:courseId" element={<ProtectedRoute><CourseCommunity /></ProtectedRoute>} />
+            <Route path="/interview" element={<ProtectedRoute><InterviewQuiz /></ProtectedRoute>} />
+            <Route path="/sudoku" element={<ProtectedRoute><SudokuGame /></ProtectedRoute>} />
+            <Route path="/zip" element={<ProtectedRoute><ZipGame /></ProtectedRoute>} />
+            <Route path="/speed-math" element={<ProtectedRoute><SpeedMathGame /></ProtectedRoute>} />
+            <Route path="/study-plan" element={<ProtectedRoute><StudyPlan /></ProtectedRoute>} />
+            <Route path="/study-guru" element={<ProtectedRoute><SmartStudy /></ProtectedRoute>} />
+            
+            {/* Profile & Account Routes */}
+            <Route path="/profile" element={<ProtectedRoute><ViewProfilePage /></ProtectedRoute>} />
+            <Route path="/profile/edit" element={<ProtectedRoute><EditProfilePage /></ProtectedRoute>} />
+            <Route path="/profile/settings" element={<ProtectedRoute><ProfileSettingsPage /></ProtectedRoute>} />
+
+            {/* Fallback */}
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </ModeProvider>
+      </TimerProvider>
+    </SidebarProvider>
   );
 };
 

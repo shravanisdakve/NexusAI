@@ -1,155 +1,119 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 const connectDB = require('./config/db');
 
 const app = express();
 const server = require('http').createServer(app);
 const socketHandler = require('./socketHandler');
+const initScraperCron = require('./cron/muScraper');
 
-// 1. Connect Database FIRST
+const isProduction = process.env.NODE_ENV === 'production';
+const PORT = process.env.PORT || 8080;
+
+console.log('[PHASE 4 - FINAL] Starting NexusAI Backend...');
+
+// 1. Connect Database
 (async () => {
     try {
+        console.log('[PHASE 4] Connecting to MongoDB...');
         await connectDB();
     } catch (err) {
-        console.error('Initial DB connection failed:', err);
+        console.error('[PHASE 4] Initial DB connection error:', err);
     }
 })();
 
-// Setup Sockets
-const io = socketHandler(server);
-app.set('io', io);
-
-const initScraperCron = require('./cron/muScraper');
-initScraperCron(io);
-
-const path = require('path');
-const helmet = require('helmet');
-const compression = require('compression');
-const rateLimit = require('express-rate-limit');
-
-// ... (DB Connection and Socket setup remians same)
-
-// 2. Security & Performance Middleware
-const isProduction = process.env.NODE_ENV === 'production';
-app.use(helmet({
-  contentSecurityPolicy: false, // Disabled for simplicity in dev/demo; enable and configure for strict prod
-  crossOriginEmbedderPolicy: false,
-  // Allow localhost frontend (different port/origin) to embed backend content during development.
-  xFrameOptions: isProduction ? { action: 'sameorigin' } : false
-}));
-
-if (!isProduction) {
-  app.use((req, res, next) => {
-    res.removeHeader('X-Frame-Options');
-    next();
-  });
+// 2. Setup Sockets (Safe)
+let io;
+try {
+    console.log('[PHASE 4] Initializing Sockets...');
+    io = socketHandler(server);
+    app.set('io', io);
+    console.log('[PHASE 4] Sockets initialized.');
+} catch (err) {
+    console.error('[PHASE 4] Socket initialization failed:', err);
 }
-app.use(compression());
 
-// CORS Configuration
-const devAllowedOrigins = [
-  'http://localhost:3000',
-  'http://localhost:5173',
-  'http://localhost:5174',
-  'http://localhost:5175',
-  'http://localhost:4173',
-  'http://127.0.0.1:3000',
-  'http://127.0.0.1:5173',
-  'http://127.0.0.1:5174',
-  'http://127.0.0.1:5175',
-  'http://127.0.0.1:4173'
+// 3. Setup Scrapers (Safe)
+try {
+    console.log('[PHASE 4] Initializing Scrapers...');
+    initScraperCron(io);
+    console.log('[PHASE 4] Scrapers initialized.');
+} catch (err) {
+    console.error('[PHASE 4] Scraper initialization failed:', err);
+}
+
+const allowedOrigins = [
+    'https://nexusai-e068c.web.app',
+    'https://nexusai-e068c.firebaseapp.com',
+    'http://localhost:3000',
+    'http://localhost:5173',
+    'http://localhost:5174',
+    'http://localhost:5175',
+    'http://localhost:4173',
+    'http://127.0.0.1:3000',
+    'http://127.0.0.1:5173',
+    'http://127.0.0.1:5174',
+    'http://127.0.0.1:5175',
+    'http://127.0.0.1:4173'
 ];
 
-const corsOptions = {
-  origin: isProduction
-    ? (process.env.FRONTEND_URL || 'https://yourdomain.com') // Update this after deployment
-    : devAllowedOrigins,
-  credentials: true
-};
-app.use(cors(corsOptions));
-
-// Rate Limiting (Apply to API requests)
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: isProduction ? 600 : 5000,
-  standardHeaders: true,
-  legacyHeaders: false,
-  skip: (req) => req.method === 'OPTIONS'
-});
-app.use('/api', limiter);
-
-// 3. Body Parsers
-const requestBodyLimit = process.env.REQUEST_BODY_LIMIT || '100mb';
-app.use(express.json({ limit: requestBodyLimit }));
-app.use(express.urlencoded({ extended: true, limit: requestBodyLimit }));
-
-// 3.5. Serve uploaded files
+app.use(cors({
+    origin: function (origin, callback) {
+        if (!origin) return callback(null, true);
+        if (allowedOrigins.indexOf(origin) === -1) {
+            return callback(new Error('CORS blocked'), false);
+        }
+        return callback(null, true);
+    },
+    credentials: true
+}));
+app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// 4. Request Logging (Development only)
-if (process.env.NODE_ENV !== 'production') {
-  app.use((req, res, next) => {
-    console.log(`${new Date().toISOString()} - ${req.method} ${req.originalUrl}`);
-    next();
-  });
-}
+// 4. All Routes (Safe)
+console.log('[PHASE 4] Loading API routes...');
+const safeLoad = (route, path) => {
+    try {
+        app.use(route, require(path));
+    } catch (err) {
+        console.error(`[PHASE 4] Failed to load ${route}:`, err);
+    }
+};
 
-// 5. Routes
-app.use('/api/auth', require('./routes/auth'));
-app.use('/api/gemini', require('./routes/extractionProvider'));
+safeLoad('/api/auth', './routes/auth');
+safeLoad('/api/gemini', './routes/extractionProvider');
+safeLoad('/api/analytics', './routes/analytics');
+safeLoad('/api/community', './routes/community');
+safeLoad('/api/notes', './routes/notes');
+safeLoad('/api/courses', './routes/courses');
+safeLoad('/api/games', './routes/games');
+safeLoad('/api/resources', './routes/resources');
+safeLoad('/api/study-plan', './routes/studyPlan');
+safeLoad('/api/goals', './routes/goals');
+safeLoad('/api/atkt', './routes/atkt');
+safeLoad('/api/curriculum', './routes/curriculum');
+safeLoad('/api/placement', './routes/placement');
+safeLoad('/api/university', './routes/university');
+safeLoad('/api/personalization', './routes/personalization');
+safeLoad('/api/ai-chat', './routes/aiChat');
+safeLoad('/api/mu-tutor', './routes/muTutor');
+safeLoad('/api/gamification', './routes/gamification');
 
-app.use('/api/analytics', require('./routes/analytics'));
-app.use('/api/community', require('./routes/community'));
-app.use('/api/notes', require('./routes/notes'));
-app.use('/api/courses', require('./routes/courses'));
-app.use('/api/games', require('./routes/games'));
-app.use('/api/resources', require('./routes/resources'));
-app.use('/api/study-plan', require('./routes/studyPlan'));
-app.use('/api/goals', require('./routes/goals'));
-app.use('/api/atkt', require('./routes/atkt'));
-app.use('/api/curriculum', require('./routes/curriculum'));
-app.use('/api/placement', require('./routes/placement'));
-app.use('/api/university', require('./routes/university'));
-app.use('/api/personalization', require('./routes/personalization'));
-app.use('/api/ai-chat', require('./routes/aiChat'));
-app.use('/api/mu-tutor', require('./routes/muTutor'));
-app.use('/api/gamification', require('./routes/gamification'));
-
-// 6. Health Check Route
+// Minimal Health Check
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  res.json({ status: 'ok', mode: 'final', timestamp: new Date().toISOString() });
 });
 
-// 7. Serve Frontend in Production
+// Serve Frontend
 if (isProduction) {
-  // Serve static files from the React frontend app
-  app.use(express.static(path.join(__dirname, '../dist')));
-
-  // Handle React routing, return all requests to React app
+  app.use(express.static(path.join(__dirname, 'dist')));
   app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, '../dist', 'index.html'));
-  });
-} else {
-  // 404 for non-API routes in dev
-  app.use((req, res, next) => {
-    res.status(404).json({ success: false, message: 'Route not found' });
+    res.sendFile(path.join(__dirname, 'dist', 'index.html'));
   });
 }
 
-// 8. Global Error Handler (MUST BE LAST)
-app.use((err, req, res, next) => {
-  console.error('Server Error:', err.stack);
-  res.status(err.status || 500).json({
-    success: false,
-    message: isProduction
-      ? 'Internal server error'
-      : err.message
-  });
-});
-
-console.log('--- ALL ROUTES LOADED, STARTING SERVER ---');
-const PORT = process.env.PORT || 3002;
 server.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
+    console.log(`🚀 [PHASE 4] Server running on port ${PORT}`);
 });

@@ -581,6 +581,8 @@ const StudyToolsPanel: React.FC<StudyToolsPanelProps> = ({
                             <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-1">Track New Concept</h4>
                             <div className="flex gap-2">
                                 <input
+                                    id="new-concept-input"
+                                    name="newConcept"
                                     type="text"
                                     value={newConceptInput}
                                     onChange={(e) => setNewConceptInput(e.target.value)}

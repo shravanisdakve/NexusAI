@@ -20,7 +20,11 @@ export interface User {
     university?: string;
     college?: string;
     branch?: string;
+    branchAbbr?: string;
     year?: number;
+    semester?: string;
+    bio?: string;
+    interests?: string[];
     token?: string;
     xp?: number;
     coins?: number;
@@ -78,7 +82,6 @@ export interface Course {
 export type MoodLabel = 'Happy' | 'Calm' | 'Overwhelmed' | 'Sad' | 'Angry';
 
 export interface Mood {
-    emoji?: string;
     label: MoodLabel;
     timestamp: number;
 }

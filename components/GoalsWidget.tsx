@@ -104,7 +104,7 @@ const GoalsWidget: React.FC = () => {
     };
 
     return (
-        <div className="bg-slate-800 rounded-xl p-8 border border-white/10 shadow-card hover:shadow-card-hover transition-all duration-300">
+        <div className="premium-card p-8 group">
             <div className="flex items-center justify-between mb-6">
                 <h3 className="text-xl font-bold text-slate-100 flex items-center">
                     <Target className="w-6 h-6 mr-3 text-emerald-400" /> Today's Focus
@@ -164,6 +164,8 @@ const GoalsWidget: React.FC = () => {
                             <label className="flex items-center cursor-pointer group-item flex-1 min-w-0 pr-4">
                                 <div className="relative flex items-center justify-center mr-4 shrink-0">
                                     <input
+                                        id={`goal-${goal.id}`}
+                                        name={`goal-${goal.id}`}
                                         type="checkbox"
                                         checked={goal.status === 'Completed'}
                                         onChange={() => handleToggleGoalStatus(goal)}

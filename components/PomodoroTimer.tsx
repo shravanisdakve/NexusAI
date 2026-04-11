@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState } from 'react';
 import { Play, Pause, RotateCcw, Coffee, Zap, Volume2, VolumeX, CheckCircle2, Circle, Info } from 'lucide-react';
 import { Button } from './ui';
-import { recordPomodoroCycle } from '../services/analyticsService';
+import { useTimer, TimerMode } from '../contexts/TimerContext';
 
 interface Task {
     id: string;
@@ -16,45 +16,19 @@ interface PomodoroTimerProps {
     onTaskComplete?: (task: Task) => void;
 }
 
-type TimerMode = 'focus' | 'shortBreak' | 'longBreak';
-
 const PomodoroTimer: React.FC<PomodoroTimerProps> = ({ tasks = [], onTaskComplete }) => {
-    const [seconds, setSeconds] = useState(25 * 60);
-    const [isActive, setIsActive] = useState(false);
-    const [mode, setMode] = useState<TimerMode>('focus');
-    const [sessionsCompleted, setSessionsCompleted] = useState(0);
-    const [soundEnabled, setSoundEnabled] = useState(true);
+    const { 
+        seconds, isActive, mode, sessionsCompleted, soundEnabled,
+        toggleTimer, resetTimer, switchMode, setSoundEnabled, setSessionsCompleted
+    } = useTimer();
+
     const [selectedTaskId, setSelectedTaskId] = useState<string>('');
 
-    // Audio Context Ref
-    const audioContextRef = useRef<AudioContext | null>(null);
-
-    const playNotificationSound = useCallback(() => {
-        if (!soundEnabled) return;
-
-        if (!audioContextRef.current) {
-            audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
-        }
-
-        const ctx = audioContextRef.current;
-        if (!ctx) return;
-
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(880, ctx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.5);
-
-        gain.gain.setValueAtTime(0.5, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
-
-        osc.start();
-        osc.stop(ctx.currentTime + 0.5);
-    }, [soundEnabled]);
+    const formatTime = (s: number) => {
+        const mins = Math.floor(s / 60);
+        const secs = s % 60;
+        return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    };
 
     const getInitialSeconds = (m: TimerMode) => {
         switch (m) {
@@ -65,62 +39,6 @@ const PomodoroTimer: React.FC<PomodoroTimerProps> = ({ tasks = [], onTaskComplet
         }
     };
 
-    const toggleTimer = () => setIsActive(!isActive);
-
-    const switchMode = useCallback((newMode: TimerMode) => {
-        setMode(newMode);
-        setSeconds(getInitialSeconds(newMode));
-        setIsActive(false);
-    }, []);
-
-    const handleAutoSwitch = useCallback(() => {
-        if (mode === 'focus') {
-            const nextSessionCount = sessionsCompleted + 1;
-            setSessionsCompleted(nextSessionCount);
-            recordPomodoroCycle();
-
-            if (nextSessionCount % 4 === 0) {
-                switchMode('longBreak');
-            } else {
-                switchMode('shortBreak');
-            }
-        } else {
-            switchMode('focus');
-        }
-        playNotificationSound();
-    }, [mode, sessionsCompleted, switchMode, playNotificationSound]);
-
-    const resetTimer = useCallback(() => {
-        setIsActive(false);
-        setSeconds(getInitialSeconds(mode));
-    }, [mode]);
-
-    const resetSessionProgress = () => {
-        setSessionsCompleted(0);
-        switchMode('focus');
-    };
-
-    useEffect(() => {
-        let interval: NodeJS.Timeout;
-
-        if (isActive && seconds > 0) {
-            interval = setInterval(() => {
-                setSeconds((prev) => prev - 1);
-            }, 1000);
-        } else if (seconds === 0 && isActive) {
-            setIsActive(false);
-            handleAutoSwitch();
-        }
-
-        return () => clearInterval(interval);
-    }, [isActive, seconds, handleAutoSwitch]);
-
-    const formatTime = (s: number) => {
-        const mins = Math.floor(s / 60);
-        const secs = s % 60;
-        return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-    };
-
     const totalSeconds = getInitialSeconds(mode);
     const progress = ((totalSeconds - seconds) / totalSeconds) * 100;
 
@@ -128,6 +46,11 @@ const PomodoroTimer: React.FC<PomodoroTimerProps> = ({ tasks = [], onTaskComplet
         if (onTaskComplete) {
             onTaskComplete(task);
         }
+    };
+
+    const resetSessionProgress = () => {
+        setSessionsCompleted(0);
+        switchMode('focus');
     };
 
     const availableTasks = tasks.filter(t => !t.completed);
@@ -285,3 +208,4 @@ const PomodoroTimer: React.FC<PomodoroTimerProps> = ({ tasks = [], onTaskComplet
 };
 
 export default PomodoroTimer;
+

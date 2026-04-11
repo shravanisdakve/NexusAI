@@ -5,7 +5,8 @@ import {
     ClipboardList, ArrowLeft, Plus, Trash2, Edit3, ChevronRight, ChevronDown,
     Calendar, Building2, IndianRupee, X, Check, Bell, BookOpen, Play,
     Calculator, MessageCircle, UserCheck, Code2, Target, Lightbulb,
-    AlertTriangle, Star, ExternalLink, Clock, Zap
+    AlertTriangle, Star, ExternalLink, Clock, Zap,
+    FileText, User, Users, Briefcase, Brain
 } from 'lucide-react';
 import { trackToolUsage } from '../services/personalizationService';
 
@@ -27,7 +28,7 @@ interface CompanyRound {
     round: string;
     description: string;
     status: Status;
-    icon: string;
+    icon: React.ElementType;
     tips: string[];
     practiceLinks: { label: string; href: string; icon: React.ReactNode }[];
     videoIds?: { title: string; youtubeId: string; channel: string }[];
@@ -52,7 +53,7 @@ const COMPANY_INTEL: CompanyIntel[] = [
         rounds: [
             {
                 round: 'TCS NQT (Online Test)', description: 'Foundation aptitude test — Numerical, Verbal, Reasoning + Coding sections',
-                status: 'aptitude', icon: '🧠',
+                status: 'aptitude', icon: Brain,
                 tips: ['Practice Numerical Ability daily — 15 questions in 40 min', 'Verbal section has RC, Sentence Completion & Arrangement', 'Coding: 1 easy + 1 medium problem in C/Java/Python', 'Email writing section — practice professional email format'],
                 practiceLinks: [
                     { label: 'Aptitude Practice', href: '/practice-hub?tab=aptitude', icon: <Calculator className="w-3.5 h-3.5" /> },
@@ -64,7 +65,7 @@ const COMPANY_INTEL: CompanyIntel[] = [
             },
             {
                 round: 'Technical Interview', description: 'CS fundamentals — DBMS, OS, OOPS, Data Structures, Project discussion',
-                status: 'technical', icon: '💻',
+                status: 'technical', icon: Code2,
                 tips: ['Revise DBMS: SQL queries, normalization, joins, transactions', 'OS: Process scheduling, deadlocks, memory management, paging', 'OOPS concepts: Polymorphism, inheritance, encapsulation with examples', 'Be ready to explain your projects with architecture diagrams'],
                 practiceLinks: [
                     { label: 'DSA Practice', href: '/practice-hub?tab=dsa', icon: <Code2 className="w-3.5 h-3.5" /> },
@@ -75,7 +76,7 @@ const COMPANY_INTEL: CompanyIntel[] = [
             },
             {
                 round: 'Managerial / HR Round', description: 'Behavioral, situational, and HR questions',
-                status: 'hr', icon: '🤝',
+                status: 'hr', icon: UserCheck,
                 tips: ['Prepare "Tell me about yourself" — keep it 2 minutes max', 'Know about TCS: Tata Group, CEO, recent projects, iON, Quartz', 'Questions about relocation, night shifts, bond agreement (2 years)', 'Be confident about your strengths and areas for improvement'],
                 practiceLinks: [
                     { label: 'HR Practice', href: '/practice-hub?tab=hr', icon: <UserCheck className="w-3.5 h-3.5" /> },
@@ -93,7 +94,7 @@ const COMPANY_INTEL: CompanyIntel[] = [
         rounds: [
             {
                 round: 'InfyTQ / Online Assessment', description: 'MCQs on Aptitude, Logical Reasoning, Verbal + Pseudocode + Coding (2-3 problems)',
-                status: 'aptitude', icon: '🧠',
+                status: 'aptitude', icon: Brain,
                 tips: ['Pseudocode section is unique to Infosys — practice reading & tracing code', 'Logical reasoning: Focus on patterns, series, and analytical puzzles', 'Coding: Usually 2-3 problems, difficulty varies by role (SP/DSE/PP)', 'For Power Programmer: Expect harder DSA problems (DP, Graphs)'],
                 practiceLinks: [
                     { label: 'Aptitude Practice', href: '/practice-hub?tab=aptitude', icon: <Calculator className="w-3.5 h-3.5" /> },
@@ -105,7 +106,7 @@ const COMPANY_INTEL: CompanyIntel[] = [
             },
             {
                 round: 'Technical + HR Interview', description: 'Combined technical and HR round (Infosys often merges these)',
-                status: 'technical', icon: '💻',
+                status: 'technical', icon: Code2,
                 tips: ['OOPS concepts are heavily asked — prepare with Java examples', 'SQL queries: Practice JOIN, GROUP BY, subqueries', 'Project walkthrough — explain one project end-to-end with challenges', 'Know about Infosys: Narayana Murthy, Infosys Lex, recent innovations'],
                 practiceLinks: [
                     { label: 'DSA Practice', href: '/practice-hub?tab=dsa', icon: <Code2 className="w-3.5 h-3.5" /> },
@@ -124,7 +125,7 @@ const COMPANY_INTEL: CompanyIntel[] = [
         rounds: [
             {
                 round: 'NLTH Online Assessment', description: 'Aptitude + Logical + Verbal + Essay Writing + Coding (1-2 problems)',
-                status: 'aptitude', icon: '🧠',
+                status: 'aptitude', icon: Brain,
                 tips: ['Essay writing is unique — practice 300-word essays on current topics', 'Quant: Focus on basics — percentages, ratios, time & work', 'Written communication: Grammar correction, sentence completion', 'Coding: 1-2 simple problems — arrays, strings, basic logic'],
                 practiceLinks: [
                     { label: 'Aptitude Practice', href: '/practice-hub?tab=aptitude', icon: <Calculator className="w-3.5 h-3.5" /> },
@@ -136,7 +137,7 @@ const COMPANY_INTEL: CompanyIntel[] = [
             },
             {
                 round: 'Technical Interview', description: 'CS fundamentals and project discussion',
-                status: 'technical', icon: '💻',
+                status: 'technical', icon: Code2,
                 tips: ['Revise C/C++/Java basics — pointers, OOPs, data types', 'Expect questions on your final year project in detail', 'DBMS and OS basics are commonly asked', 'Know about Wipro: Azim Premji, WILP program, recent tech initiatives'],
                 practiceLinks: [
                     { label: 'DSA Practice', href: '/practice-hub?tab=dsa', icon: <Code2 className="w-3.5 h-3.5" /> },
@@ -144,7 +145,7 @@ const COMPANY_INTEL: CompanyIntel[] = [
             },
             {
                 round: 'HR Round', description: 'Standard HR questions + company fit assessment',
-                status: 'hr', icon: '🤝',
+                status: 'hr', icon: UserCheck,
                 tips: ['Be prepared for relocation and service agreement questions', 'Wipro has a 1-year service bond — know the terms', 'Practice group introduction to build confidence'],
                 practiceLinks: [
                     { label: 'HR Practice', href: '/practice-hub?tab=hr', icon: <UserCheck className="w-3.5 h-3.5" /> },
@@ -159,7 +160,7 @@ const COMPANY_INTEL: CompanyIntel[] = [
         rounds: [
             {
                 round: 'Cognitive + Technical Assessment', description: 'Game-based cognitive test + Technical MCQs + Coding challenge',
-                status: 'aptitude', icon: '🧠',
+                status: 'aptitude', icon: Brain,
                 tips: ['Cognitive section has unique game-based problems — practice spatial reasoning', 'Technical MCQs: OOPS, DBMS, Networking, Cloud basics', 'Coding: 1-2 problems — string manipulation, array operations', 'Communication test: Email writing and professional language'],
                 practiceLinks: [
                     { label: 'Aptitude Practice', href: '/practice-hub?tab=aptitude', icon: <Calculator className="w-3.5 h-3.5" /> },
@@ -171,7 +172,7 @@ const COMPANY_INTEL: CompanyIntel[] = [
             },
             {
                 round: 'Interview (Technical + HR)', description: 'Combined interview round covering technical proficiency and behavioral fit',
-                status: 'technical', icon: '💻',
+                status: 'technical', icon: Code2,
                 tips: ['Accenture focuses heavily on communication skills', 'Project discussion — explain your role, technologies, and learnings', 'Be ready for "Why Accenture?" — research their strategy consulting and tech services', 'Scenario-based questions: "How would you handle a conflict with a team member?"'],
                 practiceLinks: [
                     { label: 'HR Practice', href: '/practice-hub?tab=hr', icon: <UserCheck className="w-3.5 h-3.5" /> },
@@ -187,7 +188,7 @@ const COMPANY_INTEL: CompanyIntel[] = [
         rounds: [
             {
                 round: 'GenC Online Assessment (AMCAT)', description: 'AMCAT-based Quant + Logical + Verbal + Automata Fix + Coding',
-                status: 'aptitude', icon: '🧠',
+                status: 'aptitude', icon: Brain,
                 tips: ['Automata Fix is unique — you need to debug/fix given code snippets', 'AMCAT aptitude: Standard quant, logical, and verbal questions', 'GenC Elevate has additional advanced coding problems', 'Time management is key — dont spend too much on one section'],
                 practiceLinks: [
                     { label: 'Aptitude Practice', href: '/practice-hub?tab=aptitude', icon: <Calculator className="w-3.5 h-3.5" /> },
@@ -199,7 +200,7 @@ const COMPANY_INTEL: CompanyIntel[] = [
             },
             {
                 round: 'Technical + HR Interview', description: 'Combined face-to-face interview',
-                status: 'hr', icon: '🤝',
+                status: 'hr', icon: UserCheck,
                 tips: ['Cognizant interviews are usually shorter and focused on basics', 'DBMS and SQL are frequently asked', 'Know about Cognizant: headquarters, recent acquisitions, digital engineering focus', 'Be ready with 2-3 well-prepared projects'],
                 practiceLinks: [
                     { label: 'HR Practice', href: '/practice-hub?tab=hr', icon: <UserCheck className="w-3.5 h-3.5" /> },
@@ -214,7 +215,7 @@ const COMPANY_INTEL: CompanyIntel[] = [
         rounds: [
             {
                 round: 'Exceller Online Assessment', description: 'Game-based aptitude + Pseudocode MCQs + Essay + Coding (2 problems)',
-                status: 'aptitude', icon: '🧠',
+                status: 'aptitude', icon: Brain,
                 tips: ['Game-based section tests behavioral patterns — stay calm and consistent', 'Pseudocode: Practice tracing code execution and identifying outputs', 'Essay: 200-300 words on given topic — keep it structured with intro-body-conclusion', 'Coding: 2 medium-level problems — practice arrays, strings, and basic DP'],
                 practiceLinks: [
                     { label: 'Aptitude Practice', href: '/practice-hub?tab=aptitude', icon: <Calculator className="w-3.5 h-3.5" /> },
@@ -226,7 +227,7 @@ const COMPANY_INTEL: CompanyIntel[] = [
             },
             {
                 round: 'Technical Interview', description: 'CS fundamentals and project discussion',
-                status: 'technical', icon: '💻',
+                status: 'technical', icon: Code2,
                 tips: ['Focus on OOPS concepts with real-world examples', 'Capgemini values problem-solving — expect scenario-based questions', 'Know about their DEMS model (Design, Execute, Manage, Sustain)', 'Prepare 1 project deeply with technical challenges and solutions'],
                 practiceLinks: [
                     { label: 'DSA Practice', href: '/practice-hub?tab=dsa', icon: <Code2 className="w-3.5 h-3.5" /> },
@@ -234,7 +235,7 @@ const COMPANY_INTEL: CompanyIntel[] = [
             },
             {
                 round: 'HR Round', description: 'Behavioral and HR interview',
-                status: 'hr', icon: '🤝',
+                status: 'hr', icon: UserCheck,
                 tips: ['Capgemini HR rounds focus on communication and cultural fit', 'Research their "Get the Future You Want" tagline', 'Be prepared for salary negotiation questions', 'Show enthusiasm for learning and technology trends'],
                 practiceLinks: [
                     { label: 'HR Practice', href: '/practice-hub?tab=hr', icon: <UserCheck className="w-3.5 h-3.5" /> },
@@ -245,14 +246,14 @@ const COMPANY_INTEL: CompanyIntel[] = [
 ];
 
 const STATUS_CONFIG: { id: Status; label: string; color: string; bgColor: string; borderColor: string }[] = [
-    { id: 'upcoming', label: '📅 Upcoming', color: 'text-slate-300', bgColor: 'bg-slate-800/50', borderColor: 'border-slate-700' },
-    { id: 'applied', label: '📝 Applied', color: 'text-blue-300', bgColor: 'bg-blue-500/5', borderColor: 'border-blue-500/20' },
-    { id: 'aptitude', label: '🧠 Aptitude', color: 'text-violet-300', bgColor: 'bg-violet-500/5', borderColor: 'border-violet-500/20' },
-    { id: 'gd', label: '💬 GD', color: 'text-cyan-300', bgColor: 'bg-cyan-500/5', borderColor: 'border-cyan-500/20' },
-    { id: 'technical', label: '💻 Technical', color: 'text-amber-300', bgColor: 'bg-amber-500/5', borderColor: 'border-amber-500/20' },
-    { id: 'hr', label: '🤝 HR', color: 'text-emerald-300', bgColor: 'bg-emerald-500/5', borderColor: 'border-emerald-500/20' },
-    { id: 'offer', label: '🎉 Offer', color: 'text-green-300', bgColor: 'bg-green-500/10', borderColor: 'border-green-500/30' },
-    { id: 'rejected', label: '❌ Rejected', color: 'text-rose-300', bgColor: 'bg-rose-500/5', borderColor: 'border-rose-500/20' },
+    { id: 'upcoming', label: 'Upcoming', color: 'text-slate-300', bgColor: 'bg-slate-800/50', borderColor: 'border-slate-700' },
+    { id: 'applied', label: 'Applied', color: 'text-blue-300', bgColor: 'bg-blue-500/5', borderColor: 'border-blue-500/20' },
+    { id: 'aptitude', label: 'Aptitude', color: 'text-violet-300', bgColor: 'bg-violet-500/5', borderColor: 'border-violet-500/20' },
+    { id: 'gd', label: 'GD', color: 'text-cyan-300', bgColor: 'bg-cyan-500/5', borderColor: 'border-cyan-500/20' },
+    { id: 'technical', label: 'Technical', color: 'text-amber-300', bgColor: 'bg-amber-500/5', borderColor: 'border-amber-500/20' },
+    { id: 'hr', label: 'HR', color: 'text-emerald-300', bgColor: 'bg-emerald-500/5', borderColor: 'border-emerald-500/20' },
+    { id: 'offer', label: 'Offer', color: 'text-green-300', bgColor: 'bg-green-500/10', borderColor: 'border-green-500/30' },
+    { id: 'rejected', label: 'Rejected', color: 'text-rose-300', bgColor: 'bg-rose-500/5', borderColor: 'border-rose-500/20' },
 ];
 
 const STORAGE_KEY = 'nexusai_placement_tracker';
@@ -275,7 +276,12 @@ const getNextRound = (intel: CompanyIntel, status: Status): CompanyRound | null 
     return intel.rounds[idx + 1];
 };
 
-const PlacementTracker: React.FC = () => {
+interface PlacementTrackerProps {
+    prefillData?: any;
+    onPrefillConsumed?: () => void;
+}
+
+const PlacementTracker: React.FC<PlacementTrackerProps> = ({ prefillData, onPrefillConsumed }) => {
     const navigate = useNavigate();
     const [applications, setApplications] = useState<Application[]>([]);
     const [showForm, setShowForm] = useState(false);
@@ -296,6 +302,21 @@ const PlacementTracker: React.FC = () => {
     useEffect(() => {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(applications));
     }, [applications]);
+
+    useEffect(() => {
+        if (prefillData && prefillData.company) {
+            setForm({
+                company: prefillData.company,
+                role: prefillData.role || '',
+                ctc: prefillData.ctc || '',
+                date: new Date().toISOString().split('T')[0],
+                status: 'upcoming',
+                notes: ''
+            });
+            setShowForm(true);
+            onPrefillConsumed?.();
+        }
+    }, [prefillData, onPrefillConsumed]);
 
     const resetForm = () => {
         setForm({ company: '', role: '', ctc: '', date: '', status: 'upcoming', notes: '' });
@@ -356,7 +377,7 @@ const PlacementTracker: React.FC = () => {
         const currentRound = getCurrentRound(intel, app.status);
         const nextRound = getNextRound(intel, app.status);
         if (app.status === 'applied') return { message: `${intel.name} typically starts with: ${intel.rounds[0]?.round}. Start preparing now!`, type: 'info' };
-        if (app.status === 'offer') return { message: `Congratulations on your ${intel.name} offer! 🎉`, type: 'success' };
+        if (app.status === 'offer') return { message: `Congratulations on your ${intel.name} offer!`, type: 'success' };
         if (currentRound) return { message: `You're in the ${currentRound.round}. ${nextRound ? `Next up: ${nextRound.round}` : 'This is the final round — give it your best!'}`, type: 'info' };
         return null;
     };
@@ -394,7 +415,7 @@ const PlacementTracker: React.FC = () => {
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
                             <div className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-lg">
-                                🏢
+                                <Building2 size={24} className="text-slate-400" />
                             </div>
                             <div>
                                 <h4 className="font-bold text-white text-sm">{intel.name} Interview Process</h4>
@@ -424,12 +445,12 @@ const PlacementTracker: React.FC = () => {
                                 }`}>
                                 <div className="flex items-start justify-between mb-2">
                                     <div className="flex items-center gap-2">
-                                        <span className="text-lg">{round.icon}</span>
+                                        <round.icon size={20} className="text-violet-400" />
                                         <div>
                                             <h6 className="text-sm font-bold text-white flex items-center gap-2">
                                                 {round.round}
                                                 {isCurrentRound && <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-violet-500 text-white font-bold animate-pulse">CURRENT</span>}
-                                                {isPastRound && <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-bold">✓ CLEARED</span>}
+                                                {isPastRound && <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-bold">CLEARED</span>}
                                             </h6>
                                             <p className="text-[11px] text-slate-400">{round.description}</p>
                                         </div>
@@ -486,7 +507,17 @@ const PlacementTracker: React.FC = () => {
     };
 
     return (
-        <div className="space-y-6 max-w-7xl mx-auto pb-12">
+        <div className="layout-container py-8 space-y-12">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+                <PageHeader 
+                    title="Placement Arena" 
+                    subtitle="TRACK APPLICATIONS & MASTER INDUSTRY INTERVIEWS" 
+                    icon={<Briefcase />} 
+                />
+                <Button onClick={() => { resetForm(); setShowForm(true); }} className="gap-2 bg-violet-600 hover:bg-violet-500 shadow-lg shadow-violet-600/20 px-6 h-12 text-[10px] font-black uppercase tracking-widest">
+                    <Plus size={16} /> Add Application
+                </Button>
+            </div>
 
             {/* Video Player Modal */}
             {playingVideo && (() => {
@@ -533,31 +564,89 @@ const PlacementTracker: React.FC = () => {
             })()}
 
             {/* Stats Bar */}
-            <div className="grid grid-cols-3 gap-4">
-                <Card className="p-4 text-center">
-                    <p className="text-[10px] font-black text-slate-500 uppercase">Total Applications</p>
-                    <p className="text-2xl font-black text-white">{totalApps}</p>
-                </Card>
-                <Card className="p-4 text-center">
-                    <p className="text-[10px] font-black text-slate-500 uppercase">Active Pipeline</p>
-                    <p className="text-2xl font-black text-blue-400">{active}</p>
-                </Card>
-                <Card className="p-4 text-center">
-                    <p className="text-[10px] font-black text-slate-500 uppercase">Offers</p>
-                    <p className="text-2xl font-black text-emerald-400">{offers}</p>
-                </Card>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                <div className="premium-card p-6 bg-slate-900/40 border-slate-700/30 flex flex-col items-center">
+                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-2">Total</p>
+                    <p className="text-3xl font-black text-white italic">{totalApps}</p>
+                </div>
+                <div className="premium-card p-6 bg-slate-900/40 border-blue-500/20 flex flex-col items-center">
+                    <p className="text-[10px] font-black text-blue-500/60 uppercase tracking-[0.2em] mb-2">Active</p>
+                    <p className="text-3xl font-black text-blue-400 italic">{active}</p>
+                </div>
+                <div className="premium-card p-6 bg-slate-900/40 border-emerald-500/20 flex flex-col items-center">
+                    <p className="text-[10px] font-black text-emerald-500/60 uppercase tracking-[0.2em] mb-2">Offers</p>
+                    <p className="text-3xl font-black text-emerald-400 italic">{offers}</p>
+                </div>
             </div>
 
-            {/* Actions */}
-            <div className="flex justify-between items-center">
-                <div className="flex gap-2">
-                    <button onClick={() => setViewMode('board')} className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${viewMode === 'board' ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30' : 'text-slate-400 hover:text-white'}`}>📋 Board</button>
-                    <button onClick={() => setViewMode('list')} className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${viewMode === 'list' ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30' : 'text-slate-400 hover:text-white'}`}>📝 List</button>
+            {/* Actions & Filters */}
+            <div className="flex items-center justify-between border-b border-slate-800 pb-6">
+                <div className="flex items-center gap-2 p-1 bg-slate-800/80 rounded-xl border border-slate-700/50">
+                    <button 
+                        onClick={() => setViewMode('board')} 
+                        className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${
+                            viewMode === 'board' ? 'bg-violet-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'
+                        }`}
+                    >
+                        Board
+                    </button>
+                    <button 
+                        onClick={() => setViewMode('list')} 
+                        className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${
+                            viewMode === 'list' ? 'bg-violet-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'
+                        }`}
+                    >
+                        List
+                    </button>
                 </div>
-                <Button onClick={() => { resetForm(); setShowForm(true); }} className="gap-2 bg-rose-600 hover:bg-rose-500">
-                    <Plus size={16} /> Add Application
-                </Button>
+                
+                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                    MU Placement Season 2024-25
+                </p>
             </div>
+
+            {/* Getting Started / Empty State */}
+            {applications.length === 0 && !showForm && (
+                <div className="py-12 flex flex-col items-center text-center space-y-8 animate-in fade-in zoom-in-95 duration-500">
+                    <div className="space-y-2">
+                        <div className="w-16 h-16 bg-slate-800/50 rounded-2xl flex items-center justify-center mx-auto border border-slate-700/50">
+                            <ClipboardList className="w-8 h-8 text-slate-500" />
+                        </div>
+                        <h3 className="text-xl font-bold text-white">No applications tracked yet</h3>
+                        <p className="text-sm text-slate-500 max-w-sm mx-auto">
+                            Start tracking your placement journey. Add your first application manually or use a template below.
+                        </p>
+                    </div>
+
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 w-full max-w-3xl">
+                        {[
+                            { name: 'TCS', ctc: '3.36-11 LPA', color: 'border-blue-500/20 text-blue-400' },
+                            { name: 'Infosys', ctc: '3.6-9.5 LPA', color: 'border-amber-500/20 text-amber-400' },
+                            { name: 'Accenture', ctc: '4.5-12 LPA', color: 'border-rose-500/20 text-rose-400' },
+                            { name: 'Wipro', ctc: '3.5-6.5 LPA', color: 'border-cyan-500/20 text-cyan-400' }
+                        ].map(tmpl => (
+                            <button
+                                key={tmpl.name}
+                                onClick={() => {
+                                    setForm({ ...form, company: tmpl.name, ctc: tmpl.ctc, status: 'applied', date: new Date().toISOString().split('T')[0] });
+                                    setShowForm(true);
+                                }}
+                                className={`p-4 rounded-2xl bg-slate-800/30 border ${tmpl.color} hover:bg-slate-800/50 transition-all text-left flex flex-col gap-2`}
+                            >
+                                <Building2 size={18} />
+                                <div>
+                                    <p className="text-sm font-bold text-white">{tmpl.name}</p>
+                                    <p className="text-[10px] opacity-60 font-mono italic">{tmpl.ctc}</p>
+                                </div>
+                            </button>
+                        ))}
+                    </div>
+
+                    <Button onClick={() => setShowForm(true)} className="bg-violet-600 hover:bg-violet-500 gap-2">
+                        <Plus size={16} /> Add Custom Application
+                    </Button>
+                </div>
+            )}
 
             {/* Add/Edit Form Modal */}
             {showForm && (
@@ -573,7 +662,7 @@ const PlacementTracker: React.FC = () => {
                             <Zap size={16} className="text-violet-400" />
                             <div>
                                 <p className="text-xs font-bold text-violet-300">
-                                    ✨ {getCompanyIntel(form.company)!.name} detected — round-by-round prep guide will be auto-generated!
+                                    {getCompanyIntel(form.company)!.name} detected — round-by-round prep guide will be auto-generated!
                                 </p>
                                 <p className="text-[10px] text-slate-400 mt-0.5">
                                     {getCompanyIntel(form.company)!.rounds.length} interview rounds • {getCompanyIntel(form.company)!.difficulty} difficulty • {getCompanyIntel(form.company)!.ctcRange}
@@ -584,30 +673,30 @@ const PlacementTracker: React.FC = () => {
 
                     <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                            <label className="block text-xs text-slate-400 mb-1">Company *</label>
-                            <Input value={form.company} onChange={(e) => setForm({ ...form, company: e.target.value })} placeholder="e.g. TCS, Infosys, Wipro" required />
+                            <label htmlFor="tracker-company" className="block text-xs text-slate-400 mb-1">Company *</label>
+                            <Input id="tracker-company" name="company" aria-label="Company Name" value={form.company} onChange={(e) => setForm({ ...form, company: e.target.value })} placeholder="e.g. TCS, Infosys, Wipro" required />
                         </div>
                         <div>
-                            <label className="block text-xs text-slate-400 mb-1">Role</label>
-                            <Input value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} placeholder="e.g. Software Engineer" />
+                            <label htmlFor="tracker-role" className="block text-xs text-slate-400 mb-1">Role</label>
+                            <Input id="tracker-role" name="role" aria-label="Job Role" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} placeholder="e.g. Software Engineer" />
                         </div>
                         <div>
-                            <label className="block text-xs text-slate-400 mb-1">CTC</label>
-                            <Input value={form.ctc} onChange={(e) => setForm({ ...form, ctc: e.target.value })} placeholder={getCompanyIntel(form.company)?.ctcRange || 'e.g. 3.6 LPA'} />
+                            <label htmlFor="tracker-ctc" className="block text-xs text-slate-400 mb-1">CTC</label>
+                            <Input id="tracker-ctc" name="ctc" aria-label="Expected or Offered CTC" value={form.ctc} onChange={(e) => setForm({ ...form, ctc: e.target.value })} placeholder={getCompanyIntel(form.company)?.ctcRange || 'e.g. 3.6 LPA'} />
                         </div>
                         <div>
-                            <label className="block text-xs text-slate-400 mb-1">Date</label>
-                            <Input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} />
+                            <label htmlFor="tracker-date" className="block text-xs text-slate-400 mb-1">Date</label>
+                            <Input id="tracker-date" name="applicationDate" aria-label="Application Date" type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} />
                         </div>
                         <div>
-                            <label className="block text-xs text-slate-400 mb-1">Current Status</label>
-                            <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value as Status })} className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white">
+                            <label htmlFor="tracker-status" className="block text-xs text-slate-400 mb-1">Current Status</label>
+                            <select id="tracker-status" name="status" aria-label="Application Status" value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value as Status })} className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white focus:border-violet-500 outline-none">
                                 {STATUS_CONFIG.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
                             </select>
                         </div>
                         <div>
-                            <label className="block text-xs text-slate-400 mb-1">Notes</label>
-                            <Input value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Any notes..." />
+                            <label htmlFor="tracker-notes" className="block text-xs text-slate-400 mb-1">Notes</label>
+                            <Input id="tracker-notes" name="notes" aria-label="Additional Notes" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Any notes..." />
                         </div>
                         <div className="md:col-span-2 flex gap-3 justify-end">
                             <Button variant="ghost" type="button" onClick={resetForm}>Cancel</Button>
@@ -618,7 +707,7 @@ const PlacementTracker: React.FC = () => {
             )}
 
             {/* Board View */}
-            {viewMode === 'board' && (
+            {viewMode === 'board' && applications.length > 0 && (
                 <div className="overflow-x-auto pb-4">
                     <div className="flex gap-4 min-w-[1200px]">
                         {STATUS_CONFIG.map(status => {
@@ -707,15 +796,9 @@ const PlacementTracker: React.FC = () => {
             )}
 
             {/* List View */}
-            {viewMode === 'list' && (
+            {viewMode === 'list' && applications.length > 0 && (
                 <div className="space-y-3">
-                    {applications.length === 0 ? (
-                        <Card className="p-12 text-center">
-                            <ClipboardList className="w-12 h-12 text-slate-600 mx-auto mb-4" />
-                            <p className="text-slate-400">No applications yet. Click "Add Application" to start tracking!</p>
-                        </Card>
-                    ) : (
-                        paginatedApps.map(app => {
+                    {paginatedApps.map(app => {
                             const statusConfig = STATUS_CONFIG.find(s => s.id === app.status);
                             const intel = getCompanyIntel(app.company);
                             const isExpanded = expandedApp === app.id;
@@ -758,7 +841,7 @@ const PlacementTracker: React.FC = () => {
                                 </Card>
                             );
                         })
-                    )}
+                    }
                     {totalPages > 1 && (
                         <div className="flex items-center justify-between pt-4">
                             <span className="text-xs text-slate-500">Page {currentPage} of {totalPages}</span>

@@ -1,19 +1,14 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { PageHeader, Button, Input } from '@/components/ui';
+import { Button, Input } from '@/components/ui';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
-import { type Course, type Mood as MoodType, type MoodLabel, type StudyPlan } from '../types';
-import { getStudyPlan } from '../services/studyPlanService';
+import { type Course, type MoodLabel, type StudyPlan } from '../types';
+import { getStudyPlan, getLatestStudyPlan } from '../services/studyPlanService';
 import {
     getTimeOfDayGreeting,
-    getMostUsedTool,
-    getQuickAccessTools,
-    addToQuickAccess,
-    removeFromQuickAccess,
     hydratePersonalizationFromServer,
-    getPersonalizationRecommendations
 } from '../services/personalizationService';
 import { getProductivityReport } from '../services/analyticsService';
 import { getCourses, addCourse, deleteCourse } from '../services/courseService';
@@ -21,18 +16,24 @@ import GoalsWidget from '../components/GoalsWidget';
 import MoodCheckin from '../components/MoodCheckin';
 import { getSuggestionForMood } from '../services/geminiService';
 import {
-    MessageSquare, Share2, FileText, Code, ArrowRight,
-    Target, Lightbulb, Timer, Zap, BookOpen,
-    Play, Pause, RefreshCw, PlusCircle, Trash2, User, Users, Star,
-    BarChart, Clock, Brain, TrendingUp, TrendingDown, Repeat, Sparkles, Calculator, Shield, Calendar, CheckCircle2, Circle,
-    Pin, X, Plus, ChevronDown, GraduationCap, Binary, Briefcase, Library
+    MessageSquare, FileText,
+    Target, Timer, Zap, BookOpen,
+    PlusCircle, Trash2, Users, Star,
+    BarChart, Clock, Brain, TrendingUp, TrendingDown, Sparkles, Calculator, Shield, Calendar, CheckCircle2, Circle,
+    Plus, GraduationCap, Briefcase, ShieldAlert, Activity,
+    ArrowRight, Flame, Percent, AlertTriangle, ChevronRight,
+    Play, Layers, Cpu, LayoutGrid, Award, CheckCheck,
+    Bot, ArrowUpRight, Globe, History, Lightbulb, BarChart3, Compass, Search, Filter, Layers as LayersIcon, MoreHorizontal, X, ExternalLink
 } from 'lucide-react';
+import { DateTime } from 'luxon';
 import { XPBar, StreakCounter, BadgeSmall } from '@/components/gamification/XPComponents';
 import { getUserStats, updateStreak, awardBadge, UserStats } from '@/services/gamificationService';
 import { Card } from '@/components/ui';
 import { saveStudyPlan } from '@/services/studyPlanService';
 import { useToast } from '../contexts/ToastContext';
-// import LeaderboardWidget from '@/components/gamification/LeaderboardWidget';
+import KnowledgeMap from '../components/KnowledgeMap';
+import { generateKnowledgeMap } from '../services/geminiService';
+import PageLayout from '../components/ui/PageLayout';
 
 const formatSeconds = (seconds: number) => {
     if (seconds < 60) return `${seconds}s`;
@@ -44,209 +45,428 @@ const formatSeconds = (seconds: number) => {
     return result.trim() || '0m';
 };
 
-const ProductivityInsights: React.FC = () => {
+// ─────────────────────────────────────────────────────────────────────────────
+// ProductivityInsights — Knowledge Map + Knowledge Gaps
+// ─────────────────────────────────────────────────────────────────────────────
+const ProductivityInsights: React.FC<{ report: any }> = ({ report }) => {
     const { t } = useLanguage();
-    const [report, setReport] = useState<Awaited<ReturnType<typeof getProductivityReport>> | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
+    const navigate = useNavigate();
+    
+    // Pro-level visual refinement data
+    const analyticsStats = [
+        { label: 'Study Volume', val: report ? Math.round(report.totalStudyTime / 3600 * 10) / 10 : '0', unit: 'hrs', change: '+12%', color: 'violet' },
+        { label: 'Consistency', val: report ? report.consistency || '92' : '0', unit: '%', change: '+3%', color: 'emerald' },
+        { label: 'Accuracy', val: report ? report.quizAccuracy : '0', unit: '%', change: '-2%', color: 'rose', primary: true }
+    ];
 
-    useEffect(() => {
-        const fetchReport = async () => {
-            setIsLoading(true);
-            try {
-                const fetchedReport = await getProductivityReport();
-                setReport(fetchedReport);
-            } catch (error) {
-                console.error("Error fetching productivity report:", error);
-            } finally {
-                setIsLoading(false);
-            }
-        };
-        fetchReport();
+    const topicsNodes = (report?.weaknesses || []).map((w: any, i: number) => ({
+        name: w.topic || 'Unknown Topic',
+        score: w.score ?? 0,
+        status: (w.score ?? 0) < 40 ? 'Needs work' : 'Improving',
+        x: 20 + (i * 30),
+        y: 60 - (i * 20),
+        size: 48 + (i * 8),
+        color: (w.score ?? 0) < 40 ? 'rose' : 'violet'
+    }));
 
-        // Listen for goal updates to refresh stats
-        window.addEventListener('goalUpdated', fetchReport);
-        return () => window.removeEventListener('goalUpdated', fetchReport);
-    }, []);
+    // Fallback if no weaknesses found
+    if (topicsNodes.length === 0) {
+        topicsNodes.push({ name: 'Foundations', score: 100, status: 'Mastered', x: 50, y: 50, size: 64, color: 'emerald' });
+    }
 
-    if (isLoading) {
+    return (
+        <div className="space-y-6 animate-in fade-in duration-700">
+            {/* 1. Statistics Hierarchy */}
+            <div className="grid grid-cols-3 gap-4 pb-2">
+                {analyticsStats.map((s) => (
+                    <div key={s.label} className={`bg-slate-900/40 border border-white/[0.06] rounded-2xl p-4 transition-all duration-300 ${s.primary ? 'ring-1 ring-violet-500/30 bg-slate-900/60 shadow-lg shadow-violet-900/10' : ''}`}>
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2">{s.label}</p>
+                        <div className="flex items-baseline justify-between gap-1">
+                            <span className={`font-bold transition-all ${s.primary ? 'text-2xl text-white' : 'text-xl text-slate-300'}`}>
+                                {s.val}<span className="text-xs font-medium ml-0.5 text-slate-500">{s.unit}</span>
+                            </span>
+                            <span className={`text-[10px] font-bold ${s.change.startsWith('+') ? 'text-emerald-500' : 'text-rose-500'}`}>
+                                {s.change}
+                            </span>
+                        </div>
+                    </div>
+                ))}
+            </div>
+
+            {/* 2. Interactive Performance Graph */}
+            <div className="bg-slate-900/40 border border-white/[0.08] rounded-3xl p-5 relative overflow-hidden group">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+                    <div>
+                        <div className="flex items-center gap-2 mb-1.5">
+                            <h3 className="text-sm font-bold text-white uppercase tracking-tight">Topic Performance</h3>
+                            <span className="text-[9px] font-medium text-slate-500">Based on recent quizzes</span>
+                        </div>
+                        {/* THE INSIGHT LINE: HIGH IMPACT */}
+                        <div className="flex items-center gap-2.5">
+                            <span className="flex items-center gap-1.5 px-2 py-0.5 bg-amber-500/10 border border-amber-500/20 rounded text-[9px] text-amber-500 font-bold uppercase tracking-widest">
+                                <Sparkles size={10} /> 1 weak topic • 1 strong topic
+                            </span>
+                            <p className="text-[11px] text-slate-400 font-medium">
+                                Growth stagnating in <span className="text-rose-400 font-semibold underline decoration-rose-500/30">Operating Systems</span>.
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-2 pr-1">
+                        <div className="flex -space-x-1.5 shrink-0">
+                            {[1, 2, 3].map(i => <div key={i} className="w-5 h-5 rounded-full border-2 border-slate-950 bg-slate-800" />)}
+                        </div>
+                        <span className="text-[10px] text-slate-600 font-medium">Synced 2m ago</span>
+                    </div>
+                </div>
+
+                {/* THE GRAPH VIEWPORT */}
+                <div className="relative h-[250px] w-full bg-slate-950/40 rounded-2xl border border-white/[0.03] overflow-hidden mb-6 group/viewport">
+                    <div className="absolute inset-0 opacity-[0.04] pointer-events-none" 
+                        style={{ backgroundImage: 'radial-gradient(circle, #fff 1px, transparent 1px)', backgroundSize: '32px 32px' }} />
+                    
+                    <svg className="absolute inset-0 w-full h-full opacity-[0.08] pointer-events-none">
+                        <line x1="22%" y1="68%" x2="50%" y2="32%" stroke="white" strokeWidth="1" strokeDasharray="6 6" />
+                        <line x1="50%" y1="32%" x2="78%" y2="58%" stroke="white" strokeWidth="1" strokeDasharray="6 6" />
+                    </svg>
+
+                    {topicsNodes.map((node) => (
+                        <motion.div
+                            key={node.name}
+                            initial={{ scale: 0, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            whileHover={{ scale: 1.15, zIndex: 10 }}
+                            className="absolute cursor-pointer group/node"
+                            style={{ 
+                                left: `${node.x}%`, 
+                                top: `${node.y}%`, 
+                                width: node.size, 
+                                height: node.size,
+                                transform: 'translate(-50%, -50%)'
+                            }}
+                            onClick={() => navigate('/quizzes')}
+                        >
+                            <div className={`absolute inset-0 rounded-full blur-[18px] opacity-10 transition-opacity group-hover/node:opacity-50 ${
+                                node.color === 'rose' ? 'bg-rose-500' : node.color === 'emerald' ? 'bg-emerald-500' : 'bg-violet-500'
+                            }`} />
+                            
+                            <div className={`w-full h-full rounded-full border-2 flex flex-col items-center justify-center transition-all bg-slate-950/80 backdrop-blur-sm ${
+                                node.color === 'rose' ? 'border-rose-500/50 text-rose-400' : node.color === 'emerald' ? 'border-emerald-500/50 text-emerald-400' : 'border-violet-500/50 text-violet-400'
+                            }`}>
+                                <span className="text-xs font-black tracking-tighter">{(node.score ?? 0)}%</span>
+                            </div>
+                            
+                            <div className="absolute top-[calc(100%+8px)] left-1/2 -translate-x-1/2 text-center pointer-events-none">
+                                <p className={`text-[9px] font-black uppercase tracking-[0.2em] whitespace-nowrap transition-opacity group-hover/node:opacity-100 ${
+                                    node.color === 'rose' ? 'text-rose-400 opacity-80' : node.color === 'emerald' ? 'text-emerald-400 opacity-80' : 'text-violet-400 opacity-80'
+                                }`}>
+                                    {node.status}
+                                </p>
+                            </div>
+
+                            <div className="absolute bottom-[calc(100%+14px)] left-1/2 -translate-x-1/2 opacity-0 group-hover/node:opacity-100 transition-all scale-90 group-hover/node:scale-100 pointer-events-none z-[100]">
+                                <div className="bg-slate-900/95 backdrop-blur-md border border-white/10 px-4 py-2.5 rounded-xl shadow-2xl min-w-[160px]">
+                                    <p className="text-[11px] font-bold text-white mb-1.5">{node.name}</p>
+                                    <div className="flex justify-between items-center text-[9px] font-medium font-mono mb-2">
+                                        <span className="text-slate-500 uppercase">Proficiency</span>
+                                        <span className={node.color === 'rose' ? 'text-rose-400' : 'text-emerald-400'}>{node.score}%</span>
+                                    </div>
+                                    <div className="h-1 w-full bg-slate-800 rounded-full overflow-hidden">
+                                        <div className={`h-full rounded-full transition-all duration-1000 ${
+                                            node.color === 'rose' ? 'bg-rose-500' : 'bg-emerald-500'
+                                        }`} style={{ width: `${node.score}%` }} />
+                                    </div>
+                                </div>
+                            </div>
+                        </motion.div>
+                    ))}
+                </div>
+
+                <div className="flex justify-end pr-1 pb-1">
+                    <button
+                        onClick={() => navigate('/quizzes')}
+                        className="flex items-center gap-2 group/cta px-5 py-2.5 bg-rose-500 text-white rounded-xl text-[11px] font-bold uppercase tracking-widest hover:bg-rose-400 transition-all active:scale-[0.98] shadow-lg shadow-rose-950/20"
+                    >
+                        Practice weak topics <ArrowUpRight size={14} className="group-hover/cta:translate-x-0.5 group-hover/cta:-translate-y-0.5 transition-transform" />
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Hero Action Block — the single dominant next-step module
+// ─────────────────────────────────────────────────────────────────────────────
+interface HeroBlockProps {
+    plan: StudyPlan | null;
+    planProgress: number;
+    weakTopic?: string;
+}
+
+const HeroBlock: React.FC<HeroBlockProps> = ({ plan, planProgress, weakTopic }) => {
+    const navigate = useNavigate();
+
+    const daysSince = plan?.startDate
+        ? Math.max(0, Math.floor((Date.now() - plan.startDate) / 86400000))
+        : 0;
+    const currentDay = plan ? plan.days[Math.min(daysSince, plan.days.length - 1)] : null;
+    const totalTasks = currentDay?.tasks?.length || 0;
+    const doneTasks = currentDay?.tasks?.filter((t: any) => t.completed).length || 0;
+    const nextTask = currentDay?.tasks?.find((t: any) => !t.completed);
+    const estMinutes = (totalTasks - doneTasks) * 8;
+
+    if (!plan) {
         return (
-            <div className="bg-slate-800/50 rounded-xl p-6 ring-1 ring-slate-700 text-center">
-                <p className="text-slate-400">{t('dashboard.weeklyLoading')}</p>
+            <div className="bg-slate-900/40 border border-white/[0.06] rounded-2xl p-6">
+                {/* Empty header */}
+                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-3">Today's focus</p>
+                <div className="flex items-start gap-3 mb-6">
+                    <div className="w-10 h-10 rounded-xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center shrink-0 mt-0.5">
+                        <BookOpen size={16} className="text-violet-400" />
+                    </div>
+                    <div>
+                        <p className="text-base font-semibold text-white leading-snug">No study plan active</p>
+                        <p className="text-sm text-slate-400 mt-1">Build a personalised day-by-day plan to unlock your daily goals and progress tracking.</p>
+                    </div>
+                </div>
+                {/* Inactive progress bar — shows shape */}
+                <div className="h-2 w-full bg-slate-800/70 rounded-full mb-6 overflow-hidden">
+                    <div className="h-full w-0 rounded-full" />
+                </div>
+                {/* Primary CTA — h-12 = 48px */}
+                <button
+                    onClick={() => navigate('/study-plan')}
+                    className="w-full h-12 rounded-xl bg-violet-600 hover:bg-violet-500 hover:scale-[1.01] active:scale-[0.98] text-white text-sm font-semibold transition-all flex items-center justify-center gap-2 group shadow-lg shadow-violet-900/20"
+                >
+                    Create your study plan <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
+                </button>
             </div>
         );
     }
 
-    if (!report) return (
-        <div className="bg-slate-800/50 rounded-xl p-6 ring-1 ring-slate-700 text-center">
-            <p className="text-slate-400">{t('dashboard.weeklyLoadError')}</p>
-        </div>
-    );
-
-    const hasData = report.totalStudyTime > 0 || report.totalQuizzes > 0;
+    // Intelligent Empty State logic
+    const hasTasksToday = totalTasks > 0;
 
     return (
-        <div className="bg-slate-800 rounded-[2rem] p-8 border border-white/10 shadow-card hover:shadow-card-hover transition-all duration-300 relative overflow-hidden group">
-            <div className="absolute -top-12 -right-12 w-48 h-48 bg-violet-500/10 blur-[60px] rounded-full group-hover:bg-violet-500/20 transition-all duration-700"></div>
-            
-            <h3 className="text-sm font-black text-slate-500 mb-6 uppercase tracking-[0.3em] font-sans flex items-center">
-                <BarChart className="w-4 h-4 mr-2 text-violet-400" /> {t('dashboard.weeklySnapshotTitle')}
-            </h3>
+        <div className="bg-slate-900/50 border border-white/[0.08] rounded-2xl p-6 relative overflow-hidden hover:border-violet-500/15 transition-all duration-300">
+            {/* 2px top accent — always vivid */}
+            <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-violet-500 via-violet-400/50 to-transparent rounded-t-2xl" />
 
-            {!hasData ? (
-                <div className="flex flex-col items-center justify-center py-6">
-                    <div className="w-16 h-16 bg-slate-700/30 rounded-full flex items-center justify-center mb-3">
-                        <Clock className="w-8 h-8 text-slate-600" />
-                    </div>
-                    <p className="text-center text-xs text-slate-500 uppercase font-black tracking-widest">{t('dashboard.weeklyEmpty')}</p>
+            {/* Row 1: section label */}
+            <p className="text-[10px] font-bold uppercase tracking-widest text-violet-400/80 mb-2">Resume your plan</p>
+
+            {/* Row 2: plan name — 16px semibold (Card Title level) */}
+            <h2 className="text-base font-semibold text-white leading-snug mb-2">{(plan.courseId as any)?.name || plan.goal}</h2>
+
+            {/* Row 3: meta — 12px, neutral gray */}
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mb-3">
+                <span className="text-xs text-slate-400 font-medium">Day {currentDay?.day || 1} of {plan.durationDays}</span>
+                <span className="text-slate-800">·</span>
+                {hasTasksToday ? (
+                    <>
+                        <span className="text-xs text-slate-400">{doneTasks} of {totalTasks} tasks done</span>
+                        {estMinutes > 0 && (
+                            <>
+                                <span className="text-slate-800">·</span>
+                                <span className="text-xs text-slate-400">~{estMinutes} min left</span>
+                            </>
+                        )}
+                    </>
+                ) : (
+                    <span className="text-xs text-rose-400/90 font-medium">No tasks scheduled for today</span>
+                )}
+            </div>
+
+            {/* Row 4: Intelligent guidance indicator */}
+            <div className="min-h-[24px] mb-5">
+                {nextTask ? (
+                    <p className="text-[11px] text-slate-300 flex items-center gap-2">
+                        <span className="w-1.5 h-1.5 rounded-full bg-violet-400 shrink-0 animate-pulse" />
+                        Next up: <span className="font-semibold text-slate-100">{nextTask.title}</span>
+                    </p>
+                ) : hasTasksToday ? (
+                    <p className="text-[11px] text-emerald-400 flex items-center gap-1.5 font-medium">
+                        <CheckCircle2 size={12} /> Daily goals completed. Great work!
+                    </p>
+                ) : (
+                    <p className="text-[11px] text-slate-500 flex items-center gap-1.5 leading-relaxed">
+                        <Zap size={10} className="text-amber-500" />
+                        Generate today's schedule to stay on track or resume exploration.
+                    </p>
+                )}
+            </div>
+
+            {/* Progress bar — h-3 (12px), high visibility */}
+            <div className="mb-6">
+                <div className="flex justify-between items-center mb-2 px-0.5">
+                    <span className="text-[11px] font-bold text-slate-500 uppercase tracking-tighter">
+                        Momentum: {planProgress}%
+                    </span>
+                    <span className="text-[11px] font-medium text-slate-500">
+                        {planProgress < 100 ? `${100 - planProgress}% to milestone` : 'Milestone achieved'}
+                    </span>
                 </div>
-            ) : (
-                <div className="space-y-4 relative z-10">
-                    <div className="flex justify-between items-center text-xs bg-slate-900/40 p-4 rounded-2xl border border-white/5 backdrop-blur-sm group/item">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 bg-blue-500/10 rounded-lg group-hover/item:bg-blue-500/20 transition-colors">
-                                <Clock size={16} className="text-blue-400" />
-                            </div>
-                            <span className="font-bold text-slate-400 uppercase tracking-widest">{t('dashboard.totalStudyTime')}</span>
-                        </div>
-                        <div className="text-right">
-                           <span className="font-mono text-lg font-black text-white">{formatSeconds(report.totalStudyTime)}</span>
-                           <div className="text-[10px] text-emerald-400 font-bold flex items-center justify-end gap-1 mt-0.5">
-                               <TrendingUp size={10} /> +12% vs last week
-                           </div>
-                        </div>
-                    </div>
-
-                    <div className="flex justify-between items-center text-xs bg-slate-900/40 p-4 rounded-2xl border border-white/5 backdrop-blur-sm group/item">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 bg-violet-500/10 rounded-lg group-hover/item:bg-violet-500/20 transition-colors">
-                                <Brain size={16} className="text-violet-400" />
-                            </div>
-                           <span className="font-bold text-slate-400 uppercase tracking-widest">{t('dashboard.quizAccuracy')}</span>
-                        </div>
-                        <div className="text-right">
-                           <span className="font-mono text-lg font-black text-white">{report.quizAccuracy}%</span>
-                           <div className="text-[10px] text-emerald-400 font-bold flex items-center justify-end gap-1 mt-0.5">
-                               <TrendingUp size={10} /> +5.2% improved
-                           </div>
-                        </div>
-                    </div>
-
-                    <div className="flex justify-between items-center text-xs bg-slate-900/40 p-4 rounded-2xl border border-white/5 backdrop-blur-sm group/item">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 bg-amber-500/10 rounded-lg group-hover/item:bg-amber-500/20 transition-colors">
-                                <Target size={16} className="text-amber-400" />
-                            </div>
-                           <span className="font-bold text-slate-400 uppercase tracking-widest">{t('dashboard.goalProgress')}</span>
-                        </div>
-                        <div className="text-right">
-                           <span className="font-mono text-lg font-black text-white">{(report as any).goalProgress || 0}%</span>
-                           <div className="text-[10px] text-slate-500 font-bold flex items-center justify-end gap-1 mt-0.5 italic">
-                               8/10 Milestones hit
-                           </div>
-                        </div>
-                    </div>
+                <div className="h-3 w-full bg-slate-950/60 rounded-full overflow-hidden border border-white/[0.04] p-[2px]">
+                    <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: planProgress > 0 ? `${planProgress}%` : '4%' }}
+                        transition={{ duration: 1, ease: [0.23, 1, 0.32, 1] }}
+                        className={planProgress > 0
+                            ? 'h-full rounded-full bg-gradient-to-r from-violet-600 to-violet-400 relative overflow-hidden'
+                            : 'h-full rounded-full bg-slate-800'
+                        }
+                    >
+                        {planProgress > 0 && (
+                            <div className="absolute inset-0 bg-[linear-gradient(90deg,transparent_0%,rgba(255,255,255,0.2)_50%,transparent_100%)] animate-[shimmer_2s_infinite]" />
+                        )}
+                    </motion.div>
                 </div>
-            )}
-            
-            <Link to="/insights">
-                <Button className="w-full mt-8 h-12 rounded-xl text-xs font-black uppercase tracking-[0.2em] shadow-lg shadow-violet-500/20">
-                    Analyze Full Performance <ArrowRight size={14} className="ml-2" />
-                </Button>
-            </Link>
+            </div>
+
+            {/* Primary CTA — h-12 (48px), Actionable based on state */}
+            <button
+                onClick={() => navigate('/study-plan')}
+                className="w-full h-12 rounded-xl bg-violet-600 hover:bg-violet-500 hover:scale-[1.01] active:scale-[0.98] text-white text-sm font-semibold transition-all mb-5 flex items-center justify-center gap-2 group shadow-lg shadow-violet-900/20"
+            >
+                {hasTasksToday ? 'Resume learning' : 'Generate today\'s plan'} 
+                <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
+            </button>
+
+            {/* Tertiary ghost links — clean 11px meta links */}
+            <div className="flex items-center gap-5">
+                <button
+                    onClick={() => navigate('/study-lobby')}
+                    className="text-[11px] text-slate-500 hover:text-slate-300 transition-colors flex items-center gap-1.5 leading-none"
+                >
+                    <Users size={11} /> Study room
+                </button>
+                <button
+                    onClick={() => navigate('/study-plan')}
+                    className="text-[11px] text-slate-500 hover:text-slate-300 transition-colors flex items-center gap-1.5 leading-none"
+                >
+                    <Timer size={11} /> Adjust timeline
+                </button>
+                {!hasTasksToday && (
+                    <button
+                        onClick={() => navigate('/learning-resources')}
+                        className="text-[11px] text-slate-500 hover:text-slate-300 transition-colors flex items-center gap-1.5 leading-none"
+                    >
+                        <BookOpen size={11} /> Explore modules
+                    </button>
+                )}
+            </div>
         </div>
     );
 };
 
-const ActivePlanWidget: React.FC = () => {
-    const { t } = useLanguage();
+// ─────────────────────────────────────────────────────────────────────────────
+// Recommended Next Steps (formerly "Executive Actions") — calmer cards
+// ─────────────────────────────────────────────────────────────────────────────
+interface ActionCard {
+    title: string;
+    subtitle: string;
+    href: string;
+    icon: React.ElementType;
+    accentColor: string;
+    cta: string;
+    urgent?: boolean;
+}
+
+const NextStepsSection: React.FC<{ weakTopic?: string; hasPlan: boolean }> = ({ weakTopic, hasPlan }) => {
     const navigate = useNavigate();
-    const [plan, setPlan] = useState<StudyPlan | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
 
-    const daysSinceStartRaw = plan ? Math.floor((Date.now() - plan.startDate) / (24 * 60 * 60 * 1000)) : 0;
-    const daysSinceStart = Math.max(0, daysSinceStartRaw);
-
-    useEffect(() => {
-        const fetchPlan = async () => {
-            setIsLoading(true);
-            try {
-                const courses = await getCourses();
-                for (const course of courses) {
-                    const activePlan = await getStudyPlan(course.id);
-                    if (activePlan) {
-                        setPlan(activePlan);
-                        break;
-                    }
-                }
-            } catch (error) {
-                console.error("Error fetching active plan:", error);
-            } finally {
-                setIsLoading(false);
-            }
-        };
-        fetchPlan();
-    }, []);
-
-    useEffect(() => {
-        if (plan && daysSinceStartRaw > 0) {
-            const hasStarted = plan.days[0]?.tasks.some(t => t.completed);
-            if (!hasStarted) {
-                const updatedPlan = { ...plan, startDate: Date.now() };
-                saveStudyPlan(updatedPlan).then(() => {
-                    console.log("[Dashboard] Auto-rescheduled plan to today.");
-                });
-            }
-        }
-    }, [daysSinceStartRaw, plan]);
-
-    if (isLoading) return null;
-
-    if (!plan) return (
-        <div className="bg-slate-800 rounded-xl p-8 border border-white/10 shadow-card hover:shadow-card-hover transition-all duration-300 mb-10 flex flex-col items-center text-center">
-            <div className="p-4 bg-slate-700/30 rounded-full mb-4">
-                <Calendar className="w-8 h-8 text-slate-400" />
-            </div>
-            <h3 className="text-xl font-bold text-slate-100 mb-2">{t('dashboard.noActivePlanTitle')}</h3>
-            <p className="text-slate-400 max-w-md mb-6">{t('dashboard.noActivePlanSubtitle')}</p>
-            <Link to="/study-plan">
-                <Button className="px-6 uppercase tracking-wide text-sm font-medium">
-                    <PlusCircle size={18} className="mr-2" />
-                    {t('dashboard.createStudyPlan')}
-                </Button>
-            </Link>
-        </div>
-    );
-
-    const currentDayPlan = plan.days[Math.min(daysSinceStart, plan.days.length - 1)];
+    const cards: ActionCard[] = [
+        ...(weakTopic ? [{
+            title: `Practice: ${weakTopic}`,
+            subtitle: 'Needs review — quiz accuracy below threshold',
+            href: '/quizzes',
+            icon: AlertTriangle,
+            accentColor: 'text-rose-400 border-l-rose-500',
+            cta: 'Practice',
+            urgent: true,
+        }] : []),
+        {
+            title: 'Start a mock exam',
+            subtitle: 'Simulate real MU exam conditions with timed paper',
+            href: '/mock-paper',
+            icon: FileText,
+            accentColor: 'text-amber-400 border-l-amber-500',
+            cta: 'Start mock',
+        },
+        {
+            title: 'Ask AI Tutor',
+            subtitle: 'Get instant concept clarity from your AI study buddy',
+            href: '/tutor',
+            icon: MessageSquare,
+            accentColor: 'text-sky-400 border-l-sky-500',
+            cta: 'Open tutor',
+        },
+        {
+            title: 'Join study room',
+            subtitle: 'Study live with peers in a collaborative session',
+            href: '/study-lobby',
+            icon: Users,
+            accentColor: 'text-emerald-400 border-l-emerald-500',
+            cta: 'Join room',
+        },
+    ];
 
     return (
-        <div className="bg-slate-800 rounded-xl p-8 border border-white/10 shadow-card hover:shadow-card-hover transition-all duration-300 mb-10">
-            <h3 className="text-xl font-bold text-slate-100 flex items-center mb-4">
-                <Calendar className="w-6 h-6 mr-3 text-violet-400" /> {t('dashboard.todayStudyStep')}
-            </h3>
-            <div className="space-y-4">
-                <div>
-                    <p className="text-sm font-semibold text-violet-400 uppercase tracking-wider mb-1 line-clamp-1">{t('dashboard.goalLabel', { goal: plan.goal })}</p>
-                    <h4 className="text-lg font-bold text-white">{t('dashboard.dayProgress', { day: currentDayPlan?.day || 1, total: plan.durationDays })}</h4>
-                </div>
-                <div className="space-y-2">
-                    {currentDayPlan?.tasks.map((task: any) => (
-                        <div key={task._id || task.id} className="flex items-center gap-3 bg-slate-800 p-3 rounded-lg border border-slate-700">
-                            {task.completed ? <CheckCircle2 size={16} className="text-emerald-400" /> : <Circle size={16} className="text-slate-500" />}
-                            <span className={`text-sm ${task.completed ? 'line-through text-slate-500' : 'text-slate-200'} line-clamp-1`}>{task.title}</span>
-                        </div>
-                    ))}
-                </div>
-                <Link to="/notes" state={{ activeTab: 'plan', courseId: plan.courseId, course: plan.courseId }}>
-                    <Button className="w-full mt-2 text-sm">
-                        {t('dashboard.viewFullPlan')}
-                    </Button>
-                </Link>
+        <section>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-3 px-0.5">Pick up where you left off</p>
+            {/* Cards grid — maintaining strict scale */}
+            <div className="space-y-2">
+                {cards.map((card, i) => (
+                    <motion.div
+                        key={card.href}
+                        initial={{ opacity: 0, x: -8 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: i * 0.06, duration: 0.2 }}
+                    >
+                        <Link
+                            to={card.href}
+                            className={`flex items-center gap-3 p-4 bg-slate-900/40 border border-white/[0.05] border-l-2 ${card.accentColor} rounded-xl hover:bg-slate-800/70 hover:-translate-y-[2px] hover:shadow-lg hover:shadow-black/20 transition-all duration-200 group`}
+                        >
+                            {/* Icon — 16px per system, 32px container */}
+                            <div className="w-8 h-8 rounded-lg bg-white/[0.04] flex items-center justify-center shrink-0 group-hover:bg-white/[0.06] transition-colors">
+                                <card.icon size={16} className={card.accentColor.split(' ')[0]} />
+                            </div>
+
+                            {/* Text block — information before action */}
+                            <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2">
+                                    {/* Card title — 14px medium */}
+                                    <p className="text-sm font-medium text-slate-200 truncate leading-snug">{card.title}</p>
+                                    {card.urgent && (
+                                        <span className="shrink-0 w-1.5 h-1.5 rounded-full bg-rose-500" />
+                                    )}
+                                </div>
+                                {/* Subtitle — 12px, neutral gray */}
+                                <p className="text-xs text-slate-500 truncate mt-0.5">{card.subtitle}</p>
+                            </div>
+
+                            {/* Secondary CTA — outline style, right-aligned but not too far */}
+                            <span
+                                className={`text-[11px] font-semibold shrink-0 px-3 py-1.5 rounded-lg transition-all border ${
+                                    i === 0 && card.urgent
+                                        ? `${card.accentColor.split(' ')[0]} border-current/20 bg-current/10 group-hover:bg-current/20`
+                                        : 'text-slate-500 border-white/[0.07] group-hover:text-slate-200 group-hover:border-white/[0.15] group-hover:bg-white/[0.04]'
+                                } flex items-center gap-1`}
+                            >
+                                {card.cta} <ChevronRight size={10} />
+                            </span>
+                        </Link>
+                    </motion.div>
+                ))}
             </div>
-        </div>
+        </section>
     );
 };
 
+// ─────────────────────────────────────────────────────────────────────────────
+// MyCourses
+// ─────────────────────────────────────────────────────────────────────────────
 const MyCourses: React.FC = () => {
     const { t } = useLanguage();
     const { showToast } = useToast();
@@ -261,7 +481,7 @@ const MyCourses: React.FC = () => {
             const fetchedCourses = await getCourses();
             setCourses(fetchedCourses);
         } catch (error) {
-            console.error("[MyCourses] Error in fetchCourses:", error);
+            console.error('[MyCourses] Error in fetchCourses:', error);
         } finally {
             setIsLoading(false);
         }
@@ -278,113 +498,157 @@ const MyCourses: React.FC = () => {
                 const newCourse = await addCourse(newCourseName.trim());
                 if (newCourse) {
                     setCourses(prev => [...prev, newCourse]);
-                    showToast("Course added successfully!", 'success');
+                    showToast('Course added successfully!', 'success');
                 }
                 setNewCourseName('');
                 setIsAdding(false);
             } catch (error) {
-                console.error("[MyCourses] Error in handleAddCourse:", error);
+                console.error('[MyCourses] Error in handleAddCourse:', error);
                 showToast(t('dashboard.addCourseFailed'), 'error');
             }
         }
-    }
+    };
 
     const handleDeleteCourse = async (id: string) => {
         try {
             await deleteCourse(id);
             setCourses(prev => prev.filter(c => c.id !== id));
-            showToast("Course deleted.", 'info');
+            showToast('Course deleted.', 'info');
         } catch (error) {
-            console.error("Error deleting course:", error);
-            showToast("Failed to delete course.", 'error');
+            console.error('Error deleting course:', error);
+            showToast('Failed to delete course.', 'error');
         }
-    }
+    };
+
     return (
-        <div className="bg-slate-800 rounded-xl p-8 border border-white/10 shadow-card hover:shadow-card-hover transition-all duration-300">
-            <h3 className="text-xl font-bold text-slate-100 flex items-center mb-4">
-                <BookOpen className="w-6 h-6 mr-3 text-violet-400" /> {t('dashboard.myCoursesTitle')}
-            </h3>
-            <div className="space-y-2">
-                {isLoading && <p className="text-slate-400 text-center">{t('dashboard.loadingCourses')}</p>}
+        <div>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-3">My courses</p>
+            <div className="space-y-1.5">
+                {isLoading && <p className="text-slate-500 text-xs py-3">Loading…</p>}
                 {!isLoading && courses.length === 0 && !isAdding && (
-                    <div className="text-center py-4">
-                        <p className="text-slate-400 mb-4">{t('dashboard.noCourses')}</p>
-                    </div>
+                    <p className="text-slate-500 text-xs py-3">No courses tracked yet.</p>
                 )}
                 {courses.map(course => (
-                    <Link to="/notes" state={{ courseId: course.id, course: course.id }} key={course.id} className="group flex items-center justify-between bg-slate-800 p-3 rounded-lg hover:bg-slate-700 transition-colors">
-                        <div className="flex items-center overflow-hidden mr-2">
-                            <span className="w-3 h-3 rounded-full mr-3 flex-shrink-0" style={{ backgroundColor: course.color }}></span>
-                            <span className="font-medium text-slate-300 truncate">{course.name}</span>
+                    <Link to="/notes" state={{ courseId: course.id, course: course.id }} key={course.id} className="group flex items-center justify-between p-2.5 rounded-lg border border-white/[0.04] hover:bg-white/[0.05] hover:border-white/8 transition-all">
+                        <div className="flex items-center min-w-0 mr-2 flex-1">
+                            <span className="w-2 h-2 rounded-full mr-2.5 shrink-0" style={{ backgroundColor: course.color }}></span>
+                            <span className="text-xs font-medium text-slate-300 truncate" title={course.name}>{course.name}</span>
                         </div>
-                        <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteCourse(course.id); }} className="text-slate-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
-                            <Trash2 size={16} />
+                        <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteCourse(course.id); }} className="text-slate-600 hover:text-rose-400 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Trash2 size={12} />
                         </button>
                     </Link>
                 ))}
             </div>
             {isAdding ? (
-                <form onSubmit={handleAddCourse} className="mt-4 flex gap-2">
+                <form onSubmit={handleAddCourse} className="mt-3 flex gap-2">
                     <Input
                         id="new-course-name"
                         name="newCourseName"
+                        aria-label="Name of the course to add"
                         value={newCourseName}
                         onChange={(e) => setNewCourseName(e.target.value)}
-                        placeholder={t('dashboard.coursePlaceholder')}
-                        className="text-sm flex-1"
+                        placeholder="Course name"
+                        className="text-xs h-8 bg-slate-900/50"
                         autoComplete="off"
                         autoFocus
                     />
-                    <Button type="submit" className="px-3 py-2 text-sm">{t('dashboard.addCourseAction')}</Button>
-                    <Button type="button" variant="ghost" size="sm" onClick={() => setIsAdding(false)} className="px-3 py-2 text-sm text-slate-400">{t('sidebar.profile.cancel')}</Button>
+                    <Button type="submit" className="h-8 px-3 text-xs bg-violet-600">Add</Button>
                 </form>
             ) : (
-                <Button onClick={() => setIsAdding(true)} className="w-full mt-4 bg-slate-700/50 hover:bg-slate-700 text-sm shadow-none">
-                    <PlusCircle size={16} className="mr-2" />
-                    {t('dashboard.addCourse')}
-                </Button>
+                <button onClick={() => setIsAdding(true)} className="w-full mt-3 h-8 text-xs text-slate-500 border border-white/[0.04] rounded-lg hover:bg-white/5 hover:text-slate-300 transition-all flex items-center justify-center gap-1.5">
+                    <Plus size={12} /> Add course
+                </button>
             )}
         </div>
     );
-}
+};
 
-const tools = [
-    { key: 'tutor', name: 'AI Tutor', href: '/tutor', description: 'Practice concepts with your AI tutor.', icon: MessageSquare, color: 'text-sky-400', bgColor: 'bg-sky-900/50' },
-    { key: 'quizzes', name: 'Quizzes & Practice', href: '/quizzes', description: 'Test your knowledge with practice quizzes.', icon: Brain, color: 'text-rose-400', bgColor: 'bg-rose-900/50' },
-    { key: 'gpa', name: 'GPA Calculator', href: '/gpa-calculator', description: 'Calculate your SGPA/CGPA easily.', icon: Calculator, color: 'text-violet-400', bgColor: 'bg-violet-900/50' },
-    { key: 'curriculum', name: 'MU Curriculum', href: '/curriculum', description: 'Interactive syllabus twin.', icon: GraduationCap, color: 'text-blue-400', bgColor: 'bg-blue-900/50' },
-    { key: 'kt', name: 'ATKT Navigator', href: '/kt-calculator', description: 'Ordinance & grace calculator.', icon: Shield, color: 'text-rose-400', bgColor: 'bg-rose-900/50' },
-    { key: 'paper', name: 'Mock Papers', href: '/mock-paper', description: 'Real MU exam pattern mocks.', icon: FileText, color: 'text-sky-400', bgColor: 'bg-sky-900/50' },
-    { key: 'viva', name: 'Viva Bot', href: '/viva-simulator', description: 'Practice with an external bot.', icon: Users, color: 'text-emerald-400', bgColor: 'bg-emerald-900/50' },
-];
+// ─────────────────────────────────────────────────────────────────────────────
+// Section Explorer (Tools tab)
+// ─────────────────────────────────────────────────────────────────────────────
+const SectionExplorer: React.FC = () => {
+    const navigate = useNavigate();
 
-interface ToolCardProps {
-    name: string;
-    href: string;
-    description: string;
-    icon: React.ElementType;
-    color: string;
-    bgColor: string;
-}
-const ToolCard: React.FC<ToolCardProps> = ({ name, href, description, icon: Icon, color }) => {
-    const { t } = useLanguage();
+    const explorerCategories = [
+        {
+            title: 'Learning Context',
+            items: [
+                { name: 'Curriculum', href: '/curriculum', icon: BookOpen, desc: 'Syllabus & notes hub', primary: true },
+                { name: 'Paper Bank', href: '/paper-bank', icon: History, desc: 'Exam patterns' }
+            ]
+        },
+        {
+            title: 'Practice Engine',
+            items: [
+                { name: 'Prep Tools', href: '/prep-tools', icon: Cpu, desc: 'Practice drills' },
+                { name: 'Resources', href: '/resources', icon: Globe, desc: 'Central library' }
+            ]
+        },
+        {
+            title: 'Career Vector',
+            items: [
+                { name: 'Company Hub', href: '/company-hub', icon: Briefcase, desc: 'Career paths' },
+                { name: 'Resume Builder', href: '/placement', icon: FileText, desc: 'Portfolio optimization' }
+            ]
+        },
+        {
+            title: 'Operations',
+            items: [
+                { name: 'Calculator', href: '/gpa-calculator', icon: Calculator, desc: 'GPA & marks' },
+                { name: 'Deadlines', href: '/curriculum', icon: Calendar, desc: 'University dates' }
+            ]
+        }
+    ];
 
     return (
-        <Link to={href} className="group block p-4 bg-slate-800 rounded-xl border border-white/10 shadow-card hover:translate-y-[-2px] hover:shadow-card-hover transition-all duration-300">
-            <div className="flex items-center space-x-3 mb-3">
-                <div className="w-10 h-10 flex-shrink-0 flex items-center justify-center rounded-lg bg-violet-500/10 group-hover:bg-violet-500/20 transition-colors">
-                    <Icon className="w-5 h-5 text-slate-200 group-hover:text-violet-400 transition-colors" />
+        <div className="space-y-8 animate-in fade-in duration-500">
+            {explorerCategories.map((cat) => (
+                <div key={cat.title}>
+                    <p className="text-[9px] font-black uppercase tracking-[0.25em] text-slate-600 mb-3 ml-1">{cat.title}</p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-3">
+                        {cat.items.map(item => (
+                            <motion.button
+                                key={item.name}
+                                whileHover={{ y: -3, scale: 1.01 }}
+                                onClick={() => navigate(item.href)}
+                                className={`flex items-start gap-4 p-5 rounded-2xl border transition-all group relative overflow-hidden ${
+                                    item.primary 
+                                        ? 'bg-violet-600/5 border-violet-500/20 hover:border-violet-500/40 shadow-xl shadow-violet-900/5' 
+                                        : 'bg-slate-900/40 border-white/[0.05] hover:border-white/10 hover:bg-slate-800/60'
+                                }`}
+                            >
+                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${
+                                    item.primary 
+                                        ? 'bg-violet-600/10 text-violet-400 group-hover:bg-violet-600/20' 
+                                        : 'bg-white/[0.04] text-slate-500 group-hover:bg-white/8 group-hover:text-slate-200'
+                                }`}>
+                                    <item.icon size={20} strokeWidth={item.primary ? 2.5 : 2} />
+                                </div>
+                                <div className="flex-1 min-w-0 pr-4">
+                                    <div className="flex items-center gap-2">
+                                        <p className="text-sm font-bold text-white tracking-tight">{item.name}</p>
+                                        {item.primary && (
+                                            <span className="text-[7px] font-black uppercase bg-violet-600 text-white px-1 py-0.5 rounded tracking-tighter">Recommended</span>
+                                        )}
+                                    </div>
+                                    <p className="text-[11px] text-slate-500 group-hover:text-slate-400 mt-1 leading-tight">{item.desc}</p>
+                                </div>
+                                <div className="absolute right-4 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-all translate-x-2 group-hover:translate-x-0">
+                                    <ChevronRight size={14} className={item.primary ? 'text-violet-400' : 'text-slate-500'} />
+                                </div>
+                            </motion.button>
+                        ))}
+                    </div>
                 </div>
-                <h3 className="text-sm font-semibold text-slate-100 group-hover:text-violet-400 transition-colors leading-snug">{name}</h3>
-            </div>
-            <div className="flex items-center text-xs font-medium text-violet-400 group-hover:text-violet-300">
-                <span className="uppercase tracking-wider text-xs">{t('dashboard.startSession')}</span>
-                <ArrowRight className="ml-2 w-3 h-3 transition-transform duration-300 group-hover:translate-x-1" />
-            </div>
-        </Link>
+            ))}
+        </div>
     );
 };
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Dashboard — Main Component
+// ─────────────────────────────────────────────────────────────────────────────
 const SESSION_MOOD_CHECKIN_KEY = 'nexusMoodCheckedInSession';
 
 const Dashboard: React.FC = () => {
@@ -392,132 +656,83 @@ const Dashboard: React.FC = () => {
     const { language, t } = useLanguage();
     const { showToast } = useToast();
     const navigate = useNavigate();
-    const dropdownRef = React.useRef<HTMLDivElement>(null);
 
-    const [mostUsedToolKey, setMostUsedToolKey] = useState<string>('tutor');
     const [showMoodCheckin, setShowMoodCheckin] = useState(true);
     const [aiSuggestion, setAiSuggestion] = useState<string | null>(null);
     const [isLoadingSuggestion, setIsLoadingSuggestion] = useState(false);
-    const [quickAccessTools, setQuickAccessTools] = useState<string[]>([]);
+    const [activeTab, setActiveTab] = useState<'focus' | 'insights' | 'tools'>('focus');
     const [stats, setStats] = useState<UserStats | null>(null);
-    const [showAddToolDropdown, setShowAddToolDropdown] = useState(false);
-    const [adaptiveSummary, setAdaptiveSummary] = useState<string | null>(null);
-    const [labelIndex, setLabelIndex] = useState(0);
+    const [report, setReport] = useState<any>(null);
+    const [activePlan, setActivePlan] = useState<StudyPlan | null>(null);
+    const [planProgress, setPlanProgress] = useState<number>(0);
+    const [courses, setCourses] = useState<Course[]>([]);
+    const [isLoadingCourses, setIsLoadingCourses] = useState(false);
 
-    const insightLabels = [
-        "SCANNING RECENT QUIZZES...",
-        "CHARTING PROGRESS...",
-        "DEDUCING WEAKNESSES...",
-        "MAPPING KNOWLEDGE GAP...",
-        "SYNCING MU TRENDS..."
-    ];
-
-    useEffect(() => {
-        if (!isLoadingSuggestion) return;
-        const interval = setInterval(() => {
-            setLabelIndex((prev) => (prev + 1) % insightLabels.length);
-        }, 2000);
-        return () => clearInterval(interval);
-    }, [isLoadingSuggestion]);
-
+    // 1. Fetch core stats
     useEffect(() => {
         const refreshStats = async () => {
             try {
                 await updateStreak();
-                const data = await getUserStats();
-                if (data.success) {
+                const data: any = await getUserStats();
+                if (data && data.success) {
                     setStats(data.stats);
-
                     const hour = new Date().getHours();
                     if (hour >= 5 && hour < 9 && !data.stats.badges.includes('Early Bird')) {
                         await awardBadge('Early Bird');
-                        const updatedData = await getUserStats();
-                        if (updatedData.success) {
-                            setStats(updatedData.stats);
-                        }
+                        const updatedData: any = await getUserStats();
+                        if (updatedData && updatedData.success) setStats(updatedData.stats);
                     }
                 }
             } catch (error) {
-                console.error("Error refreshing stats:", error);
+                console.error('Error refreshing stats:', error);
             }
         };
         refreshStats();
+    }, [updateMood]);
+
+    // 2. Fetch performance report
+    useEffect(() => {
+        const fetchReport = async () => {
+            try {
+                const r = await getProductivityReport();
+                setReport(r);
+            } catch (e) {
+                console.error('KPI report error:', e);
+            }
+        };
+        fetchReport();
     }, []);
 
+    // 3. Fetch active study plan
     useEffect(() => {
-        const initializePersonalization = async () => {
-            await hydratePersonalizationFromServer();
-
-            const key = await getMostUsedTool();
-            setMostUsedToolKey(key);
-
-            const savedTools = getQuickAccessTools();
-            let effectiveTools = savedTools;
-
-            const recommendations = await getPersonalizationRecommendations();
-            if (recommendations) {
-                if (recommendations.recommendedTools?.length > 0 && savedTools.length === 0) {
-                    effectiveTools = recommendations.recommendedTools.slice(0, 4);
-                    effectiveTools.forEach((tool) => addToQuickAccess(tool));
+        const fetchPlan = async () => {
+            try {
+                setIsLoadingCourses(true);
+                const plan = await getLatestStudyPlan();
+                
+                if (plan) {
+                    setActivePlan(plan);
+                    const daysSince = Math.max(0, Math.floor((Date.now() - new Date(plan.startDate).getTime()) / 86400000));
+                    const dayPlan = plan.days[Math.min(daysSince, plan.days.length - 1)];
+                    const total = dayPlan?.tasks?.length || 0;
+                    const done = dayPlan?.tasks?.filter((t: any) => t.completed).length || 0;
+                    setPlanProgress(total > 0 ? Math.round((done / total) * 100) : 0);
                 }
-
-                if (recommendations.latestPlacement) {
-                    setAdaptiveSummary(
-                        t('dashboard.adaptivePlacementSummary', {
-                            band: recommendations.latestPlacement.readinessBand,
-                            accuracy: recommendations.latestPlacement.accuracy,
-                            focus: recommendations.latestPlacement.focusAreas.join(', ') || t('dashboard.timedDrills'),
-                        })
-                    );
-                } else if (recommendations.weakTopics?.length > 0) {
-                    const topWeak = recommendations.weakTopics[0];
-                    setAdaptiveSummary(t('dashboard.adaptiveFocusSummary', { topic: topWeak.topic, accuracy: topWeak.accuracy }));
-                }
-            }
-
-            setQuickAccessTools(savedTools);
-            if (effectiveTools !== savedTools) {
-                setQuickAccessTools(effectiveTools);
+            } catch (e) {
+                console.error('Plan fetch error:', e);
+            } finally {
+                setIsLoadingCourses(false);
             }
         };
-        initializePersonalization();
+        fetchPlan();
+    }, []);
 
+    // 4. Session state
+    useEffect(() => {
+        hydratePersonalizationFromServer();
         const sessionMood = sessionStorage.getItem(SESSION_MOOD_CHECKIN_KEY);
-        if (sessionMood) {
-            setShowMoodCheckin(false);
-        }
-    }, [t]);
-
-    useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
-            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-                setShowAddToolDropdown(false);
-            }
-        };
-
-        if (showAddToolDropdown) {
-            document.addEventListener('mousedown', handleClickOutside);
-        }
-
-        return () => {
-            document.removeEventListener('mousedown', handleClickOutside);
-        };
-    }, [showAddToolDropdown]);
-
-    const handleAddToQuickAccess = (toolKey: string) => {
-        const updated = addToQuickAccess(toolKey);
-        setQuickAccessTools(updated);
-        setShowAddToolDropdown(false);
-        showToast("Tool added to quick access!", 'success');
-    };
-
-    const handleRemoveFromQuickAccess = (toolKey: string) => {
-        const updated = removeFromQuickAccess(toolKey);
-        setQuickAccessTools(updated);
-        showToast("Tool removed from quick access.", 'info');
-    };
-
-    const availableToolsToAdd = tools.filter(tool => !quickAccessTools.includes(tool.key));
+        if (sessionMood) setShowMoodCheckin(false);
+    }, []);
 
     const handleMoodSelected = async (mood: MoodLabel) => {
         sessionStorage.setItem(SESSION_MOOD_CHECKIN_KEY, 'true');
@@ -530,7 +745,7 @@ const Dashboard: React.FC = () => {
             setAiSuggestion(suggestion);
         } catch (error) {
             console.error('Mood processing failed:', error);
-            setAiSuggestion("The Nexus AI is briefly offline, but remember: you've got this! Take a deep breath and stay focused.");
+            setAiSuggestion("Take a deep breath and stay focused. You've got this!");
         } finally {
             setIsLoadingSuggestion(false);
         }
@@ -543,245 +758,176 @@ const Dashboard: React.FC = () => {
     };
 
     const greeting = getTimeOfDayGreeting(language);
+    const firstName = user?.displayName?.split(' ')[0] || 'Student';
 
     const pageSubtitle = useMemo(() => {
         const parts = [];
         if (user?.branch) parts.push(user.branch);
         if (user?.year) parts.push(t('dashboard.yearLabel', { year: user.year }));
-        if (user?.targetExam) parts.push(t('dashboard.targeting', { exam: user.targetExam }));
-        return parts.length > 0 ? parts.join(' | ') : t('dashboard.studentHubSubtitle');
+        return parts.length > 0 ? parts.join(' · ') : 'Engineering Student';
     }, [user, t]);
 
-    return (
-        <div className="space-y-10 pb-12" role="main" aria-label="Student Dashboard">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-12 pt-6">
-                <div>
-                    <motion.h1 
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.8 }}
-                        className="text-4xl md:text-5xl font-black text-white tracking-tight leading-[1.1] mb-2"
-                    >
-                        {greeting.trim()}, <span className="inline-block bg-gradient-to-r from-violet-400 to-indigo-400 bg-clip-text text-transparent">{user?.displayName?.split(' ')[0] || 'User'}!</span>
-                    </motion.h1>
-                    <p className="text-slate-500 font-bold uppercase tracking-[0.3em] text-xs opacity-70 flex items-center gap-2">
-                         <span className="w-1 h-1 rounded-full bg-indigo-500"></span>
-                         {pageSubtitle}
-                    </p>
-                </div>
-            </div>
+    const kpiStreak = stats?.streak || 0;
+    const kpiHours = report ? formatSeconds(report.totalStudyTime) : '—';
+    const kpiAccuracy = report ? `${report.quizAccuracy}%` : '—';
+    const weakTopic = report?.weaknesses?.[0]?.topic;
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
-                <div className="lg:col-span-2 space-y-10" role="region" aria-label="Main Content Area">
-                    <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl p-10 border border-white/5 shadow-2xl relative overflow-hidden group">
-                        <div className="absolute top-0 right-0 p-32 bg-violet-500/10 blur-[100px] rounded-full pointer-events-none"></div>
-                        <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-                            <div>
-                                <h2 className="text-3xl font-bold text-white mb-3 tracking-tight">
-                                    {t('dashboard.readyToFocus')}
-                                </h2>
-                                <p className="text-slate-400 mb-6 max-w-md text-lg leading-relaxed">{t('dashboard.readyToFocusSubtitle')}</p>
-                                <Button onClick={() => navigate('/study-lobby')} className="px-8 py-4 text-sm font-medium uppercase tracking-wider shadow-lg shadow-violet-500/25">
-                                    <Users className="w-5 h-5 mr-3" />
-                                    {t('dashboard.enterStudyLobby')}
-                                </Button>
-                            </div>
-                            <div className="hidden md:block p-4 bg-slate-800/50 rounded-2xl border border-white/5 backdrop-blur-sm">
-                                <Zap className="w-16 h-16 text-violet-400" strokeWidth={1.5} />
-                            </div>
+    const tabs = [
+        { id: 'focus', label: 'Today', icon: Target },
+        { id: 'insights', label: 'Analytics', icon: BarChart },
+        { id: 'tools', label: 'Sections', icon: LayoutGrid },
+    ];
+
+    const MainContent = (
+        <div className="h-full flex flex-col space-y-6">
+            <header className="flex flex-col gap-6 shrink-0 pt-2 lg:pt-0">
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-2xl bg-violet-600/10 border border-violet-500/20 flex items-center justify-center">
+                            <Bot className="text-violet-400" size={20} />
+                        </div>
+                        <div>
+                            <h1 className="text-2xl font-black text-white italic tracking-tighter uppercase leading-none mb-1">Nexus Command</h1>
+                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest italic">{DateTime.fromMillis(Date.now()).toFormat('cccc, dd LLL')}</p>
                         </div>
                     </div>
+                </div>
 
-                    <div className="space-y-8">
-                        <GoalsWidget />
-                        {showMoodCheckin && <MoodCheckin onMoodSelect={handleMoodSelected} />}
-                        {(isLoadingSuggestion || aiSuggestion) && (
-                            <div className="bg-slate-800/50 p-6 rounded-[2rem] ring-1 ring-slate-700/50 backdrop-blur-md relative overflow-hidden group" role="complementary" aria-label="AI Suggestion">
-                                <div className="absolute top-0 right-0 p-16 bg-violet-500/5 blur-[50px] rounded-full group-hover:bg-violet-500/10 transition-colors duration-700"></div>
+                <nav className="flex items-center gap-1 bg-slate-900/40 p-1 rounded-xl border border-white/[0.05] self-start">
+                    {tabs.map((tab) => (
+                        <button
+                            key={tab.id}
+                            onClick={() => setActiveTab(tab.id as any)}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all ${
+                                activeTab === tab.id ? 'bg-violet-600 text-white shadow-md' : 'text-slate-500 hover:text-slate-300 hover:bg-white/[0.04]'
+                            }`}
+                        >
+                            <tab.icon size={12} />
+                            {tab.label}
+                        </button>
+                    ))}
+                </nav>
+            </header>
 
-                                <div className="flex items-start gap-4 relative z-10">
-                                    <div className="w-10 h-10 rounded-2xl bg-violet-600/20 flex items-center justify-center shrink-0 border border-violet-500/20">
-                                        <Brain className="w-5 h-5 text-violet-400" />
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <div className="flex items-center justify-between mb-2">
-                                            <p className="text-[10px] font-black uppercase text-violet-400 tracking-[0.2em]">{t('dashboard.smartSuggestionTitle')}</p>
-                                            <button
-                                                onClick={handleResetMood}
-                                                className="text-[10px] font-bold text-slate-500 hover:text-white uppercase tracking-wider bg-slate-700/30 px-2 py-1 rounded-md transition-colors"
-                                            >
-                                                ↻ Re-Check
-                                            </button>
+            <AnimatePresence mode="wait">
+                <motion.div
+                    key={activeTab}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -8 }}
+                    transition={{ duration: 0.2 }}
+                    className="flex-1 overflow-y-auto no-scrollbar px-1 pb-20 lg:pb-4"
+                >
+                    {activeTab === 'focus' && (
+                        <div className="space-y-8 mt-1">
+                            <HeroBlock plan={activePlan} planProgress={planProgress} weakTopic={weakTopic} />
+                            <div className="space-y-4">
+                                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500 px-1">Live Guidance</p>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="bg-slate-900/40 border border-white/[0.06] rounded-2xl p-4 flex items-start gap-4 hover:border-violet-500/20 transition-all group">
+                                        <div className="w-10 h-10 rounded-xl bg-violet-500/10 flex items-center justify-center shrink-0">
+                                            <Target size={18} className="text-violet-400" />
                                         </div>
-                                        {isLoadingSuggestion ? (
-                                            <div className="h-5 flex items-center overflow-hidden">
-                                                <AnimatePresence mode="wait">
-                                                    <motion.p 
-                                                        key={labelIndex}
-                                                        initial={{ opacity: 0, y: 10 }}
-                                                        animate={{ opacity: 1, y: 0 }}
-                                                        exit={{ opacity: 0, y: -10 }}
-                                                        transition={{ duration: 0.3 }}
-                                                        className="text-xs font-black text-slate-500 italic uppercase tracking-widest"
-                                                    >
-                                                        {insightLabels[labelIndex]}
-                                                    </motion.p>
-                                                </AnimatePresence>
-                                            </div>
-                                        ) : (
-                                            <div className="space-y-4">
-                                                <p className="text-sm text-slate-100 leading-relaxed font-medium animate-in fade-in slide-in-from-top-2 duration-700">
-                                                    {aiSuggestion}
-                                                </p>
-                                                
-                                                <div className="flex gap-3 mt-4">
-                                                    <Button 
-                                                        size="sm" 
-                                                        className="h-8 px-4 text-[10px] font-black uppercase tracking-widest bg-violet-600 hover:bg-violet-700"
-                                                        onClick={() => {
-                                                            const text = aiSuggestion?.toLowerCase() || '';
-                                                            let tab = 'aptitude';
-                                                            if (text.includes('code') || text.includes('dsa') || text.includes('binary')) tab = 'dsa';
-                                                            if (text.includes('gd') || text.includes('discuss')) tab = 'gd';
-                                                            if (text.includes('hr') || text.includes('interview')) tab = 'hr';
-                                                            navigate(`/practice-hub?tab=${tab}`);
-                                                        }}
-                                                    >
-                                                        Practice Now <Zap size={12} className="ml-2" />
-                                                    </Button>
-                                                </div>
-                                            </div>
-                                        )}
+                                        <div>
+                                            <p className="text-[10px] font-bold text-violet-400 uppercase tracking-widest mb-1.5">🎯 Live Focus</p>
+                                            <p className="text-xs font-semibold text-white tracking-tight">Active Learning Session</p>
+                                        </div>
+                                    </div>
+                                    <div className="bg-slate-900/40 border border-white/[0.06] rounded-2xl p-4 flex items-start gap-4 hover:border-emerald-500/20 transition-all group">
+                                        <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center shrink-0">
+                                            <Clock size={16} className="text-emerald-400" />
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest mb-1.5">⏱ Momentum</p>
+                                            <p className="text-xs font-semibold text-white tracking-tight">Focus maintained</p>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                        )}
-                        {adaptiveSummary && (
-                            <div className="bg-indigo-500/10 border border-indigo-500/30 p-4 rounded-xl">
-                                <p className="text-sm text-indigo-200">{adaptiveSummary}</p>
+                            <NextStepsSection weakTopic={weakTopic} hasPlan={!!activePlan} />
+                        </div>
+                    )}
+
+                    {activeTab === 'insights' && (
+                        <div className="space-y-6">
+                            <div className="flex items-center gap-2 pb-3 border-b border-white/[0.05]">
+                                <Activity size={16} className="text-emerald-400" />
+                                <h2 className="text-base font-semibold text-white tracking-tight">Performance analytics</h2>
                             </div>
-                        )}
-                        <ProductivityInsights />
-                        <div role="complementary" aria-label="Active Study Plan Progress">
-                            <Card className="bg-slate-800/40 border-none overflow-hidden">
-                                <ActivePlanWidget />
-                            </Card>
+                            <ProductivityInsights report={report} />
                         </div>
-                        <div className="bg-slate-800 rounded-xl p-8 border border-white/10 shadow-card hover:shadow-card-hover transition-all duration-300">
-                            <h3 className="text-xl font-bold text-slate-100 flex items-center mb-4">
-                                <Library className="w-6 h-6 mr-3 text-violet-400" /> {t('dashboard.engineeringResourcesTitle')}
-                            </h3>
-                            <p className="text-slate-400 mb-6">{t('dashboard.engineeringResourcesSubtitle')}</p>
-                            <Link to="/resources">
-                                <Button className="w-full text-sm">
-                                    {t('dashboard.viewAllResources')}
-                                </Button>
-                            </Link>
-                        </div>
-                        <MyCourses />
-                    </div>
+                    )}
+
+                    {activeTab === 'tools' && <SectionExplorer />}
+                </motion.div>
+            </AnimatePresence>
+        </div>
+    );
+
+    const SideContent = (
+        <div className="space-y-6 h-full flex flex-col">
+            <div className="bg-slate-900/40 border border-white/[0.06] rounded-2xl p-5 shrink-0">
+                <div className="flex items-center justify-between mb-5 px-0.5">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">My Study Tracks</p>
+                    <button onClick={() => navigate('/learning-resources')} className="text-[10px] font-bold text-violet-400 hover:text-white transition-colors flex items-center gap-1 group">
+                        <Plus size={10} className="group-hover:rotate-90 transition-transform duration-300" /> ADMIT
+                    </button>
                 </div>
-
-                <div className="space-y-10" role="complementary" aria-label="Sidebar Tools">
-                    <div>
-                        <div className="flex items-center justify-between mb-6">
-                            <h2 className="text-xl font-semibold text-slate-100 flex items-center">
-                                <Star className="w-5 h-5 mr-3 text-violet-500" fill="currentColor" /> {t('dashboard.quickAccess')}
-                            </h2>
-                            <div className="relative" ref={dropdownRef}>
-                                <Button
-                                    onClick={() => setShowAddToolDropdown(!showAddToolDropdown)}
-                                    className="px-3 py-2 text-xs bg-slate-700/50 hover:bg-slate-700 shadow-none"
-                                    disabled={availableToolsToAdd.length === 0}
-                                >
-                                    <Plus size={14} className="mr-1" />
-                                    {t('dashboard.addTool')}
-                                    <ChevronDown size={14} className="ml-1" />
-                                </Button>
-                                {showAddToolDropdown && availableToolsToAdd.length > 0 && (
-                                    <div className="absolute right-0 mt-2 w-56 bg-slate-800 rounded-xl border border-white/10 shadow-2xl z-50 py-2 max-h-64 overflow-y-auto">
-                                        {availableToolsToAdd.map(tool => (
-                                            <button
-                                                key={tool.key}
-                                                onClick={() => handleAddToQuickAccess(tool.key)}
-                                                className="w-full px-4 py-2.5 text-left flex items-center gap-3 hover:bg-slate-700/50 transition-colors"
-                                            >
-                                                <tool.icon className={`w-4 h-4 ${tool.color}`} />
-                                                <span className="text-sm text-slate-200">{tool.name}</span>
-                                            </button>
-                                        ))}
-                                    </div>
-                                )}
+                <div className="space-y-1.5">
+                    {courses.slice(0, 3).map((course, i) => (
+                        <button key={course.id} onClick={() => navigate('/notes')} className={`w-full text-left p-3.5 rounded-xl border transition-all duration-300 ${i === 0 ? 'bg-violet-600/10 border-violet-500/20 text-white' : 'bg-transparent border-transparent text-slate-400 hover:bg-white/[0.03]'}`}>
+                            <div className="flex items-center justify-between mb-2">
+                                <span className="text-[13px] font-semibold truncate">{course.name}</span>
+                                <span className={`text-[10px] font-mono font-bold ${i === 0 ? 'text-violet-400' : 'text-slate-600'}`}>{i === 0 ? '68%' : '32%'}</span>
                             </div>
-                        </div>
-
-                        {quickAccessTools.length === 0 ? (
-                            <div className="bg-slate-800/50 rounded-xl p-8 border border-dashed border-slate-600 text-center">
-                                <Pin className="w-10 h-10 text-slate-500 mx-auto mb-4" />
-                                <p className="text-slate-400 mb-2">{t('dashboard.noPinnedTools')}</p>
-                                <p className="text-sm text-slate-500">{t('dashboard.noPinnedToolsHint')}</p>
+                            <div className="h-1.5 w-full bg-slate-950/50 rounded-full overflow-hidden">
+                                <div className={`h-full rounded-full ${i === 0 ? 'bg-violet-500' : 'bg-slate-700'}`} style={{ width: i === 0 ? '68%' : '32%' }} />
                             </div>
-                        ) : (
-                            <div className="space-y-3">
-                                {quickAccessTools.map(toolKey => {
-                                    const tool = tools.find(t => t.key === toolKey);
-                                    if (!tool) return null;
-                                    return (
-                                        <div key={tool.key} className="group relative">
-                                            <Link
-                                                to={tool.href}
-                                                className="block p-5 bg-slate-800 rounded-xl border border-violet-500/30 shadow-lg shadow-violet-500/10 hover:shadow-violet-500/20 transition-all duration-300"
-                                            >
-                                                <div className="flex items-center gap-4">
-                                                    <div className="p-3 rounded-lg bg-violet-500/10">
-                                                        <tool.icon className={`w-5 h-5 ${tool.color}`} />
-                                                    </div>
-                                                    <div className="flex-1 min-w-0">
-                                                        <h3 className="text-base font-bold text-white truncate">{tool.name}</h3>
-                                                        <p className="text-xs text-slate-400 truncate">{tool.description}</p>
-                                                    </div>
-                                                    <ArrowRight className="w-4 h-4 text-slate-500 group-hover:text-violet-400 group-hover:translate-x-1 transition-all flex-shrink-0" />
-                                                </div>
-                                            </Link>
-                                            <button
-                                                onClick={(e) => {
-                                                    e.preventDefault();
-                                                    e.stopPropagation();
-                                                    handleRemoveFromQuickAccess(tool.key);
-                                                }}
-                                                className="absolute -top-2 -right-2 w-6 h-6 bg-slate-700 hover:bg-red-500 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-200 border border-slate-600 hover:border-red-500"
-                                                title={t('dashboard.removeQuickAccessTitle')}
-                                            >
-                                                <X size={12} className="text-slate-300" />
-                                            </button>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        )}
-                    </div>
-                    <div>
-                        <div className="flex items-center justify-between mb-6">
-                            <h2 className="text-xl font-semibold text-slate-100 flex items-center">
-                                <Sparkles className="w-5 h-5 mr-3 text-sky-400 animate-pulse" /> {t('dashboard.aiToolkitTitle')}
-                            </h2>
-                            <div className="flex items-center gap-2 px-3 py-1 bg-slate-800/80 rounded-full border border-emerald-500/20 shadow-sm shadow-emerald-500/10">
-                                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
-                                <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest">AI Core Linked</span>
-                            </div>
-                        </div>
-                        <div className="grid grid-cols-1 gap-5">
-                            {tools.map(tool => {
-                                const { key, ...rest } = tool;
-                                return <ToolCard key={key} {...rest} />;
-                            })}
-                        </div>
-                    </div>
+                        </button>
+                    ))}
+                    {courses.length === 0 && <p className="text-[10px] text-slate-600 text-center py-4">No active tracks detected.</p>}
                 </div>
             </div>
 
+            <div className="grid grid-cols-2 gap-4 shrink-0">
+                <div className="bg-slate-900/40 border border-white/[0.06] rounded-2xl p-4">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1 flex items-center gap-1.5"><Zap size={10} className="text-emerald-400" /> XP</p>
+                    <p className="text-lg font-bold text-white">{user?.xp?.toLocaleString() || '0'}</p>
+                </div>
+                <div className="bg-slate-900/40 border border-white/[0.06] rounded-2xl p-4">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1 flex items-center gap-1.5"><Flame size={10} className="text-amber-400" /> STREAK</p>
+                    <p className="text-lg font-bold text-white">{user?.streak || 0}d</p>
+                </div>
+            </div>
+
+            <div className="bg-violet-600/5 border border-violet-500/10 rounded-2xl p-5 flex flex-col relative overflow-hidden group">
+                <div className="absolute top-0 right-0 p-3 opacity-5 group-hover:opacity-10 transition-opacity">
+                    <Bot size={48} />
+                </div>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-violet-400 mb-4 px-0.5">Performance Radar</p>
+                <div className="space-y-5">
+                    <div className="flex items-center gap-4">
+                        <div className="w-9 h-9 rounded-full bg-violet-500/10 flex items-center justify-center shrink-0 border border-violet-500/20">
+                            <TrendingUp size={16} className="text-violet-400" />
+                        </div>
+                        <div>
+                            <p className="text-[11px] font-bold text-white tracking-tight">Accuracy Index</p>
+                            <p className="text-[10px] text-slate-400 mt-0.5">{report?.quizAccuracy || 0}% avg record</p>
+                        </div>
+                    </div>
+                    <button 
+                        onClick={() => navigate('/leaderboard')}
+                        className="w-full py-2.5 bg-violet-600/10 hover:bg-violet-600/20 text-violet-400 text-[10px] font-bold uppercase tracking-[0.15em] rounded-xl transition-all border border-violet-500/10 flex items-center justify-center gap-2"
+                    >
+                        View Arena <ArrowRight size={12} />
+                    </button>
+                </div>
+            </div>
         </div>
     );
+
+    return <PageLayout main={MainContent} side={SideContent} />;
 };
 
 export default Dashboard;
+

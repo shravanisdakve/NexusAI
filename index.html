@@ -9,20 +9,30 @@
   <meta property="og:title" content="NexusAI — The Neural Learning OS">
   <meta property="og:description" content="Master your academics and placements with AI-powered study rooms, mock papers, and 1:1 guidance.">
   <meta property="og:type" content="website">
-  <meta name="theme-color" content="#6366f1">
+  <meta name="theme-color" content="#0f0f1a">
 
-  <link rel="icon"
-    href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📚</text></svg>">
+  <link rel="icon" type="image/png" href="/nexusai-logo.png">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
-
-  <link rel="stylesheet" href="./index.css">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="stylesheet" href="/index.css">
   <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
 </head>
 
 <body class="bg-slate-900 text-slate-200 font-sans antialiased">
   <div id="root"></div>
   <script type="module" src="/index.tsx"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').then(registration => {
+          console.log('SW registered: ', registration);
+        }).catch(registrationError => {
+          console.log('SW registration failed: ', registrationError);
+        });
+      });
+    }
+  </script>
 </body>
 
-</html>
+</html>

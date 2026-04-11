@@ -97,9 +97,8 @@ Output ONLY a raw JSON array of strings without formatting or markdown.`;
  */
 const generateResumeAnalysis = async (candidateData) => {
     try {
-        const prompt = `Analyze this candidate data and generate:
-1. A 3-sentence professional summary.
-2. A list of 15 high-impact ATS keywords.
+        const prompt = `Analyze this candidate data and generate a professional resume profile. 
+If the candidate data contains raw extracted text (e.g. from a PDF), also extract and structure their technical skills, projects, and achievements.
 
 Candidate Data:
 Role: ${candidateData.targetRole}
@@ -108,7 +107,14 @@ Projects: ${candidateData.projects}
 Branch: ${candidateData.branch}
 
 Output ONLY valid JSON:
-{ "summary": "...", "keywords": ["...", "..."] }`;
+{ 
+  "summary": "3-sentence professional summary focus on outcomes", 
+  "keywords": ["ATS", "Keywords", "15 total"],
+  "extractedSkills": "Technical Skills (comma separated)",
+  "extractedProjects": "Detailed Project List (newline separated)",
+  "extractedAchievements": "Achievements (newline separated)",
+  "name": "Full Name if found in notes"
+}`;
 
         const response = await aiProvider.generate(prompt, {
             feature: 'projectIdeas', // Reusing a reasoning feature

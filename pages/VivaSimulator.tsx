@@ -165,7 +165,7 @@ const VivaSimulator: React.FC = () => {
                                     className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${persona === p.id ? 'bg-slate-700 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
                                 >
                                     <span className={persona === p.id ? p.color : ''}>{p.id}</span>
-                                    <div className="text-[10px] opacity-60 font-medium">{p.label}</div>
+                                    <div className="text-xs opacity-60 font-medium">{p.label}</div>
                                 </button>
                             ))}
                         </div>
@@ -176,6 +176,7 @@ const VivaSimulator: React.FC = () => {
                                 <Input
                                     id="viva-subject"
                                     name="subject"
+                                    aria-label="Academic Subject"
                                     value={subject}
                                     onChange={(e) => setSubject(e.target.value)}
                                     placeholder="e.g. Data Structures & Algorithms"
@@ -186,6 +187,7 @@ const VivaSimulator: React.FC = () => {
                                 <Input
                                     id="viva-branch"
                                     name="branch"
+                                    aria-label="Engineering Branch"
                                     value={branch}
                                     onChange={(e) => setBranch(e.target.value)}
                                     placeholder="e.g. Computer Engineering"
@@ -207,7 +209,7 @@ const VivaSimulator: React.FC = () => {
                             </div>
                             <div>
                                 <h4 className="font-bold text-slate-200">External Examiner</h4>
-                                <span className="text-[10px] uppercase text-emerald-400 font-black tracking-widest flex items-center gap-1">
+                                <span className="text-xs uppercase text-emerald-400 font-black tracking-widest flex items-center gap-1">
                                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> Live Session
                                 </span>
                             </div>
@@ -248,7 +250,7 @@ const VivaSimulator: React.FC = () => {
                                 <Send size={20} />
                             </Button>
                         </form>
-                        <div className="flex items-center gap-2 mt-3 text-[10px] text-slate-500 font-medium">
+                        <div className="flex items-center gap-2 mt-3 text-xs text-slate-500 font-medium">
                             <AlertCircle size={10} />
                             <span>Keep your answers technical and concise for better evaluation.</span>
                         </div>
