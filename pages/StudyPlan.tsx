@@ -15,7 +15,7 @@ interface StudyPlanData {
     schedule: {
         day: number;
         focus: string;
-        tasks: { task: string; duration: string; technique: string; completed?: boolean }[];
+        tasks: { id?: string; task: string; duration: string; technique: string; completed?: boolean }[];
         resources: string[];
     }[];
     tips: string[];
@@ -41,10 +41,11 @@ const normalizeStudyPlanForDisplay = (raw: any, goal: string, durationDays: numb
     const schedule = rawDays.map((entry: any, index: number) => {
         const tasksRaw = Array.isArray(entry?.tasks) ? entry.tasks : [];
         const tasks = tasksRaw.map((task: any, taskIndex: number) => ({
+            id: task?._id || task?.id || taskIndex.toString(),
             task: String(task?.task || task?.title || `Task ${taskIndex + 1}`),
             duration: String(task?.duration || '45 min'),
             technique: String(task?.technique || inferTechniqueFromType(task?.type)),
-            completed: false
+            completed: task?.completed || false
         }));
 
         const resources = Array.isArray(entry?.resources)
@@ -215,7 +216,8 @@ const StudyPlan: React.FC = () => {
             // If we don't have taskId, we can try to pass the index or something. 
             // Let's refine the normalization first if needed.
             
-            await updateTaskCompletion(selectedCourseId, dayIndex, (taskIndex).toString(), newCompleted);
+            const taskId = currentTask.id || taskIndex.toString();
+            await updateTaskCompletion(selectedCourseId, dayIndex, taskId, newCompleted);
         } catch (error) {
             console.error("Failed to toggle task on server", error);
             showToast("Progress not saved. Check connection.", 'error');

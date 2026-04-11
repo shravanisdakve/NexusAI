@@ -566,8 +566,9 @@ async function* streamWithOllama(prompt, options = {}) {
  * Main unified generation function - IMPLEMENTS NVIDIA -> GROQ -> OPENROUTER -> GEMINI
  */
 async function generate(prompt, options = {}) {
-    // New Priority: Nvidia -> Groq -> Local Ollama -> OpenRouter -> Gemini (Last resort)
-    const fallbackChain = [PROVIDERS.NVIDIA, PROVIDERS.GROQ, PROVIDERS.OLLAMA, PROVIDERS.OPENROUTER, PROVIDERS.GEMINI];
+    // New Priority: Gemini -> Groq -> Nvidia -> OpenRouter -> Ollama (Local)
+    // Gemini is our most reliable provider with a pool of 5 keys.
+    const fallbackChain = [PROVIDERS.GEMINI, PROVIDERS.GROQ, PROVIDERS.NVIDIA, PROVIDERS.OPENROUTER, PROVIDERS.OLLAMA];
     let lastError = null;
 
     for (const provider of fallbackChain) {
@@ -576,6 +577,9 @@ async function generate(prompt, options = {}) {
         if (provider === PROVIDERS.GROQ && !process.env.GROQ_API_KEY) continue;
         if (provider === PROVIDERS.OPENROUTER && !process.env.OPENROUTER_API_KEY) continue;
         if (provider === PROVIDERS.GEMINI && !process.env.GEMINI_API_KEY) continue;
+        
+        // Skip Ollama in Cloud Run (Production)
+        if (provider === PROVIDERS.OLLAMA && process.env.NODE_ENV === 'production') continue;
 
         console.log(`[AIProvider] Attempting ${provider} for feature: ${options.feature || 'default'}`);
 
@@ -607,8 +611,8 @@ async function generate(prompt, options = {}) {
  * Main unified streaming function
  */
 async function* stream(prompt, options = {}) {
-    // New Priority: Nvidia -> Groq -> Local Ollama -> OpenRouter -> Gemini (Last resort)
-    const fallbackChain = [PROVIDERS.NVIDIA, PROVIDERS.GROQ, PROVIDERS.OLLAMA, PROVIDERS.OPENROUTER, PROVIDERS.GEMINI];
+    // New Priority: Gemini -> Groq -> Nvidia -> OpenRouter -> Ollama
+    const fallbackChain = [PROVIDERS.GEMINI, PROVIDERS.GROQ, PROVIDERS.NVIDIA, PROVIDERS.OPENROUTER, PROVIDERS.OLLAMA];
     let lastError = null;
     let anySuccess = false;
 
@@ -618,6 +622,8 @@ async function* stream(prompt, options = {}) {
         if (provider === PROVIDERS.GROQ && !process.env.GROQ_API_KEY) continue;
         if (provider === PROVIDERS.OPENROUTER && !process.env.OPENROUTER_API_KEY) continue;
         if (provider === PROVIDERS.GEMINI && !process.env.GEMINI_API_KEY) continue;
+
+        if (provider === PROVIDERS.OLLAMA && process.env.NODE_ENV === 'production') continue;
 
         console.log(`[AIProvider] Attempting stream with ${provider} for feature: ${options.feature || 'default'}`);
 
@@ -679,6 +685,8 @@ module.exports = {
     stream,
     getProviderForFeature,
     getAvailableProviders,
+    generateWithGemini,
+    streamWithGemini,
     generateWithGroq,
     streamWithGroq,
     extractTextWithGroqVision,

@@ -178,7 +178,7 @@ const MockPaperGenerator: React.FC = () => {
                                 <div className="mb-10 font-sans text-xs">
                                     <h4 className="font-black underline mb-3 text-[13px]">INSTRUCTIONS TO CANDIDATES:</h4>
                                     <ul className="space-y-1.5 opacity-80">
-                                        {paper.instructions.map((inst, i) => (
+                                        {(paper.instructions || []).map((inst, i) => (
                                             <li key={i} className="flex gap-2">
                                                 <span className="font-bold">{i+1}.</span>
                                                 <span className="leading-relaxed">{inst}</span>
@@ -188,7 +188,7 @@ const MockPaperGenerator: React.FC = () => {
                                 </div>
 
                                 <div className="space-y-12">
-                                    {paper.questions.map((q, idx) => (
+                                    {(paper.questions || []).map((q, idx) => (
                                         <div key={idx} className="relative">
                                             <div className="flex justify-between items-start mb-6 border-b border-slate-100 pb-2">
                                                 <h3 className="font-black text-xl flex items-baseline gap-2">
