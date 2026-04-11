@@ -21,7 +21,7 @@ export const PageLayout: React.FC<PageLayoutProps> = ({
 }) => {
     return (
         <div className={`w-full min-w-0 min-h-0 ${containerClassName}`}>
-            <div className="page-grid min-h-full w-full">
+            <div className="page-grid h-full min-h-0 w-full">
                 {/* Main Content Pane */}
                 <main className={`p-4 sm:p-6 lg:p-8 min-w-0 min-h-0 flex flex-col ${mainClassName}`}>
                     {main}

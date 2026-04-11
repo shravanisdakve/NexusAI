@@ -1,5 +1,5 @@
-import React, { useRef, useEffect, useState, useCallback } from 'react';
-import { io, Socket } from 'socket.io-client';
+import React, { useRef, useEffect, useState } from 'react';
+import { subscribeToDraw, emitDraw, getSocket } from '../services/communityService';
 import { Eraser, Pencil, Trash2, Download } from 'lucide-react';
 import { Button } from './ui';
 
@@ -9,19 +9,16 @@ interface WhiteboardProps {
 
 const Whiteboard: React.FC<WhiteboardProps> = ({ roomId }) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
-    const socketRef = useRef<Socket | null>(null);
     const [isDrawing, setIsDrawing] = useState(false);
     const [color, setColor] = useState('#8b5cf6'); // Violet 500
     const [lineWidth, setLineWidth] = useState(3);
     const [tool, setTool] = useState<'pencil' | 'eraser'>('pencil');
     const lastPos = useRef<{ x: number; y: number } | null>(null);
 
-    // Initialize Socket
+    // Initialize Socket Subscription via communityService
     useEffect(() => {
-        socketRef.current = io(import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000');
-        socketRef.current.emit('join-room', roomId);
-
-        socketRef.current.on('draw', (data: any) => {
+        const unsubscribe = subscribeToDraw((data: any) => {
+            if (data.roomId !== roomId) return;
             const canvas = canvasRef.current;
             if (!canvas) return;
             const ctx = canvas.getContext('2d');
@@ -38,15 +35,18 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ roomId }) => {
             ctx.stroke();
         });
 
-        socketRef.current.on('clear-whiteboard', () => {
+        const socket = getSocket();
+        const handleClear = () => {
             const canvas = canvasRef.current;
             if (!canvas) return;
             const ctx = canvas.getContext('2d');
             ctx?.clearRect(0, 0, canvas.width, canvas.height);
-        });
+        };
+        socket?.on('clear-whiteboard', handleClear);
 
         return () => {
-            socketRef.current?.disconnect();
+            unsubscribe();
+            socket?.off('clear-whiteboard', handleClear);
         };
     }, [roomId]);
 
@@ -85,7 +85,7 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ roomId }) => {
 
         ctx.lineJoin = 'round';
         ctx.lineCap = 'round';
-        ctx.strokeStyle = tool === 'eraser' ? '#0f172a' : color; // Slate 900 for eraser
+        ctx.strokeStyle = tool === 'eraser' ? '#0f172a' : color; 
         ctx.lineWidth = tool === 'eraser' ? 20 : lineWidth;
 
         ctx.beginPath();
@@ -93,7 +93,7 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ roomId }) => {
         ctx.lineTo(x, y);
         ctx.stroke();
 
-        socketRef.current?.emit('draw', {
+        emitDraw({
             roomId,
             x0: lastPos.current.x,
             y0: lastPos.current.y,
@@ -116,7 +116,7 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ roomId }) => {
         if (!canvas) return;
         const ctx = canvas.getContext('2d');
         ctx?.clearRect(0, 0, canvas.width, canvas.height);
-        socketRef.current?.emit('clear-whiteboard', roomId);
+        getSocket()?.emit('clear-whiteboard', roomId);
     };
 
     const downloadCanvas = () => {
