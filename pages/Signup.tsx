@@ -114,7 +114,7 @@ const Signup: React.FC = () => {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
-        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
             <label htmlFor="displayName" className="block text-sm font-medium text-slate-300 mb-2">{t('signup.fullName')}</label>
             <Input
               id="displayName"
