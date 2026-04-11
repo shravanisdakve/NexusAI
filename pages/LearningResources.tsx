@@ -345,7 +345,7 @@ const getEmbedUrl = (url: string) => {
     return id ? `https://www.youtube.com/embed/${id}` : null;
 };
 
-const VideoThumbnail: React.FC<{ youtubeUrl: string, title: string, duration?: string }> = ({ youtubeUrl, title, duration }) => {
+const VideoThumbnail: React.FC<{ youtubeUrl: string, title: string, duration?: string, className?: string }> = ({ youtubeUrl, title, duration, className }) => {
     const [error, setError] = React.useState(false);
 
     // Extract ID for thumbnail
@@ -363,12 +363,13 @@ const VideoThumbnail: React.FC<{ youtubeUrl: string, title: string, duration?: s
     );
 
     return (
-        <div className="relative aspect-video bg-slate-900 overflow-hidden">
+        <div className={`relative bg-slate-900 overflow-hidden ${className || 'aspect-video'}`}>
             {!error ? (
                 <img
                     src={thumbUrl}
                     alt={title}
-                    className="w-full aspect-video object-cover transition-transform duration-500 group-hover:scale-110"
+                    loading="lazy"
+                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                     onError={() => {
                         if (thumbUrl.includes('/0.jpg')) {
                             // Fallback to hqdefault as second best
@@ -453,14 +454,14 @@ const LearningResources: React.FC = () => {
                 {recommendations.map(video => (
                     <div
                         key={video.id}
-                        className="flex-shrink-0 w-72 group cursor-pointer"
+                        className="flex-shrink-0 w-[240px] group cursor-pointer"
                         onClick={() => setPlayingVideo(video)}
                     >
                         <div className="relative rounded-xl overflow-hidden border border-white/[0.06] bg-slate-900/50 group-hover:border-violet-500/30 transition-all duration-300">
-                            <VideoThumbnail youtubeUrl={video.youtubeUrl} title={video.title} duration={video.duration} />
-                            <div className="p-4">
-                                <span className="text-[11px] font-medium uppercase tracking-widest text-violet-400 mb-1.5 block">{video.difficulty}</span>
-                                <h4 className="text-sm font-semibold text-slate-200 line-clamp-1 group-hover:text-white transition-colors">{video.title}</h4>
+                            <VideoThumbnail youtubeUrl={video.youtubeUrl} title={video.title} duration={video.duration} className="h-[140px] w-full" />
+                            <div className="p-[10px]">
+                                <span className="text-[10px] font-bold uppercase tracking-widest text-violet-400 mb-1 block">{video.difficulty}</span>
+                                <h4 className="text-[13px] font-semibold text-slate-200 line-clamp-1 group-hover:text-white transition-colors">{video.title}</h4>
                             </div>
                         </div>
                     </div>
@@ -498,12 +499,12 @@ const LearningResources: React.FC = () => {
             {/* Filters */}
             <div className="flex items-center justify-between px-1">
                 <div className="flex items-center gap-2">
-                    <div className="p-1 bg-slate-900/60 rounded-lg border border-white/[0.05] flex items-center gap-1">
+                    <div className="flex h-[36px] bg-slate-900/60 rounded-lg border border-white/[0.05] items-center px-1">
                         {['all', 'Beginner', 'Intermediate', 'Advanced'].map(d => (
                             <button
                                 key={d}
                                 onClick={() => setFilterDifficulty(d)}
-                                className={`px-4 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-widest transition-all ${filterDifficulty === d
+                                className={`px-4 py-1.5 rounded-md text-[12px] font-bold transition-all h-[28px] flex items-center ${filterDifficulty === d
                                     ? 'bg-violet-600 text-white shadow-md'
                                     : 'text-slate-500 hover:text-slate-300'
                                     }`}
@@ -568,25 +569,25 @@ const LearningResources: React.FC = () => {
                                 <p className="text-slate-500 text-[11px] font-medium uppercase tracking-widest">No resources found in this filter.</p>
                             </div>
                         ) : (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-4">
                                 {filteredVideos.map(video => (
                                     <button
                                         key={video.id}
                                         onClick={() => setPlayingVideo(video)}
-                                        className="group text-left rounded-2xl overflow-hidden border border-white/[0.06] bg-slate-900/40 hover:bg-slate-800/80 hover:border-violet-500/30 transition-all duration-300 hover:-translate-y-1"
+                                        className="group text-left rounded-xl overflow-hidden border border-white/[0.06] bg-slate-900/40 hover:bg-slate-800/80 transition-all duration-300 hover:-translate-y-[2px] flex flex-col h-full"
                                     >
-                                        <div className="relative">
-                                            <VideoThumbnail youtubeUrl={video.youtubeUrl} title={video.title} duration={video.duration} />
-                                            <div className={`absolute top-3 left-3 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-tight z-10 shadow-lg ${
+                                        <div className="relative w-full">
+                                            <VideoThumbnail youtubeUrl={video.youtubeUrl} title={video.title} duration={video.duration} className="h-[120px] w-full" />
+                                            <div className={`absolute top-2 left-2 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-tight z-10 shadow-lg ${
                                                 video.difficulty === 'Beginner' ? 'bg-emerald-500 text-white' :
                                                 video.difficulty === 'Intermediate' ? 'bg-amber-500 text-white' :
                                                 'bg-rose-500 text-white'
                                             }`}>{video.difficulty}</div>
                                         </div>
-                                        <div className="p-4">
-                                            <h4 className="font-semibold text-slate-200 text-sm line-clamp-2 group-hover:text-white transition-colors leading-snug">{video.title}</h4>
-                                            <div className="flex items-center justify-between mt-4">
-                                                <span className="text-[11px] text-slate-500 font-medium truncate pr-2">{video.channel}</span>
+                                        <div className="p-3 flex flex-col flex-1">
+                                            <h4 className="font-semibold text-slate-200 text-[14px] line-clamp-2 transition-colors leading-snug">{video.title}</h4>
+                                            <div className="flex items-center justify-between mt-auto pt-3">
+                                                <span className="text-[12px] text-slate-500 font-medium truncate pr-2">{video.channel}</span>
                                                 <div className="flex items-center gap-1 text-slate-500 shrink-0">
                                                     <Clock size={11} />
                                                     <span className="text-[10px] font-mono">{video.duration}</span>
