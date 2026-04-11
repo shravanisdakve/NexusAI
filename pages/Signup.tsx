@@ -18,9 +18,6 @@ const Signup: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [college, setCollege] = useState(personalizationData.college || '');
-  const [branch, setBranch] = useState(personalizationData.branch || '');
-  const [year, setYear] = useState(personalizationData.year ? personalizationData.year.replace(/\D/g, '') : '');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
@@ -29,39 +26,17 @@ const Signup: React.FC = () => {
     email: '',
     password: '',
     confirmPassword: '',
-    college: '',
-    branch: '',
-    year: '',
-    terms: '',
-  });
-
-  const validateForm = () => {
     const newErrors = {
       displayName: '',
       email: '',
       password: '',
       confirmPassword: '',
-      college: '',
-      branch: '',
-      year: '',
       terms: '',
     };
     let isValid = true;
 
     if (displayName.trim().length < 2) {
       newErrors.displayName = t('signup.error.nameMin');
-      isValid = false;
-    }
-    if (college.trim().length < 2) {
-      newErrors.college = t('signup.error.collegeRequired');
-      isValid = false;
-    }
-    if (!branch) {
-      newErrors.branch = t('signup.error.branchRequired');
-      isValid = false;
-    }
-    if (!year) {
-      newErrors.year = t('signup.error.yearRequired');
       isValid = false;
     }
     if (!/\S+@\S+\.\S+/.test(email)) {
@@ -99,9 +74,9 @@ const Signup: React.FC = () => {
         displayName,
         email,
         password,
-        college,
-        branch,
-        parseInt(year, 10),
+        personalizationData.college || 'Not Provided',
+        personalizationData.branch || 'Not Provided',
+        parseInt(personalizationData.year?.replace(/\D/g, '') || '1', 10),
         personalizationData
       );
       navigate('/');
@@ -135,16 +110,7 @@ const Signup: React.FC = () => {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {Object.keys(personalizationData).length > 0 && (
-            <div className="bg-violet-500/10 border border-violet-500/30 rounded-lg p-3 flex justify-between items-center mb-4">
-              <span className="text-sm text-violet-300">{t('signup.personalizedSettings')}</span>
-              <Link to="/personalization" className="text-xs text-white bg-violet-600 px-2 py-1 rounded hover:bg-violet-700 transition-colors">
-                {t('signup.edit')}
-              </Link>
-            </div>
-          )}
-
-          <div>
+        <form onSubmit={handleSubmit} className="space-y-4">
             <label htmlFor="displayName" className="block text-sm font-medium text-slate-300 mb-2">{t('signup.fullName')}</label>
             <Input
               id="displayName"
@@ -158,69 +124,6 @@ const Signup: React.FC = () => {
               disabled={loading}
             />
             {errors.displayName && <p className="text-red-400 text-xs mt-1">{errors.displayName}</p>}
-          </div>
-
-          <div>
-            <label htmlFor="college" className="block text-sm font-medium text-slate-300 mb-2">{t('signup.college')}</label>
-            <Input
-              id="college"
-              name="college"
-              type="text"
-              autoComplete="organization"
-              value={college}
-              onChange={(e) => setCollege(e.target.value)}
-              placeholder={t('signup.collegePlaceholder')}
-              required
-              disabled={loading || !!personalizationData.college}
-              className={personalizationData.college ? 'opacity-70 cursor-not-allowed bg-slate-900 border-slate-700' : ''}
-            />
-            {errors.college && <p className="text-red-400 text-xs mt-1">{errors.college}</p>}
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="branch" className="block text-sm font-medium text-slate-300 mb-2">{t('signup.branch')}</label>
-              <Select
-                id="branch"
-                name="branch"
-                autoComplete="organization-level-2"
-                value={branch}
-                onChange={(e) => setBranch(e.target.value)}
-                required
-                disabled={loading || !!personalizationData.branch}
-                className={personalizationData.branch ? 'opacity-70 cursor-not-allowed bg-slate-900 border-slate-700' : ''}
-              >
-                <option value="">{t('signup.selectBranch')}</option>
-                <option value="CSE">{t('signup.branch.cse')}</option>
-                <option value="ECE">{t('signup.branch.ece')}</option>
-                <option value="ME">{t('signup.branch.me')}</option>
-                <option value="CE">{t('signup.branch.ce')}</option>
-                <option value="EE">{t('signup.branch.ee')}</option>
-                <option value="IT">{t('signup.branch.it')}</option>
-                <option value="Other">{t('signup.branch.other')}</option>
-              </Select>
-              {errors.branch && <p className="text-red-400 text-xs mt-1">{errors.branch}</p>}
-            </div>
-            <div>
-              <label htmlFor="year" className="block text-sm font-medium text-slate-300 mb-2">{t('signup.year')}</label>
-              <Select
-                id="year"
-                name="year"
-                autoComplete="organization-level-3"
-                value={year}
-                onChange={(e) => setYear(e.target.value)}
-                required
-                disabled={loading || !!personalizationData.year}
-                className={personalizationData.year ? 'opacity-70 cursor-not-allowed bg-slate-900 border-slate-700' : ''}
-              >
-                <option value="">{t('signup.selectYear')}</option>
-                <option value="1">{t('signup.year.1')}</option>
-                <option value="2">{t('signup.year.2')}</option>
-                <option value="3">{t('signup.year.3')}</option>
-                <option value="4">{t('signup.year.4')}</option>
-              </Select>
-              {errors.year && <p className="text-red-400 text-xs mt-1">{errors.year}</p>}
-            </div>
           </div>
 
           <div>
@@ -314,7 +217,7 @@ const Signup: React.FC = () => {
           <button
             type="submit"
             disabled={loading || !agreedToTerms}
-            className="w-full py-3 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg transition-colors flex items-center justify-center gap-2"
+            className="w-full h-[42px] bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 disabled:from-gray-700 disabled:to-gray-700 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-all flex items-center justify-center gap-2 shadow-lg shadow-purple-600/20"
           >
             {loading ? (
               <>

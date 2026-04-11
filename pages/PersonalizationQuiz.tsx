@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowRight, CheckCircle2 } from 'lucide-react';
+import { ArrowRight, CheckCircle2, Eye, BookOpen } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { getStates, getCities, getColleges } from '../data/colleges';
 
@@ -45,9 +45,9 @@ const PersonalizationQuiz: React.FC = () => {
     ];
 
     const styles = [
-        { id: 'visual', label: t('personalization.style.visual'), desc: t('personalization.style.visualDesc') },
-        { id: 'text', label: t('personalization.style.reading'), desc: t('personalization.style.readingDesc') },
-        { id: 'interactive', label: t('personalization.style.handsOn'), desc: t('personalization.style.handsOnDesc') },
+        { id: 'visual', label: t('personalization.style.visual'), desc: t('personalization.style.visualDesc'), icon: <Eye className="w-8 h-8 mb-2 opacity-50 relative z-10" /> },
+        { id: 'text', label: t('personalization.style.reading'), desc: t('personalization.style.readingDesc'), icon: <BookOpen className="w-8 h-8 mb-2 opacity-50 relative z-10" /> },
+        { id: 'interactive', label: t('personalization.style.handsOn'), desc: t('personalization.style.handsOnDesc'), icon: <CheckCircle2 className="w-8 h-8 mb-2 opacity-50 relative z-10" /> },
     ];
 
     const states = useMemo(() => getStates(), []);
@@ -120,9 +120,15 @@ const PersonalizationQuiz: React.FC = () => {
                     </button>
                 </div>
 
-                <div className="w-full bg-slate-700/50 h-2 rounded-full mb-8 overflow-hidden">
+                <div className="flex justify-between text-[9px] uppercase font-bold text-slate-500 mb-2 px-1">
+                    <span className={step >= 0 ? "text-violet-400" : ""}>Step 1: Profile</span>
+                    <span className={step >= 1 ? "text-violet-400" : ""}>Step 2: Goals</span>
+                    <span className={step >= 2 ? "text-violet-400" : ""}>Step 3: Learning Style</span>
+                    <span className={step >= 3 ? "text-violet-400" : ""}>Step 4: Academic Context</span>
+                </div>
+                <div className="w-full bg-slate-700/50 h-1.5 rounded-full mb-8 overflow-hidden">
                     <motion.div
-                        className="h-full bg-gradient-to-r from-violet-500 to-fuchsia-500"
+                        className="h-full bg-gradient-to-r from-violet-500 to-fuchsia-500 rounded-full"
                         initial={{ width: 0 }}
                         animate={{ width: `${((step + 1) / 4) * 100}%` }}
                         transition={{ duration: 0.4 }}
@@ -144,7 +150,7 @@ const PersonalizationQuiz: React.FC = () => {
                                     <p className="text-slate-400 text-lg mt-2">{t('personalization.aboutYouSubtitle')}</p>
                                 </div>
 
-                                <div className="grid gap-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
                                         <label htmlFor="state-select" className="block text-sm font-medium text-slate-300 mb-1">{t('personalization.state')}</label>
                                         <select
@@ -235,7 +241,9 @@ const PersonalizationQuiz: React.FC = () => {
                                     <h2 className="text-3xl font-bold text-white">{t('personalization.goalsTitle')}</h2>
                                     <p className="text-slate-400 text-lg mt-2">{t('personalization.goalsSubtitle')}</p>
                                 </div>
-                                <p className="text-sm text-violet-400 font-medium text-right">{formData.learningGoals.length} {t('personalization.selected')}</p>
+                                <p className="text-sm text-violet-400 font-medium text-right mb-2">
+                                    {formData.learningGoals.length > 0 ? `${formData.learningGoals.length} ${t('personalization.selected')}` : 'Select at least 1 goal'}
+                                </p>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     {goals.map((goal) => (
                                         <button
@@ -246,8 +254,8 @@ const PersonalizationQuiz: React.FC = () => {
                                                 : 'border-slate-700 bg-slate-800/50 hover:border-slate-600'
                                                 }`}
                                         >
-                                            <h3 className="text-white font-bold mb-1">{goal.label}</h3>
-                                            <p className="text-slate-400 text-sm">{goal.desc}</p>
+                                            <h3 className="text-white font-bold mb-1 relative z-10">{goal.label}</h3>
+                                            <p className="text-slate-400 text-sm relative z-10">{goal.desc}</p>
                                             {formData.learningGoals.includes(goal.id) && (
                                                 <div className="absolute top-4 right-4 text-violet-500">
                                                     <CheckCircle2 size={20} />
@@ -275,8 +283,9 @@ const PersonalizationQuiz: React.FC = () => {
                                                 : 'border-slate-700 bg-slate-800/50 hover:border-slate-600'
                                                 }`}
                                         >
-                                            <h3 className="text-white font-bold mb-2">{style.label}</h3>
-                                            <p className="text-slate-400 text-sm">{style.desc}</p>
+                                            {style.icon}
+                                            <h3 className="text-white font-bold mb-2 relative z-10">{style.label}</h3>
+                                            <p className="text-slate-400 text-sm relative z-10">{style.desc}</p>
                                         </button>
                                     ))}
                                 </div>
@@ -290,53 +299,59 @@ const PersonalizationQuiz: React.FC = () => {
                                     <p className="text-slate-400 text-lg mt-2">{t('personalization.contextSubtitle')}</p>
                                 </div>
 
-                                <div className="grid gap-6">
-                                    <div>
-                                        <label htmlFor="target-exam-select" className="block text-sm font-medium text-slate-300 mb-2">{t('personalization.primaryTarget')}</label>
-                                        <select
-                                            id="target-exam-select"
-                                            name="targetExam"
-                                            className="w-full bg-slate-900/50 border border-slate-600 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-violet-500 outline-none"
-                                            value={formData.targetExam}
-                                            onChange={(e) => updateField('targetExam', e.target.value)}
-                                        >
-                                            <option value="Semester Exams">Semester Exams</option>
-                                            <option value="GATE">GATE</option>
-                                            <option value="Placements">Placements</option>
-                                            <option value="GRE/CAT">GRE/CAT</option>
-                                            <option value="None">None</option>
-                                        </select>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="space-y-4">
+                                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest border-b border-white/5 pb-2">Academic Target</p>
+                                        <div>
+                                            <label htmlFor="target-exam-select" className="block text-sm font-medium text-slate-300 mb-2">{t('personalization.primaryTarget')}</label>
+                                            <select
+                                                id="target-exam-select"
+                                                name="targetExam"
+                                                className="w-full bg-slate-900/50 border border-slate-600 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-violet-500 outline-none"
+                                                value={formData.targetExam}
+                                                onChange={(e) => updateField('targetExam', e.target.value)}
+                                            >
+                                                <option value="Semester Exams">Semester Exams</option>
+                                                <option value="GATE">GATE</option>
+                                                <option value="Placements">Placements</option>
+                                                <option value="GRE/CAT">GRE/CAT</option>
+                                                <option value="None">None</option>
+                                            </select>
+                                        </div>
                                     </div>
 
-                                    <div>
-                                        <label htmlFor="minor-degree-select" className="block text-sm font-medium text-slate-300 mb-2">{t('personalization.minorDegree')}</label>
-                                        <select
-                                            id="minor-degree-select"
-                                            name="minorDegree"
-                                            className="w-full bg-slate-900/50 border border-slate-600 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-violet-500 outline-none"
-                                            value={formData.minorDegree}
-                                            onChange={(e) => updateField('minorDegree', e.target.value)}
-                                        >
-                                            <option value="None">None</option>
-                                            <option value="AI/ML">AI/ML</option>
-                                            <option value="Data Science">Data Science</option>
-                                            <option value="Cyber Security">Cyber Security</option>
-                                            <option value="Blockchain">Blockchain</option>
-                                            <option value="IoT">IoT</option>
-                                        </select>
-                                    </div>
+                                    <div className="space-y-4">
+                                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest border-b border-white/5 pb-2">Additional Info</p>
+                                        <div>
+                                            <label htmlFor="minor-degree-select" className="block text-sm font-medium text-slate-300 mb-2">{t('personalization.minorDegree')}</label>
+                                            <select
+                                                id="minor-degree-select"
+                                                name="minorDegree"
+                                                className="w-full bg-slate-900/50 border border-slate-600 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-violet-500 outline-none"
+                                                value={formData.minorDegree}
+                                                onChange={(e) => updateField('minorDegree', e.target.value)}
+                                            >
+                                                <option value="None">None</option>
+                                                <option value="AI/ML">AI/ML</option>
+                                                <option value="Data Science">Data Science</option>
+                                                <option value="Cyber Security">Cyber Security</option>
+                                                <option value="Blockchain">Blockchain</option>
+                                                <option value="IoT">IoT</option>
+                                            </select>
+                                        </div>
 
-                                    <div>
-                                        <label htmlFor="backlogs-input" className="block text-sm font-medium text-slate-300 mb-2">{t('personalization.backlogs')}</label>
-                                        <input
-                                            id="backlogs-input"
-                                            name="backlogs"
-                                            type="number"
-                                            min={0}
-                                            className="w-full bg-slate-900/50 border border-slate-600 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-violet-500 outline-none"
-                                            value={formData.backlogs}
-                                            onChange={(e) => updateField('backlogs', parseInt(e.target.value, 10) || 0)}
-                                        />
+                                        <div>
+                                            <label htmlFor="backlogs-input" className="block text-sm font-medium text-slate-300 mb-2">{t('personalization.backlogs')}</label>
+                                            <input
+                                                id="backlogs-input"
+                                                name="backlogs"
+                                                type="number"
+                                                min={0}
+                                                className="w-full bg-slate-900/50 border border-slate-600 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-violet-500 outline-none"
+                                                value={formData.backlogs}
+                                                onChange={(e) => updateField('backlogs', parseInt(e.target.value, 10) || 0)}
+                                            />
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -344,13 +359,14 @@ const PersonalizationQuiz: React.FC = () => {
                     </motion.div>
                 </AnimatePresence>
 
-                <div className="mt-12 flex justify-end">
+                <div className="mt-12 flex justify-end items-center gap-4">
+                    {!isStepValid() && <span className="text-[11px] text-rose-400 font-bold tracking-widest uppercase">Fill required details</span>}
                     <button
                         onClick={handleNext}
                         disabled={!isStepValid()}
                         className={`group flex items-center gap-2 px-8 py-3 rounded-xl font-bold transition-all ${isStepValid()
-                            ? 'bg-white text-slate-900 hover:shadow-[0_0_20px_rgba(255,255,255,0.3)]'
-                            : 'bg-slate-700 text-slate-500 cursor-not-allowed'
+                            ? 'bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white shadow-lg shadow-violet-500/20 hover:scale-[1.02]'
+                            : 'bg-slate-800 text-slate-500 cursor-not-allowed'
                             }`}
                     >
                         {step === 3 ? t('personalization.finishAndSignup') : t('personalization.nextStep')}

@@ -48,45 +48,60 @@ const ForgotPassword: React.FC = () => {
             </div>
           )}
 
-          {message && (
-            <div className="p-3 bg-green-500/10 border border-green-500/50 rounded-lg">
-              <p className="text-green-400 text-sm">{message}</p>
+          {message ? (
+            <div className="text-center space-y-4">
+              <div className="p-4 bg-green-500/10 border border-green-500/30 rounded-lg">
+                <p className="text-green-400 font-medium">✅ Reset link sent</p>
+                <p className="text-slate-400 text-sm mt-1">Check your email ({email})</p>
+              </div>
+              <div className="space-y-2">
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full py-2 bg-transparent border border-gray-700 hover:bg-gray-800 text-white font-semibold rounded-lg transition-all text-sm"
+                >
+                  {loading ? 'Resending...' : 'Resend'}
+                </button>
+                <Link to="/login" className="block w-full py-2 bg-purple-600 hover:bg-purple-500 text-white font-semibold rounded-lg text-center transition-all shadow-lg text-sm">
+                  Back to login
+                </Link>
+              </div>
             </div>
+          ) : (
+            <>
+              <div>
+                <label htmlFor="email" className="block text-gray-300 text-sm mb-2">{t('login.email')}</label>
+                <input
+                  id="email"
+                  name="email"
+                  type="email"
+                  autoComplete="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder={t('login.emailPlaceholder')}
+                  className="w-full px-4 h-10 bg-[#0a0f1e] border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-purple-500"
+                  required
+                  autoFocus
+                  disabled={loading}
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading || !email.includes('@')}
+                className="w-full h-[42px] bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 disabled:from-gray-700 disabled:to-gray-700 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-all flex items-center justify-center gap-2 shadow-lg shadow-purple-600/20"
+              >
+                {loading ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <span>{t('forgot.sending')}</span>
+                  </>
+                ) : (
+                  t('forgot.send')
+                )}
+              </button>
+            </>
           )}
-
-          <div>
-            <label htmlFor="email" className="block text-gray-300 text-sm mb-2">{t('login.email')}</label>
-            <input
-              id="email"
-              name="email"
-              type="email"
-              autoComplete="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder={t('login.emailPlaceholder')}
-              className="w-full px-4 py-3 bg-[#0a0f1e] border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-purple-500"
-              required
-              disabled={loading}
-            />
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-3 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-700 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-all flex items-center justify-center gap-2"
-          >
-            {loading ? (
-              <>
-                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                <span>{t('forgot.sending')}</span>
-              </>
-            ) : (
-              t('forgot.send')
-            )}
-          </button>
-        </form>
-
-        <p className="text-center text-gray-400 mt-6 text-sm">
           {t('forgot.remember')}{' '}
           <Link to="/login" className="text-purple-400 hover:underline">
             {t('forgot.backToLogin')}
