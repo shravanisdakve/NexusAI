@@ -82,7 +82,7 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
         </div>
         <main className="flex-1 flex flex-col relative w-full h-screen overflow-hidden z-20">
           <Header />
-          <div className="flex-1 relative overflow-hidden">
+          <div className="flex-1 relative overflow-y-auto no-scrollbar min-w-0 min-h-0">
             {children}
           </div>
         </main>

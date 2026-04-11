@@ -20,17 +20,19 @@ export const PageLayout: React.FC<PageLayoutProps> = ({
     containerClassName = ""
 }) => {
     return (
-        <div className={`h-full w-full overflow-hidden relative ${containerClassName}`}>
-            <div className="page-grid h-full w-full">
+        <div className={`w-full min-w-0 min-h-0 ${containerClassName}`}>
+            <div className="page-grid min-h-full w-full">
                 {/* Main Content Pane */}
-                <main className={`scroll-region p-4 sm:p-6 lg:p-8 ${mainClassName}`}>
+                <main className={`p-4 sm:p-6 lg:p-8 min-w-0 min-h-0 flex flex-col ${mainClassName}`}>
                     {main}
                 </main>
 
                 {/* Secondary Side Rail */}
                 {side && (
-                    <aside className={`hidden lg:block border-l border-white/5 bg-slate-900/20 scroll-region p-4 sm:p-6 lg:p-8 ${sideClassName}`}>
-                        {side}
+                    <aside className={`hidden lg:block border-l border-white/5 bg-slate-900/20 min-w-0 min-h-0 ${sideClassName}`}>
+                        <div className="sticky top-0 p-4 sm:p-6 lg:p-8">
+                            {side}
+                        </div>
                     </aside>
                 )}
             </div>
