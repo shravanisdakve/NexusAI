@@ -30,6 +30,8 @@ const ProfileMenu: React.FC<ProfileMenuProps> = ({ isOpen, onClose }) => {
 
     if (!user) return null;
 
+    const userActions = [
+
         { 
             label: 'View Profile', 
             icon: User, 
