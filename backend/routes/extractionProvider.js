@@ -310,6 +310,39 @@ router.post('/generateKnowledgeMap', async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+router.post('/generateMockPaper', async (req, res) => {
+    try {
+        const { branch, subject, year, semester } = req.body;
+        const p = `Generate a Mumbai University (MU) engineering mock exam paper.
+        Subject: ${subject}
+        Branch: ${branch}
+        Year/Sem: ${year}, ${semester}
+
+        Output EXACT JSON:
+        {
+          "subject": "string",
+          "time": "3 Hours",
+          "totalMarks": 80,
+          "instructions": ["string"],
+          "questions": [
+            {
+              "number": number,
+              "title": "string (e.g. Attempt any four)",
+              "totalMarks": number,
+              "subQuestions": [
+                { "text": "string (markdown allowed)", "marks": number }
+              ]
+            }
+          ]
+        }`;
+        const r = await aiProvider.generate(p, { feature: 'mockPaper', json: true });
+        const parsed = JSON.parse(r);
+        if (!parsed.questions) parsed.questions = [];
+        if (!parsed.instructions) parsed.instructions = [];
+        res.json({ paper: parsed });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 router.post('/generateFlashcards', async (req, res) => {
     try {
         const { context } = req.body;
@@ -352,32 +385,6 @@ router.post('/generateProjectIdeas', async (req, res) => {
         
         const r = await aiProvider.generate(prompt, { feature: 'projectIdeas', json: true });
         res.json({ ideas: r });
-    } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
-router.post('/generateMockPaper', async (req, res) => {
-    try {
-        const { branch, subject } = req.body;
-        const prompt = `Generate a comprehensive engineering exam mock question paper for Mumbai University.
-        Branch: ${branch}
-        Subject: ${subject}
-        Format: JSON
-        
-        The JSON should exactly have this structure:
-        {
-          "subject": "${subject}",
-          "duration": "3 Hours",
-          "totalMarks": 80,
-          "instructions": ["Q1 is compulsory", "Attempt any 3 from Q2 to Q6"],
-          "questions": [
-            {
-               "qNo": 1,
-               "subQuestions": [ { "id": "a", "text": "Question text", "marks": 5, "module": "1" } ]
-            }
-          ]
-        }`;
-        const r = await aiProvider.generate(prompt, { feature: 'mockPaper', json: true });
-        res.json({ paper: JSON.parse(r) });
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -457,35 +464,84 @@ Output ONLY valid JSON:
 
 router.post('/generatePersonalizedQuiz', async (req, res) => {
     try {
-        const result = await geminiService.generatePersonalizedQuiz(req.body);
-        if (!result) throw new Error('AI Engine failed to generate personalized quiz.');
-        res.json({ quiz: result });
-    } catch (e) { 
-        console.error(`[AI Quiz Error]: ${e.message}`);
-        res.status(500).json({ error: e.message }); 
-    }
+        const { weakTopics, targetExam, difficulty, questionCount } = req.body;
+        const p = `Generate a personalized MU academic quiz for a student struggling with: ${weakTopics}.
+        Target Exam: ${targetExam}
+        Difficulty: ${difficulty}
+        Count: ${questionCount}
+        
+        Output exact JSON:
+        {
+          "title": "string",
+          "recommendedTimeMinutes": number,
+          "questions": [
+            {
+              "id": "string",
+              "type": "mcq",
+              "topic": "string",
+              "question": "string",
+              "options": ["string", "string", "string", "string"],
+              "correctAnswer": "string (one of the options)",
+              "explanation": "string"
+            }
+          ]
+        }`;
+        const r = await aiProvider.generate(p, { feature: 'quiz', json: true });
+        const parsed = JSON.parse(r);
+        res.json({ quiz: parsed });
+    } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 router.post('/generateTimedChallenge', async (req, res) => {
     try {
-        const result = await geminiService.generateTimedChallenge(req.body);
-        if (!result) throw new Error('AI Engine failed to generate timed challenge.');
-        res.json({ challenge: result });
-    } catch (e) { 
-        console.error(`[AI Challenge Error]: ${e.message}`);
-        res.status(500).json({ error: e.message }); 
-    }
+        const { mode, weakTopics, timeAvailableMinutes } = req.body;
+        const p = `Generate a ${mode} timed academic challenge for topics: ${weakTopics}.
+        Time available: ${timeAvailableMinutes} minutes.
+        
+        Output exact JSON:
+        {
+          "mode": "${mode}",
+          "title": "string",
+          "description": "string",
+          "rules": ["string"],
+          "questions": [
+            {
+              "id": "string",
+              "type": "mcq",
+              "topic": "string",
+              "question": "string",
+              "options": ["string", "string", "string", "string"],
+              "correctAnswer": "string (exact match with option)",
+              "timeLimitSeconds": number (e.g. 15)
+            }
+          ]
+        }`;
+        const r = await aiProvider.generate(p, { feature: 'quiz', json: true });
+        const parsed = JSON.parse(r);
+        if (!parsed.questions) parsed.questions = [];
+        res.json({ challenge: parsed });
+    } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 router.post('/generateFlashcardChallenge', async (req, res) => {
     try {
-        const result = await geminiService.generateFlashcardChallenge(req.body);
-        if (!result) throw new Error('AI Engine failed to generate flashcard challenge.');
-        res.json({ data: result });
-    } catch (e) { 
-        console.error(`[AI Flashcard Error]: ${e.message}`);
-        res.status(500).json({ error: e.message }); 
-    }
+        const { weakTopics, count } = req.body;
+        const p = `Generate ${count} flashcards for: ${weakTopics}.
+        
+        Output exact JSON:
+        {
+          "title": "string",
+          "flashcards": [
+            { "id": "string", "topic": "string", "front": "string", "back": "string" }
+          ],
+          "errorFixItems": [
+            { "id": "string", "topic": "string", "brokenStatementOrCode": "string", "task": "string", "solution": "string" }
+          ]
+        }`;
+        const r = await aiProvider.generate(p, { feature: 'flashcards', json: true });
+        const parsed = JSON.parse(r);
+        res.json({ data: parsed });
+    } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 module.exports = router;

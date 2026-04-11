@@ -35,8 +35,24 @@ const AdaptiveChallengeInterface: React.FC<AdaptiveChallengeInterfaceProps> = ({
   const [streak, setStreak] = useState(0);
   const [maxStreak, setMaxStreak] = useState(0);
   const [showResults, setShowResults] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(challengeData.questions[0]?.timeLimitSeconds || 15);
+  const [timeLeft, setTimeLeft] = useState(15);
   const [isGameOver, setIsGameOver] = useState(false);
+
+  useEffect(() => {
+    if (challengeData?.questions?.[0]) {
+      setTimeLeft(challengeData.questions[0].timeLimitSeconds || 15);
+    }
+  }, [challengeData]);
+
+  if (!challengeData?.questions || challengeData.questions.length === 0) {
+    return (
+      <div className="p-12 text-center text-white bg-slate-900 rounded-3xl border border-white/5">
+        <h3 className="text-xl font-black mb-4">Incomplete Challenge Sequence</h3>
+        <p className="text-slate-400 mb-8">The AI generator failed to synthesize accurate technical challenges for this session.</p>
+        <Button onClick={onClose} className="bg-violet-600">Return to Hub</Button>
+      </div>
+    );
+  }
 
   const currentQ = challengeData.questions[currentIdx];
 

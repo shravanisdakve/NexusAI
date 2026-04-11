@@ -153,7 +153,19 @@ router.patch('/task', auth, async (req, res) => {
         const day = plan.days[dayIndex];
         if (!day) return res.status(404).json({ error: `Day at index ${dayIndex} not found in plan` });
 
-        const task = day.tasks.id(taskId);
+        // Flexible lookup: Try to find by _id first, then fallback to index
+        let task;
+        if (require('mongoose').Types.ObjectId.isValid(taskId)) {
+            task = day.tasks.id(taskId);
+        }
+        
+        if (!task) {
+            const idx = parseInt(taskId);
+            if (!isNaN(idx) && day.tasks[idx]) {
+                task = day.tasks[idx];
+            }
+        }
+
         if (!task) return res.status(404).json({ error: `Task ${taskId} not found` });
 
         task.completed = Boolean(completed);
@@ -213,7 +225,7 @@ router.post('/generate', auth, async (req, res) => {
             ]
         }`;
 
-        console.log(`[StudyPlan] Calling AI Provider...`);
+        console.log(`[StudyPlan] Calling AI Provider (Robust Generation Mode)...`);
         const result = await aiProvider.generate(prompt, {
             feature: 'studyPlan',
             json: true,
@@ -222,7 +234,6 @@ router.post('/generate', auth, async (req, res) => {
 
         if (!result) throw new Error('AI Provider returned empty result');
 
-        // Some providers might return an object already if they are configured with json: true.
         let responseText = result;
         if (typeof result !== 'string') {
             responseText = JSON.stringify(result);
