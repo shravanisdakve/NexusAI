@@ -26,6 +26,10 @@ const Signup: React.FC = () => {
     email: '',
     password: '',
     confirmPassword: '',
+    terms: '',
+  });
+
+  const validateForm = () => {
     const newErrors = {
       displayName: '',
       email: '',
