@@ -335,12 +335,12 @@ const CompanyProfiles: React.FC<CompanyProfilesProps> = ({ onSwitchToTab }) => {
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-4">
                         {filtered.map(company => (
                             <button
                                 key={company.name}
                                 onClick={() => setSelectedCompany(company)}
-                                className="p-4 rounded-2xl bg-slate-800/50 border border-slate-700/50 hover:border-slate-500 transition-all text-left group hover:scale-[1.01]"
+                                className="p-[14px] rounded-2xl bg-slate-800/50 border border-slate-700/50 hover:border-slate-500 transition-all text-left flex flex-col group hover:-translate-y-[2px]"
                             >
                                 <div className="flex items-center justify-between mb-3">
                                     <div className="flex items-center gap-3">
@@ -357,16 +357,18 @@ const CompanyProfiles: React.FC<CompanyProfilesProps> = ({ onSwitchToTab }) => {
                                     </span>
                                 </div>
 
-                                <div className="flex items-center justify-between text-xs mb-3">
-                                    <span className="text-slate-400 flex items-center gap-1 font-medium"><IndianRupee size={12} />{company.ctcRange.split(' – ')[0]}</span>
-                                    <span className="text-slate-500 flex items-center gap-1"><Clock size={12} />{company.testPattern.totalDuration.split(' ')[0]}m</span>
+                                <div className="flex items-center justify-between gap-2 mb-3 mt-1">
+                                    <span className="text-emerald-400 font-bold text-[13px] flex items-center gap-[2px] bg-emerald-500/10 px-2 py-0.5 rounded-lg border border-emerald-500/20">
+                                        <IndianRupee size={12} />{company.ctcRange.split(' – ')[0]} LPA
+                                    </span>
+                                    <span className="text-slate-500 text-[11px] flex items-center gap-1 font-medium"><Clock size={12} />{company.testPattern.totalDuration.split(' ')[0]}m</span>
                                 </div>
 
-                                <div className="flex flex-wrap gap-1">
+                                <div className="flex flex-wrap gap-1 mt-auto">
                                     {company.testPattern.sections.slice(0, 2).map(s => (
-                                        <span key={s.name} className="text-[10px] px-2 py-0.5 rounded bg-slate-900 text-slate-400 border border-slate-700/50">{s.name}</span>
+                                        <span key={s.name} className="text-[10px] px-1.5 py-0.5 rounded bg-slate-900 border border-slate-700 text-slate-500 font-medium">{s.name}</span>
                                     ))}
-                                    {company.testPattern.sections.length > 2 && <span className="text-[10px] px-2 py-0.5 rounded bg-slate-900 text-slate-500">+{company.testPattern.sections.length - 2}</span>}
+                                    {company.testPattern.sections.length > 2 && <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-900 text-slate-500 border border-slate-700 opacity-70">+{company.testPattern.sections.length - 2}</span>}
                                 </div>
 
                                 <div className="mt-4 flex items-center text-xs text-amber-400 group-hover:text-amber-300 transition-colors">
