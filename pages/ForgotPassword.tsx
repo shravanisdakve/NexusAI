@@ -102,6 +102,9 @@ const ForgotPassword: React.FC = () => {
               </button>
             </>
           )}
+        </form>
+
+        <p className="text-center text-gray-400 mt-6 text-sm">
           {t('forgot.remember')}{' '}
           <Link to="/login" className="text-purple-400 hover:underline">
             {t('forgot.backToLogin')}
