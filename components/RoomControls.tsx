@@ -52,7 +52,7 @@ const RoomControls: React.FC<RoomControlsProps> = ({
   return (
     <div className="bg-slate-950/85 backdrop-blur-xl px-2 sm:px-4 py-2 border-t border-white/10">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="flex items-center gap-2 pb-1 sm:pb-0">
           <Button
             onClick={onToggleMute}
             disabled={!mediaReady}
@@ -62,6 +62,8 @@ const RoomControls: React.FC<RoomControlsProps> = ({
           >
             {isMuted ? <MicOff size={18} /> : <Mic size={18} />}
           </Button>
+
+          <div className="w-[1px] h-6 bg-white/10 mx-1 hidden sm:block"></div>
 
           <Button
             onClick={onToggleCamera}
@@ -92,6 +94,8 @@ const RoomControls: React.FC<RoomControlsProps> = ({
             <Palette size={18} />
           </Button>
 
+          <div className="w-[1px] h-6 bg-white/10 mx-1"></div>
+
           <div className="relative">
             <Button
               onClick={() => setShowReactions(prev => !prev)}
@@ -102,7 +106,7 @@ const RoomControls: React.FC<RoomControlsProps> = ({
               <Smile size={18} />
             </Button>
             {showReactions && (
-              <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-slate-800 border border-slate-700 p-2 rounded-lg shadow-lg flex gap-1.5 z-30">
+              <div className="absolute bottom-full mb-3 left-0 bg-slate-900 border border-white/10 p-2 rounded-2xl shadow-2xl flex gap-1.5 z-[100] animate-in slide-in-from-bottom-2 duration-200">
                 {EMOJIS.map(emoji => (
                   <button
                     key={emoji}
@@ -110,7 +114,7 @@ const RoomControls: React.FC<RoomControlsProps> = ({
                       onReact(emoji);
                       setShowReactions(false);
                     }}
-                    className="text-xl p-1 hover:bg-slate-700 rounded transition-transform duration-100 hover:scale-110"
+                    className="text-xl p-2 hover:bg-white/5 rounded-xl transition-all hover:scale-125"
                   >
                     {emoji}
                   </button>

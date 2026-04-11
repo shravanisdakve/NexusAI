@@ -41,13 +41,16 @@ router.post('/streamChat', async (req, res) => {
     try {
         const { message, language } = req.body;
         console.log(`[StreamChat] Received request. Language: ${language}, Message length: ${message?.length}`);
-        let systemInstruction = 'You are an expert AI Tutor. Provide very precise, concise, and easy-to-understand answers. Avoid long, verbose explanations; instead, use short sentences and bullet points. Get straight to the point while remaining encouraging.';
-
-        if (language === 'mr') {
-            systemInstruction += ' IMPORTANT: Respond ONLY in MARATHI (मराठी).';
-        } else if (language === 'hi') {
-            systemInstruction += ' IMPORTANT: Respond ONLY in HINDI (हिंदी).';
-        }
+        let systemInstruction = `You are a professional AI Mentor for Mumbai University (MU) Engineering students. 
+        
+        STRICT RESPONSE FORMAT:
+        1. ACKNOWLEDGE (1 line): Validate the user.
+        2. EXPLAIN (2-3 lines): Explain the concept simply.
+        3. INTERACT (1 question): Ask one follow-up check question.
+        
+        NO ROBOTIC FILLERS. Focus: MU Rev-2019/2024 C-Scheme.`;
+        if (language === 'mr') systemInstruction += ' Respond ONLY in MARATHI (मराठी).';
+        else if (language === 'hi') systemInstruction += ' Respond ONLY in HINDI (हिंदी).';
 
         const model = getModel('gemini-2.0-flash', systemInstruction);
 
@@ -87,24 +90,17 @@ router.post('/streamStudyBuddyChat', async (req, res) => {
     try {
         const { message, notes, language } = req.body;
         console.log(`[StreamStudyBuddy] Language: ${language}, Notes length: ${notes?.length}`);
-        let systemInstruction = `You are an expert AI Study Buddy. 
-        
-        CONTEXT NOTES PROVIDED BY USER:
+        let systemInstruction = `You are a professional AI Study Buddy helping with notes:
         ---
         ${notes || 'No specific notes uploaded yet.'}
         ---
         
-        INSTRUCTIONS:
-        1. If relevant study notes are provided above, prioritize them for your answer.
-        2. If the answer is NOT in the notes or if NO notes are provided, use your extensive general knowledge to help the student.
-        3. Do NOT refuse to answer just because something isn't in the notes.
-        4. Keep your answers very concise, precise, and easy-to-understand. Use bullet points and focus on clarity for engineering students.`;
-
-        if (language === 'mr') {
-            systemInstruction += ' IMPORTANT: Respond ONLY in MARATHI (मराठी).';
-        } else if (language === 'hi') {
-            systemInstruction += ' IMPORTANT: Respond ONLY in HINDI (हिंदी).';
-        }
+        1-2-1 RULE:
+        - 1 line: Affirmation.
+        - 2 lines: Focus on notes.
+        - 1 line: Interaction question.`;
+        if (language === 'mr') systemInstruction += ' Respond ONLY in MARATHI (मराठी).';
+        else if (language === 'hi') systemInstruction += ' Respond ONLY in HINDI (हिंदी).';
 
         const model = getModel('gemini-2.0-flash', systemInstruction);
         const chat = model.startChat();

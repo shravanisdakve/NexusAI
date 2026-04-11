@@ -18,7 +18,7 @@ const ShareModal: React.FC<ShareModalProps> = ({ roomId, onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[200]" onClick={onClose}>
       <div className="bg-slate-800 rounded-lg p-6 w-full max-w-sm m-4 ring-1 ring-slate-700 animate-in fade-in-50 zoom-in-95" onClick={e => e.stopPropagation()}>
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-xl font-bold text-white">Share Room</h3>

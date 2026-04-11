@@ -37,7 +37,7 @@ import {
 import { streamStudyBuddyChat, generateQuizQuestion, extractTextFromFile, summarizeText, generateQuizSet } from '../services/geminiService';
 import { startSession, endSession, recordQuizResult } from '../services/analyticsService';
 // --- REMOVED Clock import here ---
-import { Bot, User, Send, MessageSquare, Users, Brain, UploadCloud, Lightbulb, FileText, Paperclip, FolderOpen, AlertTriangle, Info, Palette, Briefcase, X, Play, Pause, SkipForward, RotateCcw, Plus, Target } from 'lucide-react';
+import { Bot, User, Send, MessageSquare, Users, Brain, UploadCloud, Lightbulb, FileText, Paperclip, FolderOpen, AlertTriangle, Info, Palette, Briefcase, X, Play, Pause, SkipForward, RotateCcw, Plus, Target, Clock } from 'lucide-react';
 import { Input, Button, Textarea, Spinner, Modal } from '../components/ui';
 import { useToast } from '../contexts/ToastContext';
 import PdfUpload from '../components/quiz/PdfUpload';
@@ -184,6 +184,32 @@ const StudyRoom: React.FC = () => {
     const [sharedQuiz, setSharedQuiz] = useState<SharedQuiz | null>(null);
     const [showLeaderboard, setShowLeaderboard] = useState(false);
     const [typingUsers, setTypingUsers] = useState<string[]>([]);
+    const [phaseAlert, setPhaseAlert] = useState<{ title: string; subtitle: string; icon: any } | null>(null);
+    const prevPhaseLabelRef = useRef<string | null>(null);
+
+    const playZenChime = useCallback(() => {
+        try {
+            const context = new (window.AudioContext || (window as any).webkitAudioContext)();
+            const osc = context.createOscillator();
+            const gain = context.createGain();
+            
+            osc.connect(gain);
+            gain.connect(context.destination);
+            
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(523.25, context.currentTime); // C5
+            osc.frequency.exponentialRampToValueAtTime(1046.50, context.currentTime + 0.1); // C6
+            osc.frequency.exponentialRampToValueAtTime(783.99, context.currentTime + 0.4); // G5
+
+            gain.gain.setValueAtTime(0, context.currentTime);
+            gain.gain.linearRampToValueAtTime(0.3, context.currentTime + 0.1);
+            gain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + 3);
+
+            osc.start();
+            osc.stop(context.currentTime + 3);
+        } catch (e) { console.warn("Zen chime failed", e); }
+    }, []);
+
     const typingTimeoutRef = useRef<{ [key: string]: NodeJS.Timeout }>({});
 
     const [elapsedTime, setElapsedTime] = useState(0); // Time in seconds
@@ -501,6 +527,21 @@ const StudyRoom: React.FC = () => {
         }
     }, [room, postSystemMessage, language]);
 
+    useEffect(() => {
+        if (techniqueState?.phaseLabel && techniqueState.phaseLabel !== prevPhaseLabelRef.current) {
+            if (prevPhaseLabelRef.current !== null) {
+                playZenChime();
+                setPhaseAlert({
+                    title: techniqueState.phaseLabel,
+                    subtitle: techniqueState.phasePrompt || 'Time for the next stage of your study session.',
+                    icon: techniqueState.phaseLabel.includes('Break') ? Clock : Brain
+                });
+                setTimeout(() => setPhaseAlert(null), 5000);
+            }
+            prevPhaseLabelRef.current = techniqueState.phaseLabel;
+        }
+    }, [techniqueState?.phaseLabel, techniqueState?.phasePrompt, playZenChime]);
+
     useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [participantChatMessages]);
     useEffect(() => { aiChatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [aiMessages, sharedQuiz]);
 
@@ -621,10 +662,28 @@ const StudyRoom: React.FC = () => {
     const handleGenerateQuiz = async () => {
         if (!roomId) return;
         setIsAiLoading(true);
+        const toastId = showToast("Crafting a unique challenge for the room...", "info");
         try {
             const quizJson = await generateQuizQuestion(notes || room?.topic || 'General Studies', language);
-            await saveQuiz(roomId, JSON.parse(quizJson));
-        } finally { setIsAiLoading(true); }
+            
+            // Robust parsing for potentially wrapped JSON
+            let cleanJson = quizJson;
+            if (quizJson.includes('```json')) {
+                cleanJson = quizJson.split('```json')[1].split('```')[0].trim();
+            } else if (quizJson.includes('```')) {
+                cleanJson = quizJson.split('```')[1].split('```')[0].trim();
+            }
+
+            const parsed = JSON.parse(cleanJson);
+            await saveQuiz(roomId, parsed);
+            showToast("Quiz live! Everyone can see it now.", "success");
+            setActiveTab('tools'); // Switch to tools tab where quiz is usually managed
+        } catch (error) {
+            console.error("Quiz generation failed:", error);
+            showToast("Quiz engine reached a limit. Try adding more notes for context.", "error");
+        } finally {
+            setIsAiLoading(false);
+        }
     };
 
     const handleSummarizeNotes = async () => {
@@ -754,9 +813,45 @@ const StudyRoom: React.FC = () => {
                                         <Whiteboard roomId={roomId || ''} />
                                     </div>
                                 </div>
+                            ) : isScreenSharing ? (
+                                <div className="flex flex-col h-full gap-4 animate-in fade-in duration-500">
+                                    {/* Main Stage: Screen Share */}
+                                    <div className="flex-1 min-h-0 bg-slate-900 rounded-3xl border border-white/10 overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.5)] relative group/stage">
+                                        <VideoTile 
+                                            stream={localStream} 
+                                            displayName={currentUser?.displayName || 'You'} 
+                                            isMuted={isMuted} 
+                                            isLocal={true} 
+                                            isScreenSharing={true} 
+                                            className="w-full h-full aspect-auto" 
+                                        />
+                                        <div className="absolute top-4 left-4 z-40 bg-sky-500/20 backdrop-blur-md border border-sky-500/30 px-3 py-1.5 rounded-full flex items-center gap-2">
+                                            <div className="w-2 h-2 bg-sky-400 rounded-full animate-pulse" />
+                                            <span className="text-[10px] font-black text-sky-400 uppercase tracking-widest">Live Presentation</span>
+                                        </div>
+                                    </div>
+
+                                    {/* Participant Strip */}
+                                    <div className="h-28 flex gap-4 overflow-x-auto pb-2 scrollbar-hide shrink-0">
+                                        <div className="w-44 shrink-0">
+                                            <VideoTile 
+                                                stream={localStream} 
+                                                displayName="My Camera" 
+                                                isMuted={isMuted} 
+                                                isLocal={true} 
+                                                className="h-full border border-white/5 opacity-60 hover:opacity-100 transition-opacity" 
+                                            />
+                                        </div>
+                                        {participants.filter(p => p.email !== currentUser?.email).map(p => (
+                                            <div key={p.email} className="w-48 shrink-0">
+                                                <VideoTile displayName={p.displayName} isMuted={false} className="h-full" />
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
                             ) : (
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 h-full">
-                                    <VideoTile stream={localStream} displayName={currentUser?.displayName || 'You'} isMuted={isMuted} isLocal={true} isScreenSharing={isScreenSharing} />
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 h-full animate-in fade-in zoom-in-95 duration-500">
+                                    <VideoTile stream={localStream} displayName={currentUser?.displayName || 'You'} isMuted={isMuted} isLocal={true} isScreenSharing={false} />
                                     {participants.filter(p => p.email !== currentUser?.email).slice(0, 3).map(p => (
                                         <VideoTile key={p.email} displayName={p.displayName} isMuted={false} />
                                     ))}
@@ -790,8 +885,27 @@ const StudyRoom: React.FC = () => {
                 </div>
 
                 {sharedQuiz && (
-                    <div className="fixed inset-0 z-[100] bg-slate-950/90 flex items-center justify-center p-6 backdrop-blur-md">
+                    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[200]">
                         {showLeaderboard ? <Leaderboard quiz={sharedQuiz} participants={participants} onClear={handleClearQuiz} /> : <QuizDisplay quiz={sharedQuiz} onAnswer={handleAnswerQuiz} currentUser={currentUser} />}
+                    </div>
+                )}
+
+                {phaseAlert && (
+                    <div className="fixed inset-0 z-[300] flex items-center justify-center p-6 bg-slate-950/20 pointer-events-none">
+                        <div className="bg-slate-900/90 backdrop-blur-2xl border border-violet-500/30 p-8 rounded-[40px] shadow-[0_0_80px_rgba(139,92,246,0.3)] flex flex-col items-center text-center max-w-md animate-in zoom-in-95 fade-in duration-500 fill-mode-forwards relative overflow-hidden">
+                            <div className="absolute inset-0 bg-gradient-to-br from-violet-600/10 to-transparent pointer-none" />
+                            <div className="w-20 h-20 rounded-3xl bg-violet-600/20 border border-violet-500/30 flex items-center justify-center mb-6 relative">
+                                <div className="absolute inset-0 rounded-3xl bg-violet-500/20 animate-ping opacity-40" />
+                                <phaseAlert.icon size={40} className="text-violet-400 relative z-10" />
+                            </div>
+                            <h2 className="text-3xl font-black text-white uppercase tracking-[0.2em] mb-3">{phaseAlert.title}</h2>
+                            <p className="text-slate-400 font-medium leading-relaxed italic opacity-80">{phaseAlert.subtitle}</p>
+                            <div className="mt-8 flex items-center gap-4">
+                                <div className="h-[1px] w-12 bg-white/10" />
+                                <span className="text-[10px] font-black text-violet-500 uppercase tracking-widest">Phase Advanced</span>
+                                <div className="h-[1px] w-12 bg-white/10" />
+                            </div>
+                        </div>
                     </div>
                 )}
 
@@ -817,6 +931,13 @@ const StudyRoom: React.FC = () => {
                 >
                     <MusicPlayer visible={showMusicPlayer} onClose={() => setShowMusicPlayer(false)} />
                 </RoomControls>
+
+                {showShareModal && (
+                    <ShareModal 
+                        roomId={roomId || ''} 
+                        onClose={() => setShowShareModal(false)} 
+                    />
+                )}
             </div>
         </div>
     );

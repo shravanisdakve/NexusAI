@@ -7,9 +7,10 @@ interface VideoTileProps {
     isMuted: boolean;
     isLocal?: boolean;
     isScreenSharing?: boolean;
+    className?: string;
 }
 
-const VideoTile: React.FC<VideoTileProps> = ({ stream, displayName, isMuted, isLocal = false, isScreenSharing = false }) => {
+const VideoTile: React.FC<VideoTileProps> = ({ stream, displayName, isMuted, isLocal = false, isScreenSharing = false, className = '' }) => {
     const videoRef = useRef<HTMLVideoElement>(null);
 
     useEffect(() => {
@@ -19,7 +20,7 @@ const VideoTile: React.FC<VideoTileProps> = ({ stream, displayName, isMuted, isL
     }, [stream]);
 
     return (
-        <div className="relative bg-slate-800 rounded-lg overflow-hidden aspect-video flex items-center justify-center ring-2 ring-transparent has-[:focus-visible]:ring-violet-500">
+        <div className={`relative bg-slate-800 rounded-lg overflow-hidden flex items-center justify-center ring-2 ring-transparent has-[:focus-visible]:ring-violet-500 ${!className.includes('aspect-') ? 'aspect-video' : ''} ${className}`}>
             {stream && (
                 <>
                     <video

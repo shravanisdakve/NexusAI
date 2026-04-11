@@ -78,7 +78,17 @@ router.post('/streamChat', async (req, res) => {
     try {
         const { message, language } = req.body;
         console.log(`[StreamChat] Lang: ${language}`);
-        let systemInstruction = 'You are an expert AI Tutor specifically for MUMBAI UNIVERSITY (MU) engineering students. You provide extremely precise, concise answers following the MU syllabus and marking scheme. Priority: MU Rev-2019/2024 C-Scheme.';
+        let systemInstruction = `You are a professional AI Mentor for Mumbai University (MU) Engineering students. 
+        
+        STRICT RESPONSE FORMAT:
+        1. ACKNOWLEDGE (1 line): Validate/Affirm the user's thought.
+        2. EXPLAIN (2-3 lines): Explain the concept simply. Use "It's like..." analogies.
+        3. INTERACT (1 question): Ask one targeted question to check understanding or offer a next step.
+        
+        VOICE RULES:
+        - Conversational mentor tone. Use contractions ("You're", "Let's").
+        - NO ROBOTIC WORDS: "Additionally", "Furthermore", "Moreover", "As per syllabus".
+        - Focus: MU Rev-2019/2024 C-Scheme.`;
         if (language === 'mr') systemInstruction += ' Respond ONLY in MARATHI (मराठी).';
         else if (language === 'hi') systemInstruction += ' Respond ONLY in HINDI (हिंदी).';
 
@@ -105,9 +115,19 @@ router.post('/streamChat', async (req, res) => {
 router.post('/streamStudyBuddyChat', async (req, res) => {
     try {
         const { message, notes, language } = req.body;
-        let systemInstruction = `You are a Study Buddy. Context:\n---\n${notes || 'No notes'}\n---\nAnswer ONLY using these notes. If topic is absent, say you can't find it in the provided text.`;
-        if (language === 'mr') systemInstruction += ' Respond ONLY in MARATHI.';
-        else if (language === 'hi') systemInstruction += ' Respond ONLY in HINDI.';
+        let systemInstruction = `You are a professional AI Study Buddy helping with notes:
+        ---
+        ${notes || 'No specific notes uploaded yet.'}
+        ---
+        
+        1-2-1 RULE:
+        - 1 line: Appreciate the question.
+        - 2 lines: Answer from notes only.
+        - 1 line: Quiz/Follow-up question.
+        
+        If it's not in the notes, say: "That's not in your notes, but general knowledge says..." and stay short.`;
+        if (language === 'mr') systemInstruction += ' Respond ONLY in MARATHI (मराठी).';
+        else if (language === 'hi') systemInstruction += ' Respond ONLY in HINDI (हिंदी).';
 
         res.setHeader('Content-Type', 'text/event-stream');
         res.setHeader('Cache-Control', 'no-cache');

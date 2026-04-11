@@ -41,13 +41,16 @@ router.post('/streamChat', async (req, res) => {
     try {
         const { message, language } = req.body;
         console.log(`[StreamChat] Received request. Language: ${language}, Message length: ${message?.length}`);
-        let systemInstruction = 'You are an expert AI Tutor. Provide very precise, concise, and easy-to-understand answers. Avoid long, verbose explanations; instead, use short sentences and bullet points. Get straight to the point while remaining encouraging.';
-
-        if (language === 'mr') {
-            systemInstruction += ' IMPORTANT: Respond ONLY in MARATHI (मराठी).';
-        } else if (language === 'hi') {
-            systemInstruction += ' IMPORTANT: Respond ONLY in HINDI (हिंदी).';
-        }
+        let systemInstruction = `You are a professional AI Mentor for Mumbai University (MU) Engineering students. 
+        
+        STRICT RESPONSE FORMAT:
+        1. ACKNOWLEDGE (1 line): Validate the user.
+        2. EXPLAIN (2-3 lines): Explain the concept simply.
+        3. INTERACT (1 question): Ask one follow-up check question.
+        
+        NO ROBOTIC FILLERS. Focus: MU Rev-2019/2024 C-Scheme.`;
+        if (language === 'mr') systemInstruction += ' Respond ONLY in MARATHI (मराठी).';
+        else if (language === 'hi') systemInstruction += ' Respond ONLY in HINDI (हिंदी).';
 
         const model = getModel('gemini-2.0-flash', systemInstruction);
 
@@ -87,24 +90,17 @@ router.post('/streamStudyBuddyChat', async (req, res) => {
     try {
         const { message, notes, language } = req.body;
         console.log(`[StreamStudyBuddy] Language: ${language}, Notes length: ${notes?.length}`);
-        let systemInstruction = `You are an expert AI Study Buddy. 
-        
-        CONTEXT NOTES PROVIDED BY USER:
+        let systemInstruction = `You are a professional AI Study Buddy helping with notes:
         ---
         ${notes || 'No specific notes uploaded yet.'}
         ---
         
-        INSTRUCTIONS:
-        1. If relevant study notes are provided above, prioritize them for your answer.
-        2. If the answer is NOT in the notes or if NO notes are provided, use your extensive general knowledge to help the student.
-        3. Do NOT refuse to answer just because something isn't in the notes.
-        4. Keep your answers very concise, precise, and easy-to-understand. Use bullet points and focus on clarity for engineering students.`;
-
-        if (language === 'mr') {
-            systemInstruction += ' IMPORTANT: Respond ONLY in MARATHI (मराठी).';
-        } else if (language === 'hi') {
-            systemInstruction += ' IMPORTANT: Respond ONLY in HINDI (हिंदी).';
-        }
+        1-2-1 RULE:
+        - 1 line: Affirmation.
+        - 2 lines: Focus on notes.
+        - 1 line: Interaction question.`;
+        if (language === 'mr') systemInstruction += ' Respond ONLY in MARATHI (मराठी).';
+        else if (language === 'hi') systemInstruction += ' Respond ONLY in HINDI (हिंदी).';
 
         const model = getModel('gemini-2.0-flash', systemInstruction);
         const chat = model.startChat();
@@ -334,35 +330,40 @@ router.post('/generateQuizQuestion', async (req, res) => {
     try {
         const { context, language } = req.body;
         console.log(`[GenerateQuizQuestion] Language: ${language}`);
-        const model = getModel('gemini-2.0-flash', null, { responseMimeType: "application/json" });
+        const model = getModel('gemini-2.0-flash', null, { 
+            responseMimeType: "application/json" 
+        });
 
-        let prompt = `Based on the following context, generate a single multiple-choice quiz question to test understanding. The question should focus on a key concept from the text. 
-        RETURN ONLY RAW JSON. Do not wrap in markdown or code blocks.`;
-
-        if (language === 'mr') {
-            prompt += ' IMPORTANT: All textual fields in the JSON (topic, question, options) MUST be in MARATHI (मराठी).';
-        } else if (language === 'hi') {
-            prompt += ' IMPORTANT: All textual fields in the JSON (topic, question, options) MUST be in HINDI (हिंदी).';
-        }
-
-        prompt += `
+        const prompt = `Identify the core topics from the context and generate a single complex multiple-choice quiz question.
         
         Context: "${context.substring(0, 4000)}"
+        Language: ${language || 'English'}
         
-        The JSON must match this schema:
+        Output MUST be a JSON object matching this schema EXACTLY:
         {
             "topic": "string",
             "question": "string",
             "options": ["string", "string", "string", "string"],
-            "correctOptionIndex": number
+            "correctOptionIndex": number (0-3)
         }`;
 
         const result = await model.generateContent(prompt);
-        const cleanedResponse = result.response.text().replace(/```json|```/g, '').trim();
-        res.json({ question: cleanedResponse });
+        let rawText = result.response.text();
+        
+        // Robust cleaning for edge cases where model ignores JSON-only instruction
+        const cleanedResponse = rawText.replace(/```json|```/gi, '').trim();
+        
+        // Verify it parses as JSON before sending to client
+        try {
+            JSON.parse(cleanedResponse);
+            res.json({ question: cleanedResponse });
+        } catch (e) {
+            console.error("Gemini failed to output valid JSON for quiz:", rawText);
+            throw new Error("Invalid quiz format received from AI.");
+        }
     } catch (error) {
-        console.error("Error in generateQuizQuestion:", error);
-        res.status(500).json({ error: error.message });
+        console.error('Quiz Generation API Error:', error);
+        res.status(500).json({ success: false, message: 'Failed to generate quiz' });
     }
 });
 
