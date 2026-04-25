@@ -23,7 +23,6 @@ const flashcardSchema = new mongoose.Schema({
     courseId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Course',
-        required: true,
         index: true
     },
     userId: {

@@ -737,6 +737,39 @@ router.get('/rooms/:roomId/messages', auth, async (req, res) => {
     }
 });
 
+// @route   POST /api/community/rooms/:roomId/notes/lock
+// @desc    Acquire a lock to edit shared notes
+// @access  Private
+router.post('/rooms/:roomId/notes/lock', auth, async (req, res) => {
+    try {
+        const room = await StudyRoom.findById(req.params.roomId);
+        if (!room) return res.status(404).json({ success: false, message: 'Room not found' });
+
+        const now = new Date();
+        const lockExpired = !room.notesLock?.acquiredAt || (now.getTime() - new Date(room.notesLock.acquiredAt).getTime() > 30000);
+
+        if (room.notesLock?.userId && !lockExpired && String(room.notesLock.userId) !== String(req.user.id)) {
+            return res.status(409).json({ success: false, message: 'Notes are being edited by another user' });
+        }
+
+        room.notesLock = { userId: req.user.id, acquiredAt: now };
+        await room.save();
+
+        const io = req.app.get('io');
+        if (io) {
+            io.to(req.params.roomId).emit('room-notes-lock', {
+                userId: req.user.id,
+                userName: req.user.displayName || 'Someone'
+            });
+        }
+
+        res.json({ success: true, notesVersion: room.notesVersion });
+    } catch (error) {
+        console.error('Error locking notes:', error);
+        res.status(500).json({ success: false, message: 'Server Error' });
+    }
+});
+
 // @route   GET /api/community/rooms/:roomId/notes
 // @desc    Get shared room notes
 // @access  Private
@@ -759,20 +792,34 @@ const { analyzeKnowledgeGaps } = require('../services/geminiService');
 // @access  Private
 router.put('/rooms/:roomId/notes', auth, async (req, res) => {
     try {
-        const content = typeof req.body.content === 'string' ? req.body.content : '';
+        const { content, version } = req.body;
         const room = await StudyRoom.findById(req.params.roomId);
-        if (!room) {
-            return res.status(404).json({ success: false, message: 'Room not found' });
+        if (!room) return res.status(404).json({ success: false, message: 'Room not found' });
+
+        // 1. Enforce lock ownership (unless expired)
+        const now = new Date();
+        const lockExpired = !room.notesLock?.acquiredAt || (now.getTime() - new Date(room.notesLock.acquiredAt).getTime() > 40000);
+        if (String(room.notesLock?.userId) !== String(req.user.id) && !lockExpired) {
+            return res.status(409).json({ success: false, message: 'You do not hold the notes lock' });
         }
 
-        room.sharedNotes = content;
+        // 2. Enforce version consistency
+        if (typeof version === 'number' && version !== room.notesVersion) {
+            return res.status(409).json({ success: false, message: 'Notes version conflict. Pull latest to continue.', currentVersion: room.notesVersion });
+        }
+
+        room.sharedNotes = typeof content === 'string' ? content : room.sharedNotes;
+        room.notesVersion = (room.notesVersion || 1) + 1;
+        room.notesLock.acquiredAt = now; // Auto-refresh the lock
         await room.save();
 
         const io = req.app.get('io');
         if (io) {
             io.to(req.params.roomId).emit('room-notes-updated', {
                 roomId: req.params.roomId,
-                content: room.sharedNotes
+                content: room.sharedNotes,
+                version: room.notesVersion,
+                notesLock: { userId: req.user.id, userName: req.user.displayName }
             });
         }
 

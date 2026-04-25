@@ -138,3 +138,38 @@ export const deleteCourse = async (id: string): Promise<void> => {
         throw error;
     }
 };
+
+export const importCurriculumSubjects = async (branch: string, semester: number): Promise<Course[]> => {
+    try {
+        console.log(`[courseService] Importing subjects for ${branch} Sem ${semester}`);
+        const response = await axios.get(`${API_URL}/api/curriculum/${encodeURIComponent(branch)}/${semester}`, {
+            headers: getAuthHeaders()
+        });
+
+        if (response.data.success && response.data.curriculum?.subjects) {
+            const subjects = response.data.curriculum.subjects;
+            const existingCourses = await getCourses(true);
+            const addedCourses: Course[] = [];
+
+            for (const subject of subjects) {
+                const alreadyExists = existingCourses.some(c => 
+                    c.name.toLowerCase() === subject.name.toLowerCase()
+                );
+
+                if (!alreadyExists) {
+                    try {
+                        const newCourse = await addCourse(subject.name);
+                        if (newCourse) addedCourses.push(newCourse);
+                    } catch (e) {
+                        console.warn(`[courseService] Failed to add subject ${subject.name}:`, e);
+                    }
+                }
+            }
+            return addedCourses;
+        }
+        return [];
+    } catch (error) {
+        console.error("[courseService] Error importing curriculum subjects:", error);
+        throw error;
+    }
+};

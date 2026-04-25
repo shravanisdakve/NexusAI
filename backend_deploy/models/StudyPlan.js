@@ -23,4 +23,8 @@ const StudyPlanSchema = new mongoose.Schema({
     createdAt: { type: Date, default: Date.now }
 }, { timestamps: true });
 
+// P2: Indexes for the two main query patterns in studyPlan.js
+StudyPlanSchema.index({ user: 1, courseId: 1 });       // Fetch plan for a specific user+course
+StudyPlanSchema.index({ user: 1, createdAt: -1 });     // List all plans by user, newest first
+
 module.exports = mongoose.model('StudyPlan', StudyPlanSchema);

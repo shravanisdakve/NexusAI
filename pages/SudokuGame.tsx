@@ -285,6 +285,8 @@ const SudokuGame: React.FC = () => {
                             return (
                                 <input
                                     key={`cell-${r}-${c}`}
+                                    id={`sudoku-cell-${r}-${c}`}
+                                    name={`sudokuCell-${r}-${c}`}
                                     type="text"
                                     maxLength={1}
                                     value={cell === BLANK ? '' : cell}

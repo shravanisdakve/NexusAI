@@ -35,7 +35,8 @@ router.post("/signup", async (req, res) => {
       const { seedDemoData } = require('../utils/seedDemoData');
       seedDemoData(newUser._id, newUser.branch).catch(err => console.error(err));
     } catch (e) {}
-    const token = jwt.sign({ userId: newUser._id, email: newUser.email }, process.env.JWT_SECRET, { expiresIn: '7d' });
+    // P1 FIX: Include role in JWT payload so req.user.role is available on protected routes
+    const token = jwt.sign({ userId: newUser._id, email: newUser.email, role: newUser.role }, process.env.JWT_SECRET, { expiresIn: '7d' });
     res.status(201).json({ success: true, token, user: newUser });
   } catch (error) {
     console.error('Signup Error:', error);
@@ -55,11 +56,16 @@ router.post('/login', async (req, res) => {
     if (!email || !password) return res.status(400).json({ success: false, message: 'Email and password are required' });
     const user = await User.findOne({ email: email.toLowerCase() });
     if (!user) return res.status(401).json({ success: false, message: 'Invalid credentials' });
+    
+    if (user.status === 'banned') {
+      return res.status(403).json({ success: false, message: 'Account suspended. Please contact administration.' });
+    }
+
     user.lastActive = Date.now();
     await user.save();
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) return res.status(401).json({ success: false, message: 'Invalid credentials' });
-    const token = jwt.sign({ userId: user._id, email: user.email }, process.env.JWT_SECRET, { expiresIn: '7d' });
+    const token = jwt.sign({ userId: user._id, email: user.email, role: user.role }, process.env.JWT_SECRET, { expiresIn: '7d' });
     res.json({ success: true, token, user });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Server error' });
@@ -71,6 +77,9 @@ router.get('/verify', authMiddleware, async (req, res) => {
   try {
     const user = await User.findById(req.user.userId).select('-password');
     if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+    if (user.status === 'banned') {
+      return res.status(403).json({ success: false, message: 'Account suspended.' });
+    }
     res.json({ success: true, user });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Server error' });
@@ -130,7 +139,8 @@ router.post('/forgot-password', async (req, res) => {
     });
     res.json({ success: true, message: 'Email sent' });
   } catch (error) {
-    res.status(500).json({ success: false, message: 'Server error' });
+    console.error("Forgot password error:", error);
+    res.status(500).json({ success: false, message: error.message, stack: error.stack });
   }
 });
 

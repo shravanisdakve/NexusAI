@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { PageHeader, Button } from '../components/ui';
+import { PageHeader, Button, Modal } from '../components/ui';
 import { Brain, Grid3X3, Zap, Calculator, Wand2, FileText, ChevronLeft, Target, Rocket, Flame, Shield, Sparkles, Binary, Timer, Trophy } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -31,6 +31,7 @@ const QuizPractice: React.FC = () => {
   const [activeChallenge, setActiveChallenge] = useState<any>(null);
   const [activeFlashcards, setActiveFlashcards] = useState<any>(null);
   const [recommendations, setRecommendations] = useState<any>(null);
+  const [showQuitConfirm, setShowQuitConfirm] = useState(false);
 
   useEffect(() => {
     const fetchRecs = async () => {
@@ -131,17 +132,20 @@ const QuizPractice: React.FC = () => {
   const handleBack = () => {
     if (viewState === 'upload') setViewState('selection');
     else if (viewState !== 'selection') {
-        if (window.confirm('Quit session? Results will not be saved.')) {
-            setViewState('selection');
-            setActiveQuiz(null);
-            setActiveChallenge(null);
-            setActiveFlashcards(null);
-        }
+        setShowQuitConfirm(true);
     }
   };
 
+  const confirmQuit = () => {
+    setViewState('selection');
+    setActiveQuiz(null);
+    setActiveChallenge(null);
+    setActiveFlashcards(null);
+    setShowQuitConfirm(false);
+  };
+
   return (
-    <div className="max-w-6xl mx-auto p-4 md:p-8 space-y-12">
+    <div className={`max-w-6xl mx-auto p-2 ${viewState === 'selection' ? 'md:p-3 space-y-3' : 'md:p-2 space-y-2'}`}>
       {viewState === 'selection' ? (
         <>
           <PageHeader
@@ -150,117 +154,114 @@ const QuizPractice: React.FC = () => {
           />
 
           {/* AI Generator Hero Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="relative group bg-gradient-to-br from-violet-600/10 to-indigo-600/5 border border-violet-500/20 rounded-[2rem] md:rounded-[2.5rem] p-6 md:p-10 transition-all hover:bg-violet-600/15 overflow-hidden">
-
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
+            <div className="relative group bg-gradient-to-br from-violet-600/10 to-indigo-600/5 border border-violet-500/20 rounded-xl p-3 transition-all hover:bg-violet-600/15 overflow-hidden">
                <div className="absolute -top-12 -right-12 p-32 bg-violet-500/10 blur-[60px] rounded-full group-hover:bg-violet-500/20 transition-all duration-700"></div>
                <div className="relative z-10">
-                  <Wand2 className="text-violet-400 mb-6" size={40} />
-                  <h2 className="text-2xl md:text-3xl font-black text-white mb-2 uppercase tracking-tighter">AI-Generated Quiz</h2>
-                  <p className="text-slate-500 text-sm mb-8 leading-relaxed font-bold">
-                    We've scanned your performance. This practice set zooms in on {recommendations?.weakTopics?.length || 0} weak areas identified in your recent sessions.
+                  <Wand2 className="text-violet-400 mb-1.5" size={20} />
+                  <h2 className="text-base font-black text-white mb-0.5 uppercase tracking-tighter">AI-Generated Quiz</h2>
+                  <p className="text-slate-500 text-[10px] mb-2 leading-tight font-bold">
+                    Scanned performance: {recommendations?.weakTopics?.length || 0} weak areas identified.
                   </p>
                   <Button 
                     onClick={handleStartAdaptiveQuiz} 
-                    className="h-14 px-10 bg-violet-600 shadow-xl shadow-violet-900/40 rounded-2xl font-black uppercase tracking-widest text-xs"
+                    className="h-8 px-5 bg-violet-600 shadow-xl shadow-violet-900/40 rounded-lg font-black uppercase tracking-widest text-[8px]"
                     disabled={isGenerating}
                   >
-                    {isGenerating ? "Synthesizing Neural Map..." : "Start Personalized Quiz"}
+                    Start Personalized Quiz
                   </Button>
                </div>
             </div>
 
-            <div className="relative group bg-slate-900/50 border border-emerald-500/20 rounded-[2rem] md:rounded-[2.5rem] p-6 md:p-10 overflow-hidden">
-
+            <div className="relative group bg-slate-900/50 border border-emerald-500/20 rounded-xl p-3 overflow-hidden">
                <div className="relative z-10">
-                  <Target className="text-emerald-400 mb-6" size={40} />
-                  <h2 className="text-2xl md:text-3xl font-black text-white mb-2 uppercase tracking-tighter">Adaptive Challenge</h2>
-                  <p className="text-slate-500 text-sm mb-8 leading-relaxed font-bold">
-                    Serious academic drills designed to force rapid recall. Choose a mode to test your technical endurance.
+                  <Target className="text-emerald-400 mb-1.5" size={20} />
+                  <h2 className="text-base font-black text-white mb-0.5 uppercase tracking-tighter">Adaptive Challenge</h2>
+                  <p className="text-slate-500 text-[10px] mb-2 leading-tight font-bold">
+                    Academic drills for rapid recall. Test technical endurance.
                   </p>
-                  <div className="flex flex-wrap gap-4">
+                  <div className="flex flex-wrap gap-2">
                      <Button 
                        onClick={() => handleStartTimedChallenge('speed_drill')}
-                       className="h-12 px-6 bg-emerald-600 rounded-xl font-black uppercase tracking-widest text-[10px] shadow-lg shadow-emerald-900/30"
+                       className="h-7 px-3 bg-emerald-600 rounded-lg font-black uppercase tracking-widest text-[8px]"
                        disabled={isGenerating}
                      >
-                       <Zap size={14} className="mr-2" /> Speed Drill
+                       <Zap size={11} className="mr-1.5" /> Drill
                      </Button>
                      <Button 
                        onClick={() => handleStartTimedChallenge('streak_mode')}
-                       className="h-12 px-6 bg-rose-600 rounded-xl font-black uppercase tracking-widest text-[10px] shadow-lg shadow-rose-900/30"
+                       className="h-7 px-3 bg-rose-600 rounded-lg font-black uppercase tracking-widest text-[8px]"
                        disabled={isGenerating}
                      >
-                       <Flame size={14} className="mr-2" /> Streak Mode
+                       <Flame size={11} className="mr-1.5" /> Streak
                      </Button>
                   </div>
                </div>
             </div>
           </div>
 
-          <div className="space-y-10">
-            <h3 className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 flex items-center gap-3">
-              <span className="w-8 h-[1px] bg-slate-800"></span> 
+          <div className="space-y-3">
+            <h3 className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-500 flex items-center gap-2">
+              <span className="w-6 h-[1px] bg-slate-800"></span> 
               Practice Annex & Gamified Labs
-              <span className="w-8 h-[1px] bg-slate-800"></span>
+              <span className="w-6 h-[1px] bg-slate-800"></span>
             </h3>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <div onClick={handleStartFlashcards} className="group cursor-pointer bg-slate-900/40 p-4 md:p-8 rounded-2xl md:rounded-3xl border border-white/5 hover:border-violet-500/40 transition-all hover:translate-y-[-4px] backdrop-blur-sm">
-                   <div className="w-12 h-12 md:w-14 md:h-14 bg-violet-500/10 rounded-xl md:rounded-2xl flex items-center justify-center mb-4 md:mb-6 ring-1 ring-violet-500/20 group-hover:bg-violet-500/20 transition-all">
-                      <Sparkles className="text-violet-400" size={24} />
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2">
+                <div onClick={handleStartFlashcards} className="group cursor-pointer bg-slate-900/40 p-2.5 rounded-xl border border-white/5 hover:border-violet-500/40 transition-all backdrop-blur-sm">
+                   <div className="w-8 h-8 bg-violet-500/10 rounded-lg flex items-center justify-center mb-2 ring-1 ring-violet-500/20 group-hover:bg-violet-500/20 transition-all">
+                      <Sparkles className="text-violet-400" size={16} />
                    </div>
-                   <h3 className="text-lg md:text-xl font-black text-white mb-1 md:mb-2 uppercase tracking-tighter">Memory Labs</h3>
-                   <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest opacity-60">Spaced Repetition</p>
+                   <h3 className="text-xs font-black text-white mb-0.5 uppercase tracking-tighter">Memory Labs</h3>
+                   <p className="text-[7px] text-slate-700 font-bold uppercase tracking-widest opacity-60">Spaced Repetition</p>
                 </div>
 
-                <div onClick={handleStartAiQuiz} className="group cursor-pointer bg-slate-900/40 p-4 md:p-8 rounded-2xl md:rounded-3xl border border-white/5 hover:border-indigo-500/40 transition-all hover:translate-y-[-4px] backdrop-blur-sm">
-                   <div className="w-12 h-12 md:w-14 md:h-14 bg-indigo-500/10 rounded-xl md:rounded-2xl flex items-center justify-center mb-4 md:mb-6 ring-1 ring-indigo-500/20 group-hover:bg-indigo-500/20 transition-all">
-                      <FileText className="text-indigo-400" size={24} />
+                 <div onClick={handleStartAiQuiz} className="group cursor-pointer bg-slate-900/40 p-2.5 rounded-xl border border-white/5 hover:border-indigo-500/40 transition-all backdrop-blur-sm">
+                   <div className="w-8 h-8 bg-indigo-500/10 rounded-lg flex items-center justify-center mb-2 ring-1 ring-indigo-500/20 group-hover:bg-indigo-500/20 transition-all">
+                      <FileText className="text-indigo-400" size={16} />
                    </div>
-                   <h3 className="text-lg md:text-xl font-black text-white mb-1 md:mb-2 uppercase tracking-tighter">Note Scanner</h3>
-                   <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest opacity-60">PDF to Quiz</p>
+                   <h3 className="text-xs font-black text-white mb-0.5 uppercase tracking-tighter">Note Scanner</h3>
+                   <p className="text-[7px] text-slate-700 font-bold uppercase tracking-widest opacity-60">PDF Process</p>
                 </div>
 
-                <div onClick={() => navigate('/sudoku')} className="group cursor-pointer bg-slate-900/40 p-4 md:p-8 rounded-2xl md:rounded-3xl border border-white/5 hover:border-emerald-500/40 transition-all hover:translate-y-[-4px] backdrop-blur-sm">
-                   <div className="w-12 h-12 md:w-14 md:h-14 bg-emerald-500/10 rounded-xl md:rounded-2xl flex items-center justify-center mb-4 md:mb-6 ring-1 ring-emerald-500/20 group-hover:bg-emerald-500/20 transition-all">
-                      <Grid3X3 className="text-emerald-400" size={24} />
+                <div onClick={() => navigate('/sudoku')} className="group cursor-pointer bg-slate-900/40 p-2.5 rounded-xl border border-white/5 hover:border-emerald-500/40 transition-all backdrop-blur-sm">
+                   <div className="w-8 h-8 bg-emerald-500/10 rounded-lg flex items-center justify-center mb-2 ring-1 ring-emerald-500/20 group-hover:bg-emerald-500/20 transition-all">
+                      <Grid3X3 className="text-emerald-400" size={16} />
                    </div>
-                   <h3 className="text-lg md:text-xl font-black text-white mb-1 md:mb-2 uppercase tracking-tighter">Logic Grid</h3>
-                   <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest opacity-60">Architectural Thinking</p>
+                   <h3 className="text-xs font-black text-white mb-0.5 uppercase tracking-tighter">Logic Grid</h3>
+                   <p className="text-[7px] text-slate-700 font-bold uppercase tracking-widest opacity-60">Architecture</p>
                 </div>
 
-                <div onClick={() => navigate('/speed-math')} className="group cursor-pointer bg-slate-900/40 p-4 md:p-8 rounded-2xl md:rounded-3xl border border-white/5 hover:border-rose-500/40 transition-all hover:translate-y-[-4px] backdrop-blur-sm">
-                   <div className="w-12 h-12 md:w-14 md:h-14 bg-rose-500/10 rounded-xl md:rounded-2xl flex items-center justify-center mb-4 md:mb-6 ring-1 ring-rose-500/20 group-hover:bg-rose-500/20 transition-all">
-                      <Calculator className="text-rose-400" size={24} />
+                <div onClick={() => navigate('/speed-math')} className="group cursor-pointer bg-slate-900/40 p-2.5 rounded-xl border border-white/5 hover:border-rose-500/40 transition-all backdrop-blur-sm">
+                   <div className="w-8 h-8 bg-rose-500/10 rounded-lg flex items-center justify-center mb-2 ring-1 ring-rose-500/20 group-hover:bg-rose-500/20 transition-all">
+                      <Calculator className="text-rose-400" size={16} />
                    </div>
-                   <h3 className="text-lg md:text-xl font-black text-white mb-1 md:mb-2 uppercase tracking-tighter">Data Sprint</h3>
-                   <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest opacity-60">Number Crunching</p>
+                   <h3 className="text-xs font-black text-white mb-0.5 uppercase tracking-tighter">Data Sprint</h3>
+                   <p className="text-[7px] text-slate-700 font-bold uppercase tracking-widest opacity-60">Math Drills</p>
                 </div>
-
             </div>
           </div>
         </>
       ) : (
-        <div className="space-y-8 animate-in fade-in zoom-in-95 duration-500">
-           <div className="flex items-center justify-between bg-slate-900/50 p-4 rounded-2xl border border-white/5 backdrop-blur-sm">
-                <Button variant="ghost" className="text-slate-400 hover:text-white group" onClick={handleBack}>
-                    <ChevronLeft size={20} className="mr-2 group-hover:-translate-x-1 transition-transform" /> Exit Session
+        <div className="space-y-3 animate-in fade-in zoom-in-95 duration-500">
+           <div className="flex items-center justify-between bg-slate-900/50 p-3 rounded-2xl border border-white/5 backdrop-blur-sm">
+                <Button variant="ghost" className="text-slate-400 hover:text-white group h-8.5" onClick={handleBack}>
+                    <ChevronLeft size={18} className="mr-2 group-hover:-translate-x-1 transition-transform" /> Exit Session
                 </Button>
                 
-                <div className="flex items-center gap-4">
-                   <div className="px-4 py-2 bg-slate-950 border border-white/5 rounded-xl flex items-center gap-2">
+                <div className="flex items-center gap-3">
+                   <div className="px-3 py-1.5 bg-slate-950 border border-white/5 rounded-xl flex items-center gap-2">
                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                       <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-300">Run Mode: ACTIVE</span>
+                       <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-300">Run Mode: ACTIVE</span>
                    </div>
                 </div>
            </div>
 
            {isGenerating ? (
-             <div className="flex flex-col items-center justify-center py-32 space-y-8">
+             <div className="flex flex-col items-center justify-center py-16 space-y-4">
                 <div className="relative">
-                   <div className="w-24 h-24 bg-violet-600/20 rounded-full flex items-center justify-center ring-4 ring-violet-500/10">
-                      <Brain className="text-violet-400 animate-bounce" size={48} />
+                   <div className="w-16 h-16 bg-violet-600/20 rounded-full flex items-center justify-center ring-4 ring-violet-500/10">
+                      <Brain className="text-violet-400 animate-bounce" size={32} />
                    </div>
                    <div className="absolute -inset-4 border-4 border-violet-500/30 border-t-white rounded-full animate-spin"></div>
                 </div>
@@ -279,6 +280,37 @@ const QuizPractice: React.FC = () => {
            )}
         </div>
       )}
+      <Modal 
+        isOpen={showQuitConfirm} 
+        onClose={() => setShowQuitConfirm(false)} 
+        title="Terminate Session?"
+      >
+        <div className="space-y-4">
+          <div className="p-4 bg-rose-500/10 border border-rose-500/20 rounded-2xl text-center">
+            <p className="text-xs text-rose-200 leading-relaxed font-bold">
+              Quit current session? <br/>
+              <span className="text-[9px] text-rose-400/60 uppercase tracking-widest">Progress data from this run will not be saved.</span>
+            </p>
+          </div>
+          
+          <div className="flex gap-4">
+            <Button 
+                variant="secondary" 
+                className="flex-1"
+                onClick={() => setShowQuitConfirm(false)}
+            >
+              Cancel
+            </Button>
+            <Button 
+                variant="danger" 
+                className="flex-1 rounded-xl font-black uppercase tracking-widest text-[10px]"
+                onClick={confirmQuit}
+            >
+              Quit Session
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };

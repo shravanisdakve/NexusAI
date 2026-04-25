@@ -72,10 +72,12 @@ const EditProfilePage: React.FC = () => {
                     {/* Basic Info */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-2">
-                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-4 px-1">Full Name</label>
+                            <label htmlFor="profile-displayName" className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-4 px-1">Full Name</label>
                             <div className="relative">
                                 <UserIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
                                 <Input
+                                    id="profile-displayName"
+                                    name="displayName"
                                     value={formData.displayName}
                                     onChange={(e) => setFormData({ ...formData, displayName: e.target.value })}
                                     className="pl-12 bg-slate-900/50 border-white/5 rounded-2xl h-14 text-sm font-bold"
@@ -86,10 +88,12 @@ const EditProfilePage: React.FC = () => {
                         </div>
 
                         <div className="space-y-2">
-                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-4 px-1">College</label>
+                            <label htmlFor="profile-college" className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-4 px-1">College</label>
                             <div className="relative">
                                 <Building className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
                                 <Input
+                                    id="profile-college"
+                                    name="college"
                                     value={formData.college}
                                     onChange={(e) => setFormData({ ...formData, college: e.target.value })}
                                     className="pl-12 bg-slate-900/50 border-white/5 rounded-2xl h-14 text-sm font-bold"
@@ -99,10 +103,12 @@ const EditProfilePage: React.FC = () => {
                         </div>
 
                         <div className="space-y-2">
-                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-4 px-1">Branch</label>
+                            <label htmlFor="profile-branch" className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-4 px-1">Branch</label>
                             <div className="relative">
                                 <GraduationCap className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
                                 <Input
+                                    id="profile-branch"
+                                    name="branch"
                                     value={formData.branch}
                                     onChange={(e) => setFormData({ ...formData, branch: e.target.value })}
                                     className="pl-12 bg-slate-900/50 border-white/5 rounded-2xl h-14 text-sm font-bold"
@@ -112,10 +118,12 @@ const EditProfilePage: React.FC = () => {
                         </div>
 
                         <div className="space-y-2">
-                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-4 px-1">Semester</label>
+                            <label htmlFor="profile-semester" className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-4 px-1">Semester</label>
                             <div className="relative">
                                 <BookOpen className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
                                 <Input
+                                    id="profile-semester"
+                                    name="semester"
                                     value={formData.semester}
                                     onChange={(e) => setFormData({ ...formData, semester: e.target.value })}
                                     className="pl-12 bg-slate-900/50 border-white/5 rounded-2xl h-14 text-sm font-bold"
@@ -131,6 +139,8 @@ const EditProfilePage: React.FC = () => {
                         <div className="relative">
                             <PenTool className="absolute left-4 top-4 text-slate-500" size={18} />
                             <textarea
+                                id="profile-bio"
+                                name="bio"
                                 value={formData.bio}
                                 onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
                                 className="w-full pl-12 pr-4 py-4 bg-slate-900/50 border border-white/5 rounded-[2rem] min-h-[120px] text-sm font-medium text-slate-300 placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-violet-500/50 transition-all resize-none"

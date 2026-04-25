@@ -83,7 +83,7 @@ const Signup: React.FC = () => {
         parseInt(personalizationData.year?.replace(/\D/g, '') || '1', 10),
         personalizationData
       );
-      navigate('/');
+      navigate('/', { state: { justLoggedIn: true } });
     } catch (err: any) {
       setApiError(err.message || t('signup.error.apiFailed'));
     } finally {
@@ -95,13 +95,19 @@ const Signup: React.FC = () => {
     <div className="min-h-screen w-full flex items-center justify-center p-4">
       <div className="w-full max-w-md p-8 space-y-6 bg-slate-800/50 rounded-xl ring-1 ring-slate-700">
         <div className="text-center">
-          <div className="inline-flex items-center justify-center mb-6">
-            <div className="p-2 bg-violet-600 rounded-lg">
-              <BrainCircuit className="w-8 h-8 text-white" />
+          <div className="inline-flex items-center justify-center gap-3 mb-8">
+            <div className="relative flex-shrink-0 text-left">
+              <div className="absolute inset-0 bg-purple-600 blur-[20px] rounded-xl opacity-20"></div>
+              <img
+                src="/nexusai-logo.png"
+                alt="NexusAI Logo"
+                className="relative z-10 w-10 h-10 object-contain"
+              />
             </div>
-            <h1 className="text-3xl font-bold ml-3 bg-gradient-to-r from-violet-400 to-cyan-400 text-transparent bg-clip-text">
-              {t('sidebar.brand')}
-            </h1>
+            <div className="flex flex-col text-left">
+              <h1 className="text-2xl font-black text-white tracking-tighter leading-none italic uppercase">Nexus AI</h1>
+              <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-slate-500 mt-1">Intelligence Core</span>
+            </div>
           </div>
           <h2 className="text-2xl font-bold text-white">{t('signup.title')}</h2>
           <p className="mt-2 text-slate-400">{t('signup.subtitle')}</p>

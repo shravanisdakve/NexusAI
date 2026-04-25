@@ -352,14 +352,14 @@ const CurriculumExplorer: React.FC = () => {
         }, {} as Record<number, { tutorial: string; material: string }>);
 
         return (
-            <div className="max-w-5xl mx-auto py-8">
+            <div className="max-w-4xl mx-auto py-3">
                 {/* 1. HERO CONTROL CENTER */}
-                <div className="bg-slate-900/40 border border-white/[0.06] rounded-[3.5rem] p-10 mb-10 relative overflow-hidden group shadow-2xl shadow-black/40">
+                <div className="bg-slate-900/40 border border-white/[0.06] rounded-[2rem] p-5 mb-4 relative overflow-hidden group shadow-2xl shadow-black/40">
                     <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-violet-600/5 blur-[120px] rounded-full -translate-y-1/2 translate-x-1/2" />
                     
                     <div className="relative z-10">
-                        <div className="flex flex-wrap items-start justify-between gap-10 mb-12">
-                            <div className="space-y-6">
+                        <div className="flex flex-wrap items-start justify-between gap-5 mb-4">
+                            <div className="space-y-3">
                                 <div className="flex items-center gap-3">
                                     <span className="px-3.5 py-1 bg-violet-500/10 text-violet-400 text-[9px] font-black rounded-lg border border-violet-500/20 uppercase tracking-[0.2em] shadow-sm">
                                         {subject.subjectCode}
@@ -368,30 +368,30 @@ const CurriculumExplorer: React.FC = () => {
                                         {subject.category}
                                     </span>
                                 </div>
-                                <h2 className="text-6xl font-black text-white italic uppercase tracking-tighter leading-[0.9] max-w-2xl">
+                                <h2 className="text-3xl font-black text-white italic uppercase tracking-tighter leading-[0.9] max-w-2xl">
                                     {subject.name}
                                 </h2>
                             </div>
 
-                            <div className="flex gap-5">
-                                <div className="bg-slate-950/80 border border-white/[0.04] rounded-3xl p-6 min-w-[130px] text-center shadow-xl">
-                                    <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-2">Credits</p>
-                                    <p className="text-4xl font-black text-violet-500 drop-shadow-[0_0_10px_rgba(139,92,246,0.3)]">{subject.credits}</p>
+                            <div className="flex gap-3">
+                                <div className="bg-slate-950/80 border border-white/[0.04] rounded-2xl p-4 min-w-[100px] text-center shadow-xl">
+                                    <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-1.5">Credits</p>
+                                    <p className="text-2xl font-black text-violet-500 drop-shadow-[0_0_10px_rgba(139,92,246,0.3)]">{subject.credits}</p>
                                 </div>
-                                <div className="bg-slate-950/80 border border-white/[0.04] rounded-3xl p-6 min-w-[130px] text-center shadow-xl">
-                                    <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-2">Modules</p>
-                                    <p className="text-4xl font-black text-slate-300 italic">{(subject.modules || []).length}</p>
+                                <div className="bg-slate-950/80 border border-white/[0.04] rounded-2xl p-4 min-w-[100px] text-center shadow-xl">
+                                    <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-1.5">Modules</p>
+                                    <p className="text-2xl font-black text-slate-300 italic">{(subject.modules || []).length}</p>
                                 </div>
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-1 lg:grid-cols-5 gap-12 items-end">
-                            <div className="space-y-5 lg:col-span-3">
+                        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-end">
+                            <div className="space-y-3 lg:col-span-3">
                                 <div className="flex items-center gap-2.5 text-slate-400">
                                     <div className="p-1.5 bg-violet-600/10 rounded-lg"><Info size={13} className="text-violet-500" /></div>
                                     <p className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-500">Syllabus Overview</p>
                                 </div>
-                                <p className="text-slate-500 text-[11px] font-medium leading-[1.8] max-w-xl italic">
+                                <p className="text-slate-500 text-[10px] font-medium leading-[1.6] max-w-xl italic">
                                     Optimized for technical depth and exam efficiency. High-performance modules identified in current semester topology. Recommended focus on practical implementation of theoretical frameworks.
                                 </p>
                             </div>
@@ -402,12 +402,12 @@ const CurriculumExplorer: React.FC = () => {
                                         const query = `Generate a targeted AI study plan for ${subject.name}`;
                                         navigate(`/tutor?q=${encodeURIComponent(query)}`);
                                     }} 
-                                    className="relative group/btn flex items-center gap-5 bg-violet-600 hover:bg-violet-500 text-white py-5 px-10 rounded-2xl transition-all shadow-2xl shadow-violet-950/60 active:scale-95 border border-white/10"
+                                    className="relative group/btn flex items-center gap-4 bg-violet-600 hover:bg-violet-500 text-white py-3 px-6 rounded-2xl transition-all shadow-2xl shadow-violet-950/60 active:scale-95 border border-white/10"
                                 >
-                                    <Brain size={22} className="animate-pulse" />
+                                    <Brain size={18} className="animate-pulse" />
                                     <div className="text-left">
-                                        <p className="text-[10px] font-black uppercase tracking-[0.3em] opacity-60 leading-tight mb-1">Initiate AI</p>
-                                        <p className="text-[15px] font-black uppercase tracking-[0.2em] leading-tight italic">Study Plan</p>
+                                        <p className="text-[9px] font-black uppercase tracking-[0.3em] opacity-60 leading-tight mb-1">Initiate AI</p>
+                                        <p className="text-[13px] font-black uppercase tracking-[0.2em] leading-tight italic">Study Plan</p>
                                     </div>
                                     <div className="absolute inset-0 bg-white/20 blur-2xl rounded-full opacity-0 group-hover/btn:opacity-30 transition-opacity" />
                                 </button>
@@ -417,40 +417,37 @@ const CurriculumExplorer: React.FC = () => {
                 </div>
 
                 {/* 2. MODULE TOPOLOGY GRID */}
-                <div className="space-y-10">
-                    <div className="flex items-center gap-4 px-6 md:px-0">
-                        <div className="p-2 bg-slate-900/60 rounded-xl border border-white/5"><Layers size={14} className="text-violet-500" /></div>
-                        <h3 className="text-xs font-black text-slate-500 uppercase tracking-[0.5em]">Module Blueprints</h3>
+                <div className="space-y-4">
+                    <div className="flex items-center gap-3 px-6 md:px-0">
+                        <div className="p-1.5 bg-slate-900/60 rounded-xl border border-white/5"><Layers size={13} className="text-violet-500" /></div>
+                        <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.5em]">Module Blueprints</h3>
                         <div className="flex-1 h-px bg-white/[0.04]" />
                     </div>
 
-                    <div className="grid gap-6">
+                    <div className="grid gap-3">
                         {(subject.modules || []).map((mod) => (
-                            <Card key={mod.moduleNumber} className="group relative overflow-hidden bg-slate-900/40 border-white/[0.04] p-0 rounded-[2.5rem] hover:border-violet-500/30 transition-all hover:bg-slate-900/60 shadow-xl">
-                                <div className="flex flex-col md:flex-row min-h-[160px]">
-                                    <div className="w-full md:w-32 bg-slate-950/60 flex items-center justify-center border-b md:border-b-0 md:border-r border-white/5 relative shrink-0">
-                                        <div className="absolute inset-0 bg-violet-500/0 group-hover:bg-violet-500/5 transition-colors" />
-                                        <span className="text-5xl font-black text-slate-800 italic group-hover:text-violet-600/40 transition-all duration-500">
-                                            {String(mod.moduleNumber).padStart(2, '0')}
-                                        </span>
+                            <Card key={mod.moduleNumber} className="group relative overflow-hidden bg-slate-900/40 border-white/[0.04] p-0 rounded-2xl hover:border-violet-500/30 transition-all hover:bg-slate-900/60 shadow-xl">
+                                <div className="flex flex-col md:flex-row min-h-[100px]">
+                                    <div className="w-full md:w-12 bg-slate-950/60 flex items-center justify-center border-b md:border-b-0 md:border-r border-white/5 relative shrink-0 text-xl font-black text-slate-800 italic group-hover:text-violet-600/40 transition-all duration-500">
+                                        {String(mod.moduleNumber).padStart(2, '0')}
                                     </div>
                                     
-                                    <div className="flex-1 p-10 flex flex-col xl:flex-row justify-between gap-10">
-                                        <div className="space-y-6 flex-1">
-                                            <h4 className="text-2xl font-black text-slate-200 uppercase tracking-tight group-hover:text-white transition-colors leading-tight italic">
+                                    <div className="flex-1 p-2.5 flex flex-col xl:flex-row justify-between gap-3">
+                                        <div className="space-y-2 flex-1">
+                                            <h4 className="text-base font-black text-slate-200 uppercase tracking-tight group-hover:text-white transition-colors leading-tight italic">
                                                 {mod.title}
                                             </h4>
-                                            <div className="flex flex-wrap gap-x-8 gap-y-3">
+                                            <div className="flex flex-wrap gap-x-3 gap-y-1">
                                                 {(mod.topics || []).map((topic, i) => (
-                                                    <div key={i} className="flex items-center gap-3 group/topic">
-                                                        <div className="w-1.5 h-1.5 rounded-full bg-violet-600/40 group-hover/topic:bg-violet-500 group-hover/topic:scale-125 transition-all" />
-                                                        <span className="text-[12px] font-bold text-slate-500 group-hover/topic:text-slate-300 transition-colors uppercase tracking-wide leading-none">{topic}</span>
+                                                    <div key={i} className="flex items-center gap-2 group/topic">
+                                                        <div className="w-1 h-1 rounded-full bg-violet-600/40 group-hover/topic:bg-violet-500 group-hover/topic:scale-125 transition-all" />
+                                                        <span className="text-[10px] font-bold text-slate-500 group-hover/topic:text-slate-300 transition-colors uppercase tracking-wide leading-none">{topic}</span>
                                                     </div>
                                                 ))}
                                             </div>
                                         </div>
 
-                                        <div className="flex flex-wrap gap-2 shrink-0">
+                                        <div className="flex flex-wrap gap-1.5 shrink-0">
                                             {[
                                                 { label: 'Tutorials', icon: Play, link: linksByModule[mod.moduleNumber]?.tutorial, color: 'hover:text-blue-400 hover:bg-blue-500/10' },
                                                 { label: 'Notes', icon: Download, link: linksByModule[mod.moduleNumber]?.material, color: 'hover:text-emerald-400 hover:bg-emerald-500/10' },
@@ -459,9 +456,9 @@ const CurriculumExplorer: React.FC = () => {
                                                 <button 
                                                     key={btn.label}
                                                     onClick={() => btn.click ? btn.click() : (btn.link && openExternalResource(btn.link))}
-                                                    className={`px-4 py-2.5 rounded-xl bg-slate-950/40 border border-white/5 text-[9px] font-black uppercase tracking-widest text-slate-500 transition-all flex items-center gap-2.5 active:scale-95 ${btn.color} ${!btn.link && !btn.click ? 'opacity-30 cursor-not-allowed' : ''}`}
+                                                    className={`px-3 py-2 rounded-xl bg-slate-950/40 border border-white/5 text-[8px] font-black uppercase tracking-widest text-slate-500 transition-all flex items-center gap-2 active:scale-95 ${btn.color} ${!btn.link && !btn.click ? 'opacity-30 cursor-not-allowed' : ''}`}
                                                 >
-                                                    <btn.icon size={13} /> {btn.label}
+                                                    <btn.icon size={11} /> {btn.label}
                                                 </button>
                                             ))}
                                         </div>
@@ -514,15 +511,18 @@ const CurriculumExplorer: React.FC = () => {
                 </div>
             }
             side={
-                <div className="flex flex-col h-full space-y-6">
+                <div className="flex flex-col h-full space-y-3">
                     {/* 1. ACADEMIC SCOPE */}
-                    <div className="bg-slate-900/40 border border-white/[0.06] rounded-[2rem] p-6 space-y-4">
-                        <div className="flex items-center gap-2 mb-2">
+                    <div className="bg-slate-900/40 border border-white/[0.06] rounded-[2rem] p-4 space-y-3">
+                        <div className="flex items-center gap-2 mb-1">
                              <span className="w-1.5 h-1.5 rounded-full bg-violet-500" />
                              <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest leading-none">Academic Scope</p>
                         </div>
-                        <div className="space-y-3">
+                        <div className="space-y-2">
+                            <label htmlFor="branch-select" className="sr-only">Select Branch</label>
                             <select
+                                id="branch-select"
+                                name="branch"
                                 className="w-full bg-slate-950/60 border border-white/5 rounded-xl py-3 px-4 text-[11px] font-bold text-slate-300 focus:border-violet-500/50 outline-none appearance-none"
                                 value={branch}
                                 onChange={(e) => {
@@ -532,7 +532,10 @@ const CurriculumExplorer: React.FC = () => {
                             >
                                 {branches.map(b => <option key={b.value} value={b.value}>{b.label}</option>)}
                             </select>
+                            <label htmlFor="semester-select" className="sr-only">Select Semester</label>
                             <select
+                                id="semester-select"
+                                name="semester"
                                 className="w-full bg-slate-950/60 border border-white/5 rounded-xl py-3 px-4 text-[11px] font-bold text-slate-300 focus:border-violet-500/50 outline-none appearance-none"
                                 value={semester ?? ''}
                                 onChange={(e) => {
@@ -548,15 +551,18 @@ const CurriculumExplorer: React.FC = () => {
 
                     {/* 2. BRANCH TOPOLOGY */}
                     <div className="flex-1 flex flex-col bg-slate-900/40 border border-white/[0.06] rounded-[2rem] overflow-hidden">
-                        <div className="p-6 pb-4 flex items-center justify-between">
+                        <div className="p-4 pb-2 flex items-center justify-between">
                             <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest leading-none">Branch Topology</p>
                             <span className="text-[8px] font-black text-slate-600 bg-white/5 px-2 py-1 rounded-md uppercase">{filteredSubjects.length} subjects</span>
                         </div>
                         
-                        <div className="px-6 mb-4">
+                        <div className="px-4 mb-2">
                             <div className="relative group/search">
+                                <label htmlFor="subject-search" className="sr-only">Search Subjects</label>
                                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-600 group-hover/search:text-violet-500 transition-colors" />
                                 <input
+                                    id="subject-search"
+                                    name="search"
                                     type="text"
                                     className="w-full bg-slate-950/40 border border-white/5 rounded-xl py-3 pl-10 pr-4 text-[11px] font-bold text-slate-300 placeholder:text-slate-700 outline-none focus:border-violet-500/30 transition-all"
                                     placeholder="Search system..."

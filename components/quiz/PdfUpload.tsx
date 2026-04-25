@@ -51,10 +51,10 @@ const PdfUpload: React.FC<PdfUploadProps> = ({ onFileProcessed, isProcessing }) 
   };
 
   return (
-    <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-8 backdrop-blur-sm">
+    <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-6 backdrop-blur-sm">
       <div className="flex flex-col items-center text-center">
-        <div className="w-16 h-16 bg-violet-500/10 rounded-full flex items-center justify-center mb-4 ring-1 ring-violet-500/20">
-          <Upload className="text-violet-400" size={32} />
+        <div className="w-12 h-12 bg-violet-500/10 rounded-full flex items-center justify-center mb-4 ring-1 ring-violet-500/20">
+          <Upload className="text-violet-400" size={24} />
         </div>
         
         <h3 className="text-xl font-bold text-white mb-2">Build a Quiz from Your Content</h3>
@@ -63,7 +63,7 @@ const PdfUpload: React.FC<PdfUploadProps> = ({ onFileProcessed, isProcessing }) 
         </p>
 
         {!file ? (
-          <label className="w-full max-w-md p-8 border-2 border-dashed border-slate-800 rounded-2xl hover:border-violet-500/50 hover:bg-violet-500/5 transition-all cursor-pointer flex flex-col items-center group">
+          <label className="w-full max-w-md p-6 border-2 border-dashed border-slate-800 rounded-2xl hover:border-violet-500/50 hover:bg-violet-500/5 transition-all cursor-pointer flex flex-col items-center group">
             <FileText className="text-slate-600 group-hover:text-violet-400 mb-2 transition-colors" size={40} />
             <span className="text-sm font-medium text-slate-400 group-hover:text-slate-200">
               Click to select or drag and drop
@@ -109,7 +109,7 @@ const PdfUpload: React.FC<PdfUploadProps> = ({ onFileProcessed, isProcessing }) 
             )}
 
             <Button
-              className="w-full bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 border-none shadow-xl shadow-violet-900/20 py-6 text-base"
+              className="w-full h-12 text-sm bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 border-none shadow-xl shadow-violet-900/20"
               onClick={processFile}
               disabled={localProcessing || isProcessing}
             >

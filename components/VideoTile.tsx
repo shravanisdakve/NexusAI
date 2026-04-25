@@ -8,9 +8,10 @@ interface VideoTileProps {
     isLocal?: boolean;
     isScreenSharing?: boolean;
     className?: string;
+    isSyncing?: boolean; // New prop to indicate if stream is actually broadcasting
 }
 
-const VideoTile: React.FC<VideoTileProps> = ({ stream, displayName, isMuted, isLocal = false, isScreenSharing = false, className = '' }) => {
+const VideoTile: React.FC<VideoTileProps> = ({ stream, displayName, isMuted, isLocal = false, isScreenSharing = false, isSyncing = false, className = '' }) => {
     const videoRef = useRef<HTMLVideoElement>(null);
 
     useEffect(() => {
@@ -38,8 +39,24 @@ const VideoTile: React.FC<VideoTileProps> = ({ stream, displayName, isMuted, isL
                 </>
             )}
             {!stream && (
-                <div className="text-slate-600">
-                    <User size={64} />
+                <div className="flex flex-col items-center justify-center text-slate-600 gap-2">
+                    <div className="w-16 h-16 rounded-full bg-slate-700/50 flex items-center justify-center">
+                        <User size={32} className="opacity-40" />
+                    </div>
+                    <span className="text-[10px] font-bold uppercase tracking-widest opacity-40">Stream Hidden</span>
+                </div>
+            )}
+
+            {isLocal && (
+                <div className="absolute top-2 left-2 z-10 flex items-center gap-1.5 px-2 py-0.5 bg-violet-600/90 rounded-md ring-1 ring-white/10 shadow-lg">
+                    <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                    <span className="text-[9px] font-black text-white uppercase tracking-wider">Local Preview</span>
+                </div>
+            )}
+
+            {!isSyncing && isLocal && (
+                <div className="absolute top-2 right-2 z-10 px-2 py-0.5 bg-slate-900/80 rounded-md border border-white/5">
+                    <span className="text-[8px] font-medium text-slate-400">Not Broadcasting</span>
                 </div>
             )}
 

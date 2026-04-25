@@ -23,14 +23,14 @@ export const PageLayout: React.FC<PageLayoutProps> = ({
         <div className={`w-full min-w-0 min-h-0 ${containerClassName}`}>
             <div className="page-grid h-full min-h-0 w-full">
                 {/* Main Content Pane */}
-                <main className={`p-4 sm:p-6 lg:p-8 min-w-0 min-h-0 flex flex-col ${mainClassName}`}>
+                <main className={`p-1 sm:p-2 lg:p-1.5 min-w-0 min-h-0 flex flex-col ${mainClassName}`}>
                     {main}
                 </main>
 
                 {/* Secondary Side Rail */}
                 {side && (
                     <aside className={`hidden lg:block border-l border-white/5 bg-slate-900/20 min-w-0 min-h-0 ${sideClassName}`}>
-                        <div className="sticky top-0 p-4 sm:p-6 lg:p-8">
+                        <div className="sticky top-0 p-1 sm:p-2 lg:p-1.5">
                             {side}
                         </div>
                     </aside>

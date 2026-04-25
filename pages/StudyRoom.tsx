@@ -3,6 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { type ChatMessage, type StudyRoom as StudyRoomType, type Quiz as SharedQuiz, type TechniqueState } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useStudyRoomSocket } from '../hooks/useStudyRoomSocket';
+import { useMediaStream } from '../hooks/useMediaStream';
 import {
     onRoomUpdate,
     onNotesUpdate,
@@ -86,407 +88,120 @@ const formatPhaseTime = (totalSeconds: number): string => {
 
 // --- Main Component ---
 const StudyRoom: React.FC = () => {
-    // ... (State, Refs, Handlers, Effects all remain the same) ...
     const { id: roomId } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const { user: currentUser } = useAuth();
     const { language } = useLanguage();
     const { showToast } = useToast();
-    const [room, setRoom] = useState<StudyRoomType | null>(null);
-    const [participants, setParticipants] = useState<{ id?: string; email: string; displayName: string }[]>([]);
-    const [localStream, setLocalStream] = useState<MediaStream | null>(null);
-    const [mediaError, setMediaError] = useState<{ message: string; type: 'error' | 'info' } | null>(null);
-    const [isMuted, setIsMuted] = useState(true);
-    const [isCameraOn, setIsCameraOn] = useState(false);
-    const [isScreenSharing, setIsScreenSharing] = useState(false);
-    const [activeTab, setActiveTab] = useState<ActiveTab>('ai'); // Default to AI Buddy for active context
-    const [showPdfUpload, setShowPdfUpload] = useState(false);
-    const [isGeneratingCustomQuiz, setIsGeneratingCustomQuiz] = useState(false);
+
+    // --- Modular Hooks ---
+    const {
+        room, participants, allMessages, setAllMessages,
+        notes, setNotes, notesVersion, setNotesVersion,
+        notesLock, setNotesLock, techniqueState, setTechniqueState,
+        sharedQuiz, setSharedQuiz, isReconnecting, isSyncing,
+        typingUsers, reactions, setReactions
+    } = useStudyRoomSocket(roomId, currentUser);
+
+    const {
+        localStream, isMuted, isCameraOn, isScreenSharing, mediaError,
+        toggleMute, toggleCamera, toggleScreenShare
+    } = useMediaStream();
+
+    // --- Local UI State ---
+    const [activeTab, setActiveTab] = useState<ActiveTab>('ai');
     const [isMobilePanelOpen, setIsMobilePanelOpen] = useState(false);
-    const [isSavingSharedNote, setIsSavingSharedNote] = useState(false); // NEW: Loading state for saving shared note
+    const [isSavingSharedNote, setIsSavingSharedNote] = useState(false);
     const [resources, setResources] = useState<any[]>([]);
     const [isUploading, setIsUploading] = useState(false);
-    const [reactions, setReactions] = useState<Reaction[]>([]);
-    const [memberActionState, setMemberActionState] = useState<{ email: string; action: string } | null>(null);
     const [showMusicPlayer, setShowMusicPlayer] = useState(false);
     const [showWhiteboard, setShowWhiteboard] = useState(false);
     const [showShareModal, setShowShareModal] = useState(false);
-    const [techniqueName, setTechniqueName] = useState<string>('Pomodoro Technique');
-    const [techniqueState, setTechniqueState] = useState<TechniqueState | null>(null);
     const [techniqueRemainingSec, setTechniqueRemainingSec] = useState<number>(0);
     const [isTechniqueSyncing, setIsTechniqueSyncing] = useState(false);
     const [knowledgeGaps, setKnowledgeGaps] = useState<string[]>([]);
     const [trackedConcepts, setTrackedConcepts] = useState<string[]>([]);
     const [sessionGoal, setSessionGoal] = useState<string>('');
     const [isGoalActive, setIsGoalActive] = useState(false);
-    const [lastBreakTime, setLastBreakTime] = useState<number>(Date.now());
-    
-    const [allMessages, setAllMessages] = useState<ChatMessage[]>([]);
-    const [isConnected, setIsConnected] = useState(false);
-    const [chatInput, setChatInput] = useState('');
-    const [aiMessages, setAiMessages] = useState<ChatMessage[]>([{ role: 'model', parts: [{ text: "..." }] }]);
+    const [elapsedTime, setElapsedTime] = useState(0);
+    const [aiMessages, setAiMessages] = useState<ChatMessage[]>([{ role: 'model', parts: [{ text: "Thinking..." }] }]);
     const [aiInput, setAiInput] = useState('');
-    
-    // Track connection status
-    useEffect(() => {
-        const unsub = subscribeToConnectionStatus((connected) => {
-            setIsConnected(connected);
-            console.log(`[StudyRoom] Socket Status: ${connected ? 'CONNECTED' : 'OFFLINE'}`);
-        });
-        return unsub;
-    }, []);
-
-    // Derived context
-    const neuralContextStatus: 'OFFLINE' | 'ACTIVE' | 'MAPPING' = (room?.id && isConnected) ? 'ACTIVE' : (room?.id ? 'MAPPING' : 'OFFLINE');
-
-    // Localized Strings Helper for Study Room
-    const getLocalizedMessage = (type: 'default' | 'welcome', lang: string, params?: any) => {
-        const isMr = lang === 'mr';
-        const isHi = lang === 'hi';
-
-        switch (type) {
-            case 'default':
-                if (isMr) return "नमस्कार! अभ्यासविषयक काहीही विचारा किंवा अधिक अचूक उत्तरांसाठी काही नोट्स अपलोड करा.";
-                if (isHi) return "नमस्ते! अध्ययन से संबंधित कुछ भी पूछें या अधिक सटीक उत्तरों के लिए कुछ नोट्स अपलोड करें।";
-                return "Hello! Ask me anything about your studies or upload notes for more specific help.";
-
-            case 'welcome':
-                if (isMr) return `स्वागत आहे! ही खोली "${params.topic}" विषयावर "${params.technique}" तंत्राचा वापर करून "लक्ष्यित शिक्षण" सत्रासाठी तयार केली आहे. चला सुरुवात करूया!`;
-                if (isHi) return `स्वागत है! यह कमरा "${params.topic}" विषय पर "${params.technique}" तकनीक का उपयोग करके "लक्षित शिक्षण" सत्र के लिए स्थापित किया गया है। चलिए शुरू करते हैं!`;
-                return `Welcome! This room is set up for a "Targeted Learning" session using the ${params.technique} technique on the topic: "${params.topic}". Let's get started!`;
-
-            default:
-                return "";
-        }
-    };
-
-    // Update initial AI message based on language
-    useEffect(() => {
-        if (aiMessages.length === 1 && aiMessages[0].role === 'model') {
-            setAiMessages([{ role: 'model', parts: [{ text: getLocalizedMessage('default', language) }] }]);
-        }
-    }, [language]);
-
-    useEffect(() => {
-        const handleResize = () => {
-            if (window.innerWidth >= 1280) {
-                setIsMobilePanelOpen(false);
-            }
-        };
-        window.addEventListener('resize', handleResize);
-        return () => window.removeEventListener('resize', handleResize);
-    }, []);
-
-
-    const [notes, setNotes] = useState('');
     const [isAiLoading, setIsAiLoading] = useState(false);
     const [isExtracting, setIsExtracting] = useState(false);
-    const [sharedQuiz, setSharedQuiz] = useState<SharedQuiz | null>(null);
     const [showLeaderboard, setShowLeaderboard] = useState(false);
-    const [typingUsers, setTypingUsers] = useState<string[]>([]);
     const [phaseAlert, setPhaseAlert] = useState<{ title: string; subtitle: string; icon: any } | null>(null);
-    const prevPhaseLabelRef = useRef<string | null>(null);
+
+    const [chatInput, setChatInput] = useState('');
+    const [techniqueName, setTechniqueName] = useState<string>('Pomodoro');
+    const welcomeMessageSent = useRef(false);
+    const effectiveTechniqueLabel = techniqueState?.phaseLabel || techniqueName || 'Study Session';
 
     const playZenChime = useCallback(() => {
         try {
-            const context = new (window.AudioContext || (window as any).webkitAudioContext)();
-            const osc = context.createOscillator();
-            const gain = context.createGain();
-            
-            osc.connect(gain);
-            gain.connect(context.destination);
-            
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(523.25, context.currentTime); // C5
-            osc.frequency.exponentialRampToValueAtTime(1046.50, context.currentTime + 0.1); // C6
-            osc.frequency.exponentialRampToValueAtTime(783.99, context.currentTime + 0.4); // G5
-
-            gain.gain.setValueAtTime(0, context.currentTime);
-            gain.gain.linearRampToValueAtTime(0.3, context.currentTime + 0.1);
-            gain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + 3);
-
-            osc.start();
-            osc.stop(context.currentTime + 3);
-        } catch (e) { console.warn("Zen chime failed", e); }
+            const audio = new Audio('/chime.mp3');
+            audio.volume = 0.5;
+            audio.play().catch(() => {});
+        } catch (e) {}
     }, []);
 
-    const typingTimeoutRef = useRef<{ [key: string]: NodeJS.Timeout }>({});
+    const getLocalizedMessage = useCallback((key: string, lang: string, ctx: any) => {
+        return `Welcome to the ${ctx.technique || 'Focus'} session for ${ctx.topic || 'your studies'}!`;
+    }, []);
 
-    const [elapsedTime, setElapsedTime] = useState(0); // Time in seconds
-    const intervalRef = useRef<NodeJS.Timeout | null>(null);
-    const startTimeRef = useRef<number | null>(null);
+    const postSystemMessage = useCallback((text: string) => {
+        setAllMessages(prev => [
+            ...prev,
+            {
+                id: Date.now().toString(),
+                role: 'model' as const,
+                parts: [{ text }],
+                user: { displayName: 'System', email: SYSTEM_EMAIL },
+                timestamp: Date.now()
+            }
+        ]);
+    }, [setAllMessages]);
 
-    const cameraVideoTrackRef = useRef<MediaStreamTrack | null>(null);
-    const localStreamRef = useRef<MediaStream | null>(null);
-    const notesFileInputRef = useRef<HTMLInputElement>(null);
+    const handleSendChatMessage = useCallback(async (msgBody?: string) => {
+        const textToSend = msgBody || chatInput.trim();
+        if (!textToSend || !roomId || !currentUser) return;
+        
+        await sendChatMessage(roomId, {
+            userId: currentUser.id || (currentUser as any)._id,
+            email: currentUser.email,
+            sender: currentUser.displayName,
+            text: textToSend
+        });
+        if (!msgBody) setChatInput('');
+    }, [chatInput, roomId, currentUser]);
+
+    const sessionIdRef = useRef<string | null>(null);
+    const startTimeRef = useRef<number>(Date.now());
+    const prevPhaseLabelRef = useRef<string | null>(null);
+    const isAdvancingTechniqueRef = useRef(false);
     const chatEndRef = useRef<HTMLDivElement>(null);
     const aiChatEndRef = useRef<HTMLDivElement>(null);
-    const prevParticipantsRef = useRef<StudyRoomType['users']>([]);
-    const welcomeMessageSent = useRef(false);
-    const autoModeratorTriggered = useRef(false);
-    const autoModeratorTimerRef = useRef<NodeJS.Timeout | null>(null);
-    const isAdvancingTechniqueRef = useRef(false);
+    const notesFileInputRef = useRef<HTMLInputElement>(null);
 
-    // --- Session tracking ---
-    const sessionIdRef = useRef<string | null>(null);
-    const [initialMessagesLoaded, setInitialMessagesLoaded] = useState(false);
+    // --- Logic Blocks ---
+    // Reset AI History on room/topic change to prevent context leakage
+    useEffect(() => {
+        setAiMessages([{ 
+            role: 'model', 
+            parts: [{ text: `Hello ${currentUser?.displayName || 'there'}! I'm your Nexus Mentor for ${room?.topic || 'this session'}. How can we tackle this subject together?` }] 
+        }]);
+    }, [roomId, room?.topic]);
 
-    const participantChatMessages = useMemo(() => {
-        const filtered = allMessages.filter(msg => {
-            const isUserRole = msg.role === 'user';
-            const isNotSystem = msg.user?.email !== SYSTEM_EMAIL;
-            return isUserRole && isNotSystem;
-        });
-        return filtered;
-    }, [allMessages]);
-
-    const isTechniqueRunning = !!techniqueState?.isRunning;
-    const effectiveTechniqueLabel = room?.technique || techniqueName || 'Pomodoro Technique';
-    
-    const isCurrentUserHost = useMemo(() => {
-        if (!room || !currentUser) return false;
-        if (room.createdById && currentUser.id) {
-            return room.createdById === currentUser.id;
-        }
-        if (room.createdByEmail && currentUser.email) {
-            return room.createdByEmail.toLowerCase() === currentUser.email.toLowerCase();
-        }
-        return room.createdBy === currentUser.displayName;
-    }, [room, currentUser]);
-    
-    const mutedEmailSet = useMemo(() => {
-        return new Set((room?.mutedUserEmails || []).map((email) => email.toLowerCase()));
-    }, [room?.mutedUserEmails]);
-
-    // --- Chat Handlers ---
-    const handleSendChatMessage = useCallback(async (messageText: string) => {
-        if (!messageText.trim() || !roomId) {
-            return;
-        }
-        if (!currentUser) {
-            console.error('handleSendChatMessage: Aborting - user not logged in.');
-            return;
-        }
-
-        const newMessage: ChatMessage = {
-            id: 'temp-' + Date.now(),
-            role: 'user',
-            parts: [{ text: messageText }],
-            user: { email: currentUser.email, displayName: currentUser.displayName },
-            timestamp: Date.now()
-        };
-
-        setAllMessages(prev => [...prev, newMessage]);
-        setChatInput('');
-
-        try {
-            await sendChatMessage(roomId, {
-                ...newMessage,
-                text: newMessage.parts[0].text,
-                sender: currentUser.displayName,
-                userId: currentUser.id,
-                email: currentUser.email
-            });
-            setTypingUsers(prev => prev.filter(u => u !== currentUser.displayName));
-        } catch (error) {
-            console.error("handleSendChatMessage: Error saving message:", error);
-            setAllMessages(prev => prev.filter(m => m.id !== newMessage.id));
-        }
-    }, [roomId, currentUser]);
-
-    const postSystemMessage = useCallback(async (text: string) => {
-        if (!roomId) return;
-        const systemMessage: ChatMessage = {
-            role: 'model',
-            parts: [{ text }],
-            user: { displayName: 'Focus Bot', email: SYSTEM_EMAIL },
-            timestamp: Date.now()
-        };
-        await sendChatMessage(roomId, { ...systemMessage, text: text, sender: 'System' });
+    useEffect(() => {
+        startSession('study-room', roomId || 'unknown').then(id => sessionIdRef.current = id);
+        return () => { if (sessionIdRef.current) endSession(sessionIdRef.current); };
     }, [roomId]);
 
-    // --- Effects for Setup and Teardown ---
     useEffect(() => {
-        if (room) {
-            const prevEmails = prevParticipantsRef.current.map(p => p.email);
-            const currentEmails = room.users.map(p => p.email);
-            const leftUsers = prevParticipantsRef.current.filter(p => !currentEmails.includes(p.email));
-
-            if (leftUsers.length > 0) {
-                leftUsers.forEach(user => {
-                    postSystemMessage(`${user.displayName} has left the room.`);
-                });
-            }
-
-            prevParticipantsRef.current = room.users;
-        }
-    }, [room, currentUser, postSystemMessage]);
-
-    const getMedia = useCallback(async () => {
-        if (localStreamRef.current) {
-            localStreamRef.current.getTracks().forEach(track => track.stop());
-        }
-
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-            localStreamRef.current = stream;
-            cameraVideoTrackRef.current = stream.getVideoTracks()[0];
-            
-            // Default to OFF as per production refinements
-            stream.getAudioTracks().forEach(track => track.enabled = false);
-            stream.getVideoTracks().forEach(track => track.enabled = false);
-            
-            setLocalStream(stream);
-            setMediaError(null);
-            setIsMuted(true);
-            setIsCameraOn(false);
-        } catch (err: any) {
-            console.error("Error accessing media devices.", err);
-            if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-                setMediaError({
-                    message: "Permissions denied. Grant camera/mic access in your browser settings to share video.",
-                    type: 'info'
-                });
-            } else {
-                let errorMessage = "Could not access camera/microphone. Video features are disabled.";
-                if (err.name === 'NotFoundError') {
-                    errorMessage = "No camera or microphone found. Video features are unavailable.";
-                }
-                setMediaError({ message: errorMessage, type: 'error' });
-            }
-            setLocalStream(null);
-            localStreamRef.current = null;
-        }
-    }, []);
-
-    useEffect(() => {
-        getMedia();
-        return () => {
-            if (localStreamRef.current) {
-                localStreamRef.current.getTracks().forEach(track => track.stop());
-            }
-        };
-    }, [getMedia]);
-
-    useEffect(() => {
-        if (!roomId || !currentUser) return;
-        setInitialMessagesLoaded(false);
-        autoModeratorTriggered.current = false;
-        if (autoModeratorTimerRef.current) {
-            clearTimeout(autoModeratorTimerRef.current);
-            autoModeratorTimerRef.current = null;
-        }
-
-        joinRoom(roomId, currentUser);
-        startSession('study-room', roomId).then(id => {
-            sessionIdRef.current = id;
-            console.log("Study session started:", id);
-        });
-
-        setElapsedTime(0);
-        startTimeRef.current = Date.now();
-        intervalRef.current = setInterval(() => {
-            if (startTimeRef.current) {
-                const now = Date.now();
-                const elapsed = Math.floor((now - startTimeRef.current) / 1000);
-                setElapsedTime(elapsed);
-            }
+        const interval = setInterval(() => {
+            setElapsedTime(Math.floor((Date.now() - startTimeRef.current) / 1000));
         }, 1000);
-
-        const unsubRoom = onRoomUpdate(roomId, (updatedRoom) => {
-            if (!updatedRoom) {
-                navigate('/study-lobby');
-                return;
-            }
-            setRoom(updatedRoom);
-            setParticipants(updatedRoom.users);
-            if (updatedRoom.technique) setTechniqueName(updatedRoom.technique);
-            if (updatedRoom.techniqueState) setTechniqueState(updatedRoom.techniqueState);
-            if (updatedRoom.knowledgeGaps) setKnowledgeGaps(updatedRoom.knowledgeGaps);
-        });
-
-        const unsubTechnique = onTechniqueUpdate(roomId, (payload) => {
-            setTechniqueName(payload.technique || 'Pomodoro Technique');
-            setTechniqueState(payload.techniqueState || null);
-        });
-
-        getRoomMessages(roomId).then(msgs => {
-            setAllMessages(msgs);
-        }).finally(() => {
-            setInitialMessagesLoaded(true);
-        });
-
-        const unsubTyping = onTyping((data: any) => {
-            if (data.roomId === roomId && data.userName !== currentUser?.displayName) {
-                setTypingUsers(prev => prev.includes(data.userName) ? prev : [...prev, data.userName]);
-                if (typingTimeoutRef.current[data.userName]) clearTimeout(typingTimeoutRef.current[data.userName]);
-                typingTimeoutRef.current[data.userName] = setTimeout(() => {
-                    setTypingUsers(prev => prev.filter(u => u !== data.userName));
-                }, 3000);
-            }
-        });
-
-        const unsubMessages = subscribeToMessages((rawMsg) => {
-            const serverEmail = rawMsg.email || rawMsg.userId || 'unknown';
-            const serverText = rawMsg.text || '';
-            const serverMsg: ChatMessage = {
-                id: rawMsg.id || Date.now().toString(),
-                role: 'user',
-                parts: [{ text: serverText }],
-                user: { displayName: rawMsg.sender || 'Unknown', email: serverEmail },
-                timestamp: rawMsg.timestamp ? new Date(rawMsg.timestamp).getTime() : Date.now()
-            };
-
-            setAllMessages(prev => {
-                if (prev.some(m => m.id === serverMsg.id)) return prev;
-                const tempIdx = prev.findIndex(m => m.id?.startsWith('temp-') && m.user?.email === serverEmail && m.parts[0]?.text === serverText);
-                if (tempIdx !== -1) {
-                    const updated = [...prev];
-                    updated[tempIdx] = serverMsg;
-                    return updated;
-                }
-                return [...prev, serverMsg];
-            });
-        });
-
-        const unsubNotes = onNotesUpdate(roomId, setNotes);
-        const unsubResources = onResourcesUpdate(roomId, setResources);
-        const unsubQuiz = onQuizUpdate(roomId, (quiz) => {
-            setSharedQuiz(quiz);
-            if (quiz && quiz.answers.length > 0 && quiz.answers.length === participants.length) {
-                setShowLeaderboard(true);
-            }
-        });
-        const unsubKnowledgeGaps = onKnowledgeGapsUpdate(roomId, setKnowledgeGaps);
-        const unsubTrackedConcepts = onTrackedConceptsUpdate(roomId, setTrackedConcepts);
-        const unsubReaction = onReaction(({ roomId: reactionRoomId, emoji }) => {
-            if (reactionRoomId === roomId) {
-                setReactions(prev => [...prev, { id: Date.now(), emoji }]);
-            }
-        });
-
-        triggerKnowledgeGapAnalysis(roomId).catch(console.error);
-
-        return () => {
-            if (intervalRef.current) clearInterval(intervalRef.current);
-            unsubRoom();
-            unsubTechnique();
-            unsubMessages();
-            unsubTyping();
-            unsubNotes();
-            unsubResources();
-            unsubQuiz();
-            unsubKnowledgeGaps();
-            unsubTrackedConcepts();
-            unsubReaction();
-            if (currentUser) leaveRoom(roomId);
-            if (sessionIdRef.current) {
-                endSession(sessionIdRef.current);
-                sessionIdRef.current = null;
-            }
-            if (autoModeratorTimerRef.current) clearTimeout(autoModeratorTimerRef.current);
-        };
-    }, [roomId, currentUser, navigate]);
+        return () => clearInterval(interval);
+    }, []);
 
     useEffect(() => {
         const shouldAutoAdvance = !!roomId && !!techniqueState && techniqueState.isRunning && techniqueRemainingSec <= 0;
@@ -542,7 +257,7 @@ const StudyRoom: React.FC = () => {
         }
     }, [techniqueState?.phaseLabel, techniqueState?.phasePrompt, playZenChime]);
 
-    useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [participantChatMessages]);
+    useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [allMessages]);
     useEffect(() => { aiChatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [aiMessages, sharedQuiz]);
 
     // --- Handlers ---
@@ -559,16 +274,9 @@ const StudyRoom: React.FC = () => {
         }
     };
 
-    const handleToggleMute = useCallback(() => {
-        localStream?.getAudioTracks().forEach(track => track.enabled = !track.enabled);
-        setIsMuted(prev => !prev);
-    }, [localStream]);
-
-    const handleToggleCamera = useCallback(() => {
-        if (isScreenSharing) return;
-        localStream?.getVideoTracks().forEach(track => track.enabled = !track.enabled);
-        setIsCameraOn(prev => !prev);
-    }, [localStream, isScreenSharing]);
+    const handleToggleMute = toggleMute;
+    const handleToggleCamera = toggleCamera;
+    const handleToggleScreenShare = toggleScreenShare;
 
     const handleHangUp = useCallback(async () => {
         if (sessionIdRef.current) {
@@ -580,25 +288,6 @@ const StudyRoom: React.FC = () => {
         navigate('/study-lobby');
     }, [roomId, currentUser, localStream, navigate]);
 
-    const handleToggleScreenShare = async () => {
-        if (isScreenSharing) {
-            localStream?.getVideoTracks().forEach(t => { if(t.label.startsWith('screen')) t.stop(); });
-            await getMedia();
-            setIsScreenSharing(false);
-        } else {
-            try {
-                const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
-                const screenTrack = screenStream.getVideoTracks()[0];
-                if (localStreamRef.current) {
-                    const original = localStreamRef.current.getVideoTracks()[0];
-                    if (original) localStreamRef.current.removeTrack(original);
-                    localStreamRef.current.addTrack(screenTrack);
-                }
-                setIsScreenSharing(true);
-            } catch (err) { console.error(err); }
-        }
-    };
-
     const handleReaction = (emoji: string) => {
         setReactions(prev => [...prev, { id: Date.now(), emoji }]);
         if (roomId) sendReaction(roomId, emoji);
@@ -607,11 +296,14 @@ const StudyRoom: React.FC = () => {
     const handleMentionMember = (name: string) => { setActiveTab('chat'); setChatInput(`@${name} `); };
     const handleWaveMember = (name: string) => { handleReaction('👋'); handleSendChatMessage(`👋 @${name}`); };
 
-    const handleSaveSharedNote = async (content: string) => {
+    const handleSaveSharedNote = async (content: string, version?: number) => {
         if (!roomId) return;
         setIsSavingSharedNote(true);
-        try { await saveRoomAINotes(roomId, content); } 
-        finally { setIsSavingSharedNote(false); }
+        try { 
+            await saveRoomAINotes(roomId, content, version || notesVersion); 
+        } finally { 
+            setIsSavingSharedNote(false); 
+        }
     };
 
     const handleUploadResource = async (file: File) => {
@@ -623,41 +315,77 @@ const StudyRoom: React.FC = () => {
 
     const handleDeleteResource = async (fileName: string) => { if (roomId) await deleteResource(roomId, fileName); };
 
+    const aiAbortControllerRef = useRef<AbortController | null>(null);
+
     const handleSendAiMessage = useCallback(async () => {
         if (!aiInput.trim() || isAiLoading) return;
+        
+        // 1. Cancel any existing stream to prevent race conditions
+        if (aiAbortControllerRef.current) aiAbortControllerRef.current.abort();
+        aiAbortControllerRef.current = new AbortController();
+        
         const text = aiInput;
-        setAiMessages(prev => [...prev, { role: 'user', parts: [{ text }] }]);
+        const userMsgId = Date.now().toString();
+        const modelMsgId = (Date.now() + 1).toString();
+
+        setAiMessages(prev => [...prev, { id: userMsgId, role: 'user', parts: [{ text }] }]);
         setAiInput('');
         setIsAiLoading(true);
+
         try {
-            const stream = await streamStudyBuddyChat(text, notes, language);
+            const historyForAi = aiMessages.slice(-10);
+            const stream = await streamStudyBuddyChat(
+                text, 
+                notes, 
+                historyForAi, 
+                language, 
+                aiAbortControllerRef.current.signal,
+                room?.topic
+            );
+            
+            if (!stream) throw new Error("Stream failed to initialize");
             const reader = stream.getReader();
             let responseText = '';
+
+            // 2. Optimistically add the model bubble with an ID
+            setAiMessages(prev => [...prev, { id: modelMsgId, role: 'model', parts: [{ text: '' }] }]);
+
             while (true) {
                 const { done, value } = await reader.read();
                 if (done) break;
+                
                 const chunk = new TextDecoder().decode(value);
                 const lines = chunk.split('\n');
+                
                 for (const line of lines) {
                     if (line.startsWith('data: ')) {
-                        const data = JSON.parse(line.slice(6));
-                        if (data.text) {
-                            responseText += data.text;
-                            setAiMessages(prev => {
-                                const newMsg = [...prev];
-                                if (newMsg[newMsg.length - 1].role === 'model') {
-                                    newMsg[newMsg.length - 1].parts = [{ text: responseText }];
-                                } else {
-                                    newMsg.push({ role: 'model', parts: [{ text: responseText }] });
-                                }
-                                return newMsg;
-                            });
-                        }
+                        try {
+                            const data = JSON.parse(line.slice(6));
+                            if (data.text) {
+                                responseText += data.text;
+                                // 3. STATED HARDENING: Only update the message with matching ID
+                                setAiMessages(prev => prev.map(msg => 
+                                    msg.id === modelMsgId 
+                                        ? { ...msg, parts: [{ text: responseText }] } 
+                                        : msg
+                                ));
+                            }
+                        } catch (e) { console.warn("Partial JSON chunk:", line); }
                     }
                 }
             }
-        } finally { setIsAiLoading(false); }
-    }, [aiInput, isAiLoading, notes, language]);
+        } catch (err: any) {
+            if (err.name === 'AbortError') {
+                console.log('AI Request Aborted');
+            } else {
+                console.error("AI Chat Error:", err);
+                showToast("Connection stutter. Try again.", "error");
+            }
+        } finally { 
+            setIsAiLoading(false); 
+            aiAbortControllerRef.current = null;
+        }
+    }, [aiInput, isAiLoading, aiMessages, notes, language]);
 
     const handleGenerateQuiz = async () => {
         if (!roomId) return;
@@ -687,11 +415,12 @@ const StudyRoom: React.FC = () => {
     };
 
     const handleSummarizeNotes = async () => {
-        if (!notes) return;
+        if (!notes || !roomId) return;
         setIsAiLoading(true);
         try {
             const summary = await summarizeText(notes);
-            setAiMessages(prev => [...prev, { role: 'model', parts: [{ text: summary }] }]);
+            // Public Bot Message
+            postSystemMessage(`🤖 **AI SUMMARY of current notes:**\n\n${summary}`);
         } finally { setIsAiLoading(false); }
     };
 
@@ -734,7 +463,30 @@ const StudyRoom: React.FC = () => {
                             <div className="w-7 h-7 rounded-lg bg-indigo-500/10 flex items-center justify-center border border-indigo-500/20">
                                 <Target className="w-3.5 h-3.5 text-indigo-400" />
                             </div>
-                            <h2 className="text-[9px] font-black text-white uppercase tracking-[0.25em] truncate max-w-[180px] opacity-80">{room?.name || 'STUDY ROOM'}</h2>
+                            <div className="flex-1 flex flex-col min-w-0">
+                                {isReconnecting ? (
+                                    <div className="flex items-center gap-2">
+                                        <Spinner size="sm" className="text-amber-500" />
+                                        <span className="text-sm font-bold text-amber-500 animate-pulse">RECONNECTING...</span>
+                                    </div>
+                                ) : isSyncing ? (
+                                    <div className="flex items-center gap-2">
+                                        <Spinner size="sm" className="text-sky-500" />
+                                        <span className="text-sm font-bold text-sky-500">SYNCING ROOM STATE...</span>
+                                    </div>
+                                ) : (
+                                    <>
+                                        <h1 className="text-lg font-bold text-white truncate">{room?.name || 'Study Room'}</h1>
+                                        <div className="flex items-center gap-2 text-xs text-slate-400">
+                                            <span className="px-1.5 py-0.5 bg-slate-700/50 rounded flex items-center gap-1">
+                                                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                                                {effectiveTechniqueLabel}
+                                            </span>
+                                            <span className="truncate max-w-[150px]">{room?.topic || 'General Session'}</span>
+                                        </div>
+                                    </>
+                                )}
+                            </div>
                         </div>
 
                         <div className="h-4 w-[1px] bg-white/10 shrink-0"></div>
@@ -772,8 +524,8 @@ const StudyRoom: React.FC = () => {
                                 <span className="text-[7px] font-black text-slate-500 uppercase tracking-widest leading-none">{effectiveTechniqueLabel}</span>
                                 <span className="text-xs font-mono font-black text-white tabular-nums leading-none mt-0.5">{formatPhaseTime(techniqueRemainingSec)}</span>
                             </div>
-                            <button onClick={handleTechniqueToggle} className={`w-7 h-7 rounded-full flex items-center justify-center transition-all ${isTechniqueRunning ? 'bg-amber-500/10 text-amber-500 hover:bg-amber-500/20' : 'bg-indigo-500 text-white hover:bg-indigo-400 shadow-lg shadow-indigo-500/20'}`}>
-                                {isTechniqueRunning ? <Pause size={12} fill="currentColor" /> : <Play size={12} fill="currentColor" />}
+                            <button onClick={handleTechniqueToggle} className={`w-7 h-7 rounded-full flex items-center justify-center transition-all ${techniqueState?.isRunning ? 'bg-amber-500/10 text-amber-500 hover:bg-amber-500/20' : 'bg-indigo-500 text-white hover:bg-indigo-400 shadow-lg shadow-indigo-500/20'}`}>
+                                {techniqueState?.isRunning ? <Pause size={12} fill="currentColor" /> : <Play size={12} fill="currentColor" />}
                             </button>
                         </div>
 
@@ -832,34 +584,59 @@ const StudyRoom: React.FC = () => {
                                     </div>
 
                                     {/* Participant Strip */}
-                                    <div className="h-28 flex gap-4 overflow-x-auto pb-2 scrollbar-hide shrink-0">
-                                        <div className="w-44 shrink-0">
+                                    <div className="h-28 flex gap-4 overflow-x-auto pb-2 scrollbar-hide shrink-0 bg-white/[0.02] border-b border-white/[0.05] p-4">
+                                        <div className="w-48 shrink-0 relative group">
                                             <VideoTile 
                                                 stream={localStream} 
                                                 displayName="My Camera" 
                                                 isMuted={isMuted} 
                                                 isLocal={true} 
-                                                className="h-full border border-white/5 opacity-60 hover:opacity-100 transition-opacity" 
+                                                className="h-28 border border-white/5 opacity-80 hover:opacity-100 transition-opacity" 
                                             />
                                         </div>
                                         {participants.filter(p => p.email !== currentUser?.email).map(p => (
-                                            <div key={p.email} className="w-48 shrink-0">
-                                                <VideoTile displayName={p.displayName} isMuted={false} className="h-full" />
+                                            <div key={p.email} className="w-24 shrink-0 flex flex-col items-center justify-center bg-slate-800/40 rounded-xl border border-white/[0.05] p-3 gap-2">
+                                                <div className="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center ring-2 ring-white/5">
+                                                    <span className="text-xs font-black text-slate-300">{(p.displayName?.[0] || 'U').toUpperCase()}</span>
+                                                </div>
+                                                <span className="text-[9px] font-bold text-slate-400 truncate w-full text-center uppercase tracking-tighter">{p.displayName}</span>
                                             </div>
                                         ))}
                                     </div>
                                 </div>
                             ) : (
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 h-full animate-in fade-in zoom-in-95 duration-500">
-                                    <VideoTile stream={localStream} displayName={currentUser?.displayName || 'You'} isMuted={isMuted} isLocal={true} isScreenSharing={false} />
-                                    {participants.filter(p => p.email !== currentUser?.email).slice(0, 3).map(p => (
-                                        <VideoTile key={p.email} displayName={p.displayName} isMuted={false} />
-                                    ))}
-                                    {participants.length > 4 && (
-                                        <div className="bg-slate-900/40 rounded-2xl border border-dashed border-white/10 flex items-center justify-center text-[10px] font-black text-slate-500 uppercase">
-                                            +{participants.length - 4} Members
+                                <div className="flex flex-col items-center justify-center h-full space-y-8 animate-in fade-in zoom-in-95 duration-500">
+                                    <div className="w-full max-w-2xl px-4">
+                                        <VideoTile 
+                                            stream={localStream} 
+                                            displayName={`${currentUser?.displayName || 'You'} (Mirror)`} 
+                                            isMuted={isMuted} 
+                                            isLocal={true} 
+                                            isScreenSharing={false} 
+                                            className="shadow-2xl shadow-violet-500/10 border border-white/10"
+                                        />
+                                    </div>
+                                    <div className="flex flex-wrap justify-center gap-4 max-w-3xl">
+                                        {participants.filter(p => p.email !== currentUser?.email).slice(0, 10).map(p => (
+                                            <div key={p.email} className="group relative">
+                                                <div className="w-12 h-12 rounded-2xl bg-slate-800 border border-white/5 flex items-center justify-center hover:bg-slate-700 transition-colors cursor-help shadow-lg" title={`${p.displayName} is in the room`}>
+                                                    <span className="text-sm font-black text-slate-400">{(p.displayName?.[0] || 'U').toUpperCase()}</span>
+                                                </div>
+                                                <div className="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-emerald-500 rounded-full border-2 border-slate-900" />
+                                            </div>
+                                        ))}
+                                        {participants.length > 11 && (
+                                            <div className="w-12 h-12 rounded-2xl bg-slate-900 flex items-center justify-center text-[10px] font-black text-slate-500 uppercase border border-dashed border-white/10">
+                                                +{participants.length - 11}
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div className="flex flex-col items-center text-center gap-2">
+                                        <div className="px-3 py-1 bg-white/5 rounded-full border border-white/10">
+                                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">Collective Presence Mode</span>
                                         </div>
-                                    )}
+                                        <p className="text-xs text-slate-500 italic max-w-sm">Video feeds are disabled to save bandwidth. Collaborative tools (Notes, Whiteboard) remain in real-time sync.</p>
+                                    </div>
                                 </div>
                             )}
                             <Reactions reactions={reactions} />
@@ -876,9 +653,23 @@ const StudyRoom: React.FC = () => {
                         </div>
 
                         <div className="flex-1 overflow-hidden">
-                            {activeTab === 'ai' && <AiPanel messages={aiMessages} input={aiInput} setInput={setAiInput} onSend={handleSendAiMessage} notes={notes} isExtracting={isExtracting} onUploadClick={() => notesFileInputRef.current?.click()} onQuizMe={handleGenerateQuiz} onSummarize={handleSummarizeNotes} isLoading={isAiLoading} neuralStatus={neuralContextStatus} activeTechnique={effectiveTechniqueLabel} onTrackConcept={handleTrackConcept} />}
-                            {activeTab === 'chat' && <ChatPanel messages={participantChatMessages} input={chatInput} setInput={setChatInput} onSend={handleSendChatMessage} currentUser={currentUser} chatEndRef={chatEndRef} typingUsers={typingUsers} />}
-                            {activeTab === 'notes' && <StudyRoomNotesPanel sharedNoteContent={notes} resources={resources} onSaveSharedNote={handleSaveSharedNote} onUploadResource={handleUploadResource} onDeleteResource={handleDeleteResource} isSavingNote={isSavingSharedNote} isUploading={isUploading} />}
+                            {activeTab === 'ai' && <AiPanel messages={aiMessages} input={aiInput} setInput={setAiInput} onSend={handleSendAiMessage} notes={notes} isExtracting={isExtracting} onUploadClick={() => notesFileInputRef.current?.click()} onQuizMe={handleGenerateQuiz} onSummarize={handleSummarizeNotes} isLoading={isAiLoading} neuralStatus={notes ? 'Active' : 'Idle'} activeTechnique={effectiveTechniqueLabel} onTrackConcept={handleTrackConcept} chatEndRef={aiChatEndRef} />}
+                            {activeTab === 'chat' && <ChatPanel messages={allMessages} input={chatInput} setInput={setChatInput} onSend={handleSendChatMessage} currentUser={currentUser} chatEndRef={chatEndRef} typingUsers={typingUsers} />}
+                            {activeTab === 'notes' && (
+                                <StudyRoomNotesPanel 
+                                    sharedNoteContent={notes} 
+                                    resources={resources} 
+                                    onSaveSharedNote={handleSaveSharedNote} 
+                                    onUploadResource={handleUploadResource} 
+                                    onDeleteResource={handleDeleteResource} 
+                                    isSavingNote={isSavingSharedNote} 
+                                    isUploading={isUploading} 
+                                    lockedBy={notesLock}
+                                    currentUserId={currentUser?.id}
+                                    notesVersion={notesVersion}
+                                    onAcquireLock={() => Promise.resolve()}
+                                />
+                            )}
                             {activeTab === 'tools' && <StudyToolsPanel notes={notes} topic={room?.topic || 'General Study'} isActive={true} courseId={room?.courseId} knowledgeGaps={knowledgeGaps} onTriggerGapAnalysis={handleTriggerGapAnalysis} activeTechnique={effectiveTechniqueLabel} trackedConcepts={trackedConcepts} onTrackConcept={handleTrackConcept} />}
                         </div>
                     </aside>
@@ -953,17 +744,17 @@ const TabButton: React.FC<{ id: string, activeTab: string, setActiveTab: (id: an
 ));
 
 const ChatPanel: React.FC<any> = React.memo(({ messages, input, setInput, onSend, currentUser, chatEndRef, typingUsers }) => (
-    <div className="flex flex-col h-full">
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+    <div className="flex flex-col h-full min-h-0 bg-slate-900/40">
+        <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0">
             {messages.map((msg: any, i: number) => (
                 <div key={i} className={`flex flex-col ${msg.user?.email === currentUser?.email ? 'items-end' : 'items-start'}`}>
                     <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">{msg.user?.displayName}</span>
-                    <div className={`px-3 py-2 rounded-2xl text-xs max-w-[90%] ${msg.user?.email === currentUser?.email ? 'bg-indigo-600 text-white rounded-tr-none' : 'bg-slate-800 text-slate-200 rounded-tl-none'}`}>{msg.parts[0].text}</div>
+                    <div className={`px-3 py-2 rounded-2xl text-xs max-w-[85%] ${msg.user?.email === currentUser?.email ? 'bg-indigo-600 text-white rounded-tr-none shadow-lg shadow-indigo-500/10' : 'bg-slate-800 text-slate-200 rounded-tl-none border border-white/5'}`}>{msg.parts[0].text}</div>
                 </div>
             ))}
             <div ref={chatEndRef}></div>
         </div>
-        <div className="p-4 border-t border-white/5">
+        <div className="p-4 bg-slate-900 border-t border-white/5 shrink-0">
             <div className="flex gap-2">
                 <Input id="room-chat-input" name="roomChatInput" aria-label="Message room" value={input} onChange={e => setInput(e.target.value)} onKeyPress={e => e.key === 'Enter' && onSend(input)} placeholder="Message room..." className="h-9 bg-slate-800/50 border-white/5 text-xs" />
                 <Button onClick={() => onSend(input)} size="sm" className="bg-violet-600"><Send size={14} /></Button>
@@ -972,63 +763,83 @@ const ChatPanel: React.FC<any> = React.memo(({ messages, input, setInput, onSend
     </div>
 ));
 
-const AiPanel: React.FC<any> = React.memo(({ messages, input, setInput, onSend, notes, isExtracting, onUploadClick, onQuizMe, onSummarize, isLoading, neuralStatus, activeTechnique, onTrackConcept }) => (
-    <div className="flex flex-col h-full bg-slate-900/40">
-        <div className="px-4 py-2 bg-black/40 border-b border-white/5 flex items-center justify-between">
+const AiPanel: React.FC<any> = React.memo(({ messages, input, setInput, onSend, notes, isExtracting, onUploadClick, onQuizMe, onSummarize, isLoading, neuralStatus, activeTechnique, onTrackConcept, chatEndRef }) => (
+    <div className="flex flex-col h-full min-h-0 bg-slate-900/40">
+        <div className="px-4 py-2 bg-black/40 border-b border-white/5 flex items-center justify-between shrink-0">
             <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Neural Mode: {neuralStatus}</span>
         </div>
-        <div className="flex-1 overflow-y-auto p-4 space-y-4 pb-12">
+        <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0 scroll-smooth">
             {messages.map((msg: any, i: number) => (
                 <div key={i} className={`flex gap-3 ${msg.role === 'model' ? '' : 'justify-end'}`}>
-                    {msg.role === 'model' && <div className="w-7 h-7 rounded bg-violet-600 flex items-center justify-center shrink-0"><Bot size={14} className="text-white" /></div>}
-                    <div className={`p-3 rounded-xl text-xs max-w-[85%] ${msg.role === 'model' ? 'bg-slate-800/80 text-slate-200' : 'bg-indigo-600 text-white'}`}>{msg.parts[0].text}</div>
+                    {msg.role === 'model' && <div className="w-7 h-7 rounded-lg bg-violet-600 flex items-center justify-center shrink-0 shadow-lg shadow-violet-500/20"><Bot size={14} className="text-white" /></div>}
+                    <div className={`p-3 rounded-2xl text-xs max-w-[85%] leading-relaxed ${msg.role === 'model' ? 'bg-slate-800/80 text-slate-200 rounded-tl-none border border-white/5' : 'bg-indigo-600 text-white rounded-tr-none shadow-lg shadow-indigo-500/10'}`}>
+                        {msg.parts[0].text}
+                    </div>
                 </div>
             ))}
-            {isLoading && <div className="text-[10px] text-violet-400 font-black uppercase animate-pulse ml-10">Thinking...</div>}
+            {isLoading && (
+                <div className="flex gap-3 animate-in fade-in duration-300">
+                    <div className="w-7 h-7 rounded-lg bg-violet-600/50 flex items-center justify-center shrink-0"><Bot size={14} className="text-white/50" /></div>
+                    <div className="p-3 bg-slate-800/40 rounded-2xl rounded-tl-none border border-white/5 flex gap-1 items-center">
+                        <span className="w-1 h-1 bg-violet-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                        <span className="w-1 h-1 bg-violet-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                        <span className="w-1 h-1 bg-violet-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                    </div>
+                </div>
+            )}
+            <div ref={chatEndRef} />
         </div>
-        <div className="p-4 bg-slate-900 border-t border-white/5">
-            <div className="flex gap-2 mb-2">
-                <Input id="ai-buddy-input" name="aiBuddyInput" aria-label="Ask AI Buddy" value={input} onChange={e => setInput(e.target.value)} onKeyPress={e => e.key === 'Enter' && onSend()} placeholder="Ask Buddy..." className="h-9 bg-slate-800/50 border-white/5 text-xs flex-1" />
-                <Button onClick={onSend} size="sm" className="bg-violet-600"><Send size={14} /></Button>
+        <div className="p-4 bg-slate-900 border-t border-white/5 shrink-0">
+            <div className="flex gap-2 mb-3">
+                <Input id="ai-buddy-input" name="aiBuddyInput" aria-label="Ask AI Buddy" value={input} onChange={e => setInput(e.target.value)} onKeyPress={e => e.key === 'Enter' && onSend()} placeholder="Ask Buddy..." className="h-10 bg-slate-800/50 border-white/10 text-xs flex-1 rounded-xl" />
+                <Button onClick={onSend} size="sm" className="h-10 w-10 bg-violet-600 rounded-xl hover:bg-violet-500 shadow-lg shadow-violet-500/20"><Send size={16} /></Button>
             </div>
-            <div className="flex gap-2 overflow-x-auto">
-                <Button onClick={onUploadClick} size="sm" variant="ghost" className="h-7 text-[8px] uppercase bg-white/5 border border-white/5"><Paperclip size={10} className="mr-1" /> Context</Button>
-                <Button onClick={onQuizMe} size="sm" variant="ghost" className="h-7 text-[8px] uppercase bg-white/5 border border-white/5"><Lightbulb size={10} className="mr-1" /> Quiz</Button>
+            <div className="flex gap-2 overflow-x-auto no-scrollbar">
+                <Button onClick={onUploadClick} size="sm" variant="ghost" className="h-8 text-[9px] font-black uppercase tracking-widest bg-white/5 border border-white/5 hover:bg-white/10 rounded-lg shrink-0"><Paperclip size={12} className="mr-2" /> {isExtracting ? 'Mapping...' : 'Context'}</Button>
+                <Button onClick={onQuizMe} size="sm" variant="ghost" className="h-8 text-[9px] font-black uppercase tracking-widest bg-white/5 border border-white/5 hover:bg-white/10 rounded-lg shrink-0"><Lightbulb size={12} className="mr-2" /> Quiz Me</Button>
+                <Button onClick={onSummarize} size="sm" variant="ghost" className="h-8 text-[9px] font-black uppercase tracking-widest bg-white/5 border border-white/5 hover:bg-white/10 rounded-lg shrink-0"><Bot size={12} className="mr-2" /> Summarize</Button>
             </div>
         </div>
     </div>
 ));
 
 const QuizDisplay: React.FC<{ quiz: any, onAnswer: any, currentUser: any }> = React.memo(({ quiz, onAnswer, currentUser }) => {
-    const userAnswer = quiz.answers.find((a: any) => a.userId === currentUser?.email);
+    const answers = Array.isArray(quiz?.answers) ? quiz.answers : [];
+    const options = Array.isArray(quiz?.options) ? quiz.options : [];
+    const userAnswer = answers.find((a: any) => a.userId === currentUser?.email);
+    
     return (
         <div className="bg-slate-900 border border-white/10 p-8 rounded-2xl w-full max-w-xl shadow-2xl">
-            <h3 className="text-xl font-black text-white mb-6 uppercase tracking-widest">{quiz.question}</h3>
+            <h3 className="text-xl font-black text-white mb-6 uppercase tracking-widest">{quiz?.question || "Session Quiz"}</h3>
             <div className="grid gap-3">
-                {quiz.options.map((opt: string, i: number) => (
+                {options.map((opt: string, i: number) => (
                     <button key={i} onClick={() => onAnswer(i)} disabled={!!userAnswer} className={`p-4 text-left text-sm rounded-xl border transition-all ${userAnswer?.answerIndex === i ? 'bg-violet-600 border-violet-500' : 'bg-slate-800 border-white/5 hover:border-violet-500'}`}>{opt}</button>
                 ))}
             </div>
+            {!options.length && <p className="text-white/40 text-xs italic">Loading options...</p>}
         </div>
     );
 });
 
-const Leaderboard: React.FC<{ quiz: any, participants: any[], onClear: any }> = React.memo(({ quiz, participants, onClear }) => (
-    <div className="bg-slate-900 border border-white/10 p-8 rounded-2xl w-full max-w-md shadow-2xl">
-        <h3 className="text-lg font-black text-white mb-6 uppercase tracking-widest">Session Results</h3>
-        <div className="space-y-3">
-            {participants.map(p => {
-                const isCorrect = quiz.answers.find((a: any) => a.userId === p.email)?.answerIndex === quiz.correctOptionIndex;
-                return (
-                    <div key={p.email} className="flex items-center justify-between p-3 bg-white/5 rounded-xl border border-white/5">
-                        <span className="text-xs font-bold">{p.displayName}</span>
-                        <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full ${isCorrect ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'}`}>{isCorrect ? 'Success' : 'Recall needed'}</span>
-                    </div>
-                );
-            })}
+const Leaderboard: React.FC<{ quiz: any, participants: any[], onClear: any }> = React.memo(({ quiz, participants, onClear }) => {
+    const answers = Array.isArray(quiz?.answers) ? quiz.answers : [];
+    return (
+        <div className="bg-slate-900 border border-white/10 p-8 rounded-2xl w-full max-w-md shadow-2xl">
+            <h3 className="text-lg font-black text-white mb-6 uppercase tracking-widest">Session Results</h3>
+            <div className="space-y-3">
+                {participants.map(p => {
+                    const isCorrect = answers.find((a: any) => a.userId === p.email)?.answerIndex === quiz?.correctOptionIndex;
+                    return (
+                        <div key={p.email} className="flex items-center justify-between p-3 bg-white/5 rounded-xl border border-white/5">
+                            <span className="text-xs font-bold">{p.displayName}</span>
+                            <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full ${isCorrect ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'}`}>{isCorrect ? 'Success' : 'Recall needed'}</span>
+                        </div>
+                    );
+                })}
+            </div>
+            <Button onClick={onClear} className="w-full mt-8 bg-violet-600 uppercase font-black text-xs">Return to Focus</Button>
         </div>
-        <Button onClick={onClear} className="w-full mt-8 bg-violet-600 uppercase font-black text-xs">Return to Focus</Button>
-    </div>
-));
+    );
+});
 
 export default StudyRoom;

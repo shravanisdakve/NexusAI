@@ -110,6 +110,30 @@ const UserSchema = new mongoose.Schema({
     default: null
   },
   // End Personalization Fields
+  // Admin & Management Fields
+  role: {
+    type: String,
+    enum: ['user', 'admin', 'superadmin'],
+    default: 'user'
+  },
+  status: {
+    type: String,
+    enum: ['active', 'inactive', 'banned', 'flagged'],
+    default: 'active'
+  },
+  bannedReason: {
+    type: String,
+    default: null
+  },
+  flaggedCount: {
+    type: Number,
+    default: 0
+  },
+  onboardingCompleted: {
+    type: Boolean,
+    default: false
+  },
+  // End Admin Fields
   createdAt: {
     type: Date,
     default: Date.now,

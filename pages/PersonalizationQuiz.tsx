@@ -1,8 +1,9 @@
 import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowRight, CheckCircle2, Eye, BookOpen } from 'lucide-react';
+import { ArrowRight, CheckCircle2, Eye, BookOpen, Search } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
+import { SearchableSelect } from '../components/ui';
 import { getStates, getCities, getColleges } from '../data/colleges';
 
 type PersonalizationData = {
@@ -182,17 +183,14 @@ const PersonalizationQuiz: React.FC = () => {
 
                                     <div>
                                         <label htmlFor="college-select" className="block text-sm font-medium text-slate-300 mb-1">{t('personalization.college')}</label>
-                                        <select
+                                        <SearchableSelect
                                             id="college-select"
-                                            name="college"
-                                            className="w-full bg-slate-900/50 border border-slate-600 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-violet-500 outline-none"
+                                            options={colleges}
                                             value={formData.college}
-                                            onChange={(e) => updateField('college', e.target.value)}
+                                            onChange={(val) => updateField('college', val)}
+                                            placeholder={t('personalization.selectCollege')}
                                             disabled={!formData.city}
-                                        >
-                                            <option value="">{t('personalization.selectCollege')}</option>
-                                            {colleges.map((college) => <option key={college} value={college}>{college}</option>)}
-                                        </select>
+                                        />
                                     </div>
 
                                     <div>

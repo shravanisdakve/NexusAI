@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../contexts/LanguageContext';
 import { 
     Bell, CheckCheck, Settings, BookOpen, 
@@ -13,6 +14,7 @@ interface NotificationPanelProps {
 }
 
 const NotificationPanel: React.FC<NotificationPanelProps> = ({ isOpen, onClose }) => {
+    const navigate = useNavigate();
     const { t } = useLanguage();
 
     const notifications = [
@@ -23,7 +25,8 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({ isOpen, onClose }
             desc: 'System generated a new paper for DS-IV.', 
             time: '2h ago',
             icon: BookOpen,
-            color: 'text-sky-400'
+            color: 'text-sky-400',
+            link: '/mock-paper'
         },
         { 
             id: 2, 
@@ -32,7 +35,8 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({ isOpen, onClose }
             desc: 'Rohit invited you to "SEM-VI Prep".', 
             time: '5h ago',
             icon: MessageSquare,
-            color: 'text-emerald-400'
+            color: 'text-emerald-400',
+            link: '/study-lobby'
         },
         { 
             id: 3, 
@@ -40,7 +44,8 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({ isOpen, onClose }
             title: 'Achievement Unlocked', 
             desc: 'You reached a 10-day study streak!',
             icon: Flame,
-            color: 'text-amber-400'
+            color: 'text-amber-400',
+            link: '/profile'
         },
         { 
             id: 4, 
@@ -49,7 +54,8 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({ isOpen, onClose }
             desc: 'TCS NQT registration closes in 24h.', 
             time: '2 days ago',
             icon: Clock,
-            color: 'text-rose-400'
+            color: 'text-rose-400',
+            link: '/placement'
         },
     ];
 
@@ -110,7 +116,13 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({ isOpen, onClose }
                                     {notifications.map((n) => (
                                         <div 
                                             key={n.id}
-                                            className="group flex items-start gap-4 p-5 rounded-2xl bg-white/[0.02] border border-white/[0.04] hover:bg-white/[0.05] hover:border-violet-500/20 transition-all cursor-pointer relative overflow-hidden"
+                                            onClick={() => {
+                                                if (n.link) {
+                                                    navigate(n.link);
+                                                    onClose();
+                                                }
+                                            }}
+                                            className="group flex items-start gap-4 p-5 rounded-2xl bg-white/[0.02] border border-white/[0.04] hover:bg-white/[0.05] hover:border-violet-500/20 transition-all cursor-pointer relative overflow-hidden active:scale-[0.98]"
                                         >
                                             <div className={`p-3 rounded-xl bg-slate-900 border border-white/5 group-hover:border-violet-500/30 transition-colors ${n.color}`}>
                                                 <n.icon size={20} />
@@ -139,7 +151,13 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({ isOpen, onClose }
                         </div>
 
                         <div className="p-8 border-t border-white/5 bg-slate-950/50 backdrop-blur-sm">
-                            <button className="w-full flex items-center justify-between p-4 rounded-2xl bg-violet-600/10 border border-violet-500/20 text-violet-400 hover:bg-violet-600 hover:text-white transition-all group">
+                            <button 
+                                onClick={() => {
+                                    navigate('/profile');
+                                    onClose();
+                                }}
+                                className="w-full flex items-center justify-between p-4 rounded-2xl bg-violet-600/10 border border-violet-500/20 text-violet-400 hover:bg-violet-600 hover:text-white transition-all group"
+                            >
                                 <span className="text-[11px] font-black uppercase tracking-[0.2em]">View Extended History</span>
                                 <ChevronRight size={16} className="group-hover:translate-x-1 transition-transform" />
                             </button>

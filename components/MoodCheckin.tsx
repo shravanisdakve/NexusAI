@@ -69,11 +69,11 @@ const MoodCheckin: React.FC<MoodCheckinProps> = ({ onMoodSelect }) => {
                         </span>
                         {/* Label — only show when selected for compactness */}
                         <span
-                            className={`text-[9px] font-semibold leading-none transition-colors ${
+                            className={`text-[8.5px] font-bold uppercase tracking-tighter leading-none transition-colors ${
                                 isActive ? selectedText : 'text-slate-600'
                             }`}
                         >
-                            {name.slice(0, 3)}
+                            {name}
                         </span>
                         {/* Active dot indicator */}
                         {isActive && (
