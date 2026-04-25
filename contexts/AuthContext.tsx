@@ -24,12 +24,27 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   useEffect(() => {
     axios.defaults.baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+    
+    // Add a request interceptor to attach token automatically
+    const interceptor = axios.interceptors.request.use(
+      (config) => {
+        const token = localStorage.getItem('token');
+        if (token) {
+          config.headers.Authorization = `Bearer ${token}`;
+        }
+        return config;
+      },
+      (error) => Promise.reject(error)
+    );
+
     const token = localStorage.getItem('token');
     if (token) {
       validateToken(token);
     } else {
       setLoading(false);
     }
+
+    return () => axios.interceptors.request.eject(interceptor);
   }, []);
 
   const validateToken = React.useCallback(async (token: string) => {

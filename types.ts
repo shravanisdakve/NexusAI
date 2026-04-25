@@ -40,6 +40,8 @@ export interface User {
     preferredLanguage?: 'en' | 'mr' | 'hi';
     quickAccessTools?: string[];
     toolUsageCounters?: Record<string, number>;
+    role?: 'user' | 'admin' | 'superadmin';
+    status?: 'active' | 'inactive' | 'banned' | 'flagged';
 }
 
 export interface Flashcard {
@@ -205,6 +207,7 @@ export interface GeminiRequest {
     count?: number;
     topic?: string;
     quizHistory?: any[];
+    history?: ChatMessage[];
 }
 
 export interface GeminiResponse {

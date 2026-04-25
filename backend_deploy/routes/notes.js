@@ -133,7 +133,17 @@ router.post('/:courseId/text', auth, async (req, res) => {
 // @route   POST /api/notes/:courseId/file
 // @desc    Upload a file note
 // @access  Private
-router.post('/:courseId/file', auth, upload.single('file'), async (req, res) => {
+// P1 FIX: Wrap multer in custom error handler so size/type errors return clean JSON
+router.post('/:courseId/file', auth, (req, res, next) => {
+    upload.single('file')(req, res, (err) => {
+        if (err instanceof multer.MulterError) {
+            return res.status(400).json({ success: false, message: `Upload error: ${err.message}` });
+        } else if (err) {
+            return res.status(400).json({ success: false, message: err.message });
+        }
+        next();
+    });
+}, async (req, res) => {
     try {
         if (!req.file) {
             return res.status(400).json({
@@ -146,7 +156,13 @@ router.post('/:courseId/file', auth, upload.single('file'), async (req, res) => 
         // Parse tags if they come as string from FormData
         let parsedTags = [];
         if (tags) {
-            parsedTags = Array.isArray(tags) ? tags : JSON.parse(tags).catch(() => []);
+            // R-02 FIX: JSON.parse() is synchronous — .catch() is invalid on it.
+            if (Array.isArray(tags)) {
+                parsedTags = tags;
+            } else {
+                try { parsedTags = JSON.parse(tags); }
+                catch { parsedTags = []; }
+            }
         }
         const fileUrl = `/uploads/notes/${req.file.filename}`;
 
@@ -226,6 +242,8 @@ router.put('/:courseId/:noteId', auth, async (req, res) => {
         if (title !== undefined) note.title = title.trim();
         if (tags !== undefined) note.tags = tags;
         if (isPinned !== undefined) note.isPinned = isPinned;
+        // Stamp lastUpdatedAt on real content edits
+        if (content !== undefined || title !== undefined) note.lastUpdatedAt = new Date();
         await note.save();
 
         res.json({
@@ -329,12 +347,7 @@ router.get('/:courseId/flashcards', auth, async (req, res) => {
 // @access  Private
 router.post('/:courseId/flashcards', auth, async (req, res) => {
     try {
-        if (!isValidObjectId(req.params.courseId)) {
-            return res.status(400).json({
-                success: false,
-                message: 'Invalid courseId for flashcards'
-            });
-        }
+        const cleanCourseId = isValidObjectId(req.params.courseId) ? req.params.courseId : null;
 
         const { flashcards } = req.body;
 
@@ -358,7 +371,7 @@ router.post('/:courseId/flashcards', auth, async (req, res) => {
             back: card.back,
             bucket: card.bucket || 1,
             lastReview: card.lastReview || new Date(),
-            courseId: req.params.courseId,
+            courseId: cleanCourseId,
             userId: req.user.id
         }));
 
@@ -472,11 +485,12 @@ router.get('/:courseId/quizzes', auth, async (req, res) => {
 // @access  Private
 router.post('/:courseId/quizzes', auth, async (req, res) => {
     try {
+        const cleanCourseId = isValidObjectId(req.params.courseId) ? req.params.courseId : null;
         const { quiz } = req.body; // Expecting quiz object with questions
 
         const newQuiz = new Quiz({
             user: req.user.id,
-            courseId: req.params.courseId,
+            courseId: cleanCourseId,
             questions: quiz.questions,
             score: 0,
             completed: false,

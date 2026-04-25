@@ -7,6 +7,8 @@ const API_URL = import.meta.env.VITE_API_BASE_URL || '';
 const SOCKET_URL = API_URL;
 
 let socket: Socket | null = null;
+let activeRoomId: string | null = null;
+let activeUser: any = null;
 
 const getAuthHeaders = () => {
     const token = localStorage.getItem('token');
@@ -21,7 +23,22 @@ export const initializeSocket = (token: string) => {
 
     socket = io(SOCKET_URL, {
         auth: { token },
-        withCredentials: true
+        withCredentials: true,
+        reconnection: true,
+        reconnectionAttempts: Infinity,
+        reconnectionDelay: 1000,
+    });
+
+    socket.on('connect', () => {
+        if (activeRoomId && activeUser) {
+            console.log(`[Socket] Reconnected. Re-joining room ${activeRoomId}...`);
+            socket?.emit('join-room', activeRoomId, { 
+                id: activeUser.id || activeUser._id, 
+                displayName: activeUser.displayName, 
+                email: activeUser.email 
+            });
+            socket?.emit('room:state:request', { roomId: activeRoomId });
+        }
     });
 
     return socket;
@@ -95,11 +112,14 @@ export const addRoom = async (name: string, courseId: string, maxUsers: number, 
 // --- Socket Events ---
 export const joinRoom = (roomId: string, user?: any) => {
     if (!socket) return;
+    activeRoomId = roomId;
+    activeUser = user;
     if (user) {
-        socket.emit('join-room', roomId, { id: user.id, displayName: user.displayName, email: user.email });
+        socket.emit('join-room', roomId, { id: user.id || user._id, displayName: user.displayName, email: user.email });
     } else {
         socket.emit('join-room', roomId);
     }
+    socket.emit('room:state:request', { roomId });
 };
 
 export const leaveRoom = async (roomId: string) => {
@@ -343,6 +363,28 @@ export const onReaction = (callback: (data: { roomId: string, emoji: string }) =
     return () => socket?.off('receive-reaction', callback);
 };
 
+export const subscribeToPresence = (callback: (users: any[]) => void) => {
+    if (!socket) return () => { };
+    socket.on('presence:update', callback);
+    return () => socket?.off('presence:update', callback);
+};
+
+export const subscribeToRoomState = (callback: (state: any) => void) => {
+    if (!socket) return () => { };
+    socket.on('room:state', callback);
+    return () => socket?.off('room:state', callback);
+};
+
+export const requestRoomState = (roomId: string) => {
+    if (socket) socket.emit('room:state:request', { roomId });
+};
+
+export const subscribeToWhiteboardInit = (callback: (data: { strokes: any[] }) => void) => {
+    if (!socket) return () => { };
+    socket.on('whiteboard:init', callback);
+    return () => socket?.off('whiteboard:init', callback);
+};
+
 export const subscribeToDraw = (callback: (data: any) => void) => {
     if (!socket) return () => { };
     socket.on('draw', callback);
@@ -375,9 +417,9 @@ export const getRoomAINotes = async (roomId: string) => {
     }
 };
 
-export const saveRoomAINotes = async (roomId: string, content: string) => {
+export const saveRoomAINotes = async (roomId: string, content: string, version?: number) => {
     try {
-        await axios.put(`${API_URL}/api/community/rooms/${roomId}/notes`, { content }, {
+        await axios.put(`${API_URL}/api/community/rooms/${roomId}/notes`, { content, version }, {
             headers: getAuthHeaders()
         });
     } catch (error) {
@@ -386,13 +428,31 @@ export const saveRoomAINotes = async (roomId: string, content: string) => {
     }
 };
 
+export const lockRoomNotes = async (roomId: string) => {
+    try {
+        const response = await axios.post(`${API_URL}/api/community/rooms/${roomId}/notes/lock`, {}, {
+            headers: getAuthHeaders()
+        });
+        return response.data;
+    } catch (error) {
+        console.error(`Error locking notes for ${roomId}:`, error);
+        throw error;
+    }
+};
+
+export const onNotesLock = (callback: (data: { userId: string, userName: string }) => void) => {
+    if (!socket) return () => {};
+    socket.on('room-notes-lock', callback);
+    return () => socket?.off('room-notes-lock', callback);
+};
+
 export const onNotesUpdate = (roomId: string, callback: any) => {
     getRoomAINotes(roomId).then(callback);
     if (!socket) return () => { };
 
-    const handler = (payload: { roomId: string; content: string }) => {
+    const handler = (payload: { roomId: string; content: string; version?: number; notesLock?: any }) => {
         if (payload.roomId === roomId) {
-            callback(payload.content || '');
+            callback(payload.content || '', payload.version, payload.notesLock);
         }
     };
 

@@ -161,7 +161,7 @@ export const RESOURCE_CATEGORIES: ResourceCategory[] = [
             {
                 id: 'apt-1', title: 'Quantitative Aptitude - Complete Course', channel: 'CareerRide',
                 description: 'Full aptitude course covering percentages, ratio, time & work, speed-distance, probability — everything for TCS/Infosys tests.',
-                youtubeUrl: '2nFp9S7n_0U', duration: '2 hr', tags: ['Quant', 'Percentages'], difficulty: 'Beginner', recommended: true,
+                youtubeUrl: 'POfS4M7YFic', duration: '12 hr', tags: ['Quant', 'Fundamentals'], difficulty: 'Beginner', recommended: true,
             },
             {
                 id: 'apt-2', title: 'Logical Reasoning - Tricks & Shortcuts', channel: 'Placement Season',
@@ -207,12 +207,12 @@ export const RESOURCE_CATEGORIES: ResourceCategory[] = [
             {
                 id: 'int-2', title: 'STAR Method for Behavioral Interviews', channel: 'Career Vidz',
                 description: 'Master the STAR technique (Situation, Task, Action, Result) to structure your behavioral interview answers perfectly.',
-                youtubeUrl: 'Z190u8v_p7k', duration: '15 min', tags: ['STAR Method', 'Behavioral'], difficulty: 'Beginner',
+                youtubeUrl: 'W0-fofGkEFE', duration: '15 min', tags: ['STAR Method', 'Behavioral'], difficulty: 'Beginner',
             },
             {
                 id: 'int-3', title: 'Technical Interview Tips for Freshers', channel: 'TechLead Show',
                 description: 'What to expect in technical rounds — how to approach problems, communicate your thought process, and handle pressure.',
-                youtubeUrl: 'p7-9Uf-l5b4', duration: '25 min', tags: ['Technical', 'Tips'], difficulty: 'Intermediate',
+                youtubeUrl: '1t1_a1BZ04o', duration: '13 min', tags: ['Technical', 'Tips'], difficulty: 'Intermediate',
             },
             {
                 id: 'int-4', title: 'Body Language in Interviews', channel: 'Placement Season',
@@ -222,12 +222,12 @@ export const RESOURCE_CATEGORIES: ResourceCategory[] = [
             {
                 id: 'int-5', title: 'Stress Interview - How to Handle It', channel: 'Interview Tips',
                 description: 'How to stay calm and respond professionally during stress rounds — handling trick questions, pressure, and rapid-fire.',
-                youtubeUrl: 'G1p0m7B9m8A', duration: '18 min', tags: ['Stress Round', 'Pressure'], difficulty: 'Advanced',
+                youtubeUrl: 'KRzGYRx5U_w', duration: '18 min', tags: ['Stress Round', 'Pressure'], difficulty: 'Advanced',
             },
             {
                 id: 'int-6', title: 'Self Introduction That Impresses', channel: 'Leverage Edu',
                 description: 'Craft the perfect self-introduction for interviews — structure, what to include, what to avoid, and real examples.',
-                youtubeUrl: 'K0Z2X_a2tqU', duration: '10 min', tags: ['Introduction', 'First Impression'], difficulty: 'Beginner', recommended: true,
+                youtubeUrl: 'Kz6pG-Aia1A', duration: '12 min', tags: ['Introduction', 'First Impression'], difficulty: 'Beginner', recommended: true,
             },
         ],
     },
@@ -243,7 +243,7 @@ export const RESOURCE_CATEGORIES: ResourceCategory[] = [
             {
                 id: 'gd-1', title: 'How to Win a Group Discussion', channel: 'TalentSprint',
                 description: 'Complete strategy for GDs — how to initiate, when to intervene, body language, and how to summarize effectively.',
-                youtubeUrl: '8-SBNXToXzI', duration: '22 min', tags: ['Strategy', 'Tips'], difficulty: 'Beginner', recommended: true,
+                youtubeUrl: 'hhjvTUv9L0g', duration: '21 min', tags: ['Strategy', 'Tips'], difficulty: 'Beginner', recommended: true,
             },
             {
                 id: 'gd-2', title: 'Top 20 GD Topics for 2025-26', channel: 'Unacademy',
@@ -352,9 +352,9 @@ const VideoThumbnail: React.FC<{ youtubeUrl: string, title: string, duration?: s
     const match = youtubeUrl.match(/(?:v=|youtu\.be\/|embed\/|shorts\/)([^&\s?]+)/);
     const youtubeId = match ? match[1] : (youtubeUrl.includes('://') ? null : youtubeUrl);
 
-    // Use '0.jpg' as primary because it is auto-generated and guaranteed to exist for all videos.
-    // This eliminates console 404 errors from missing custom thumbnail sizes.
-    const [thumbUrl, setThumbUrl] = React.useState(`https://i.ytimg.com/vi/${youtubeId}/0.jpg`);
+    // Use 'hqdefault.jpg' as primary because it is higher quality and more reliable than '0.jpg'.
+    // This reduces console 404 errors as hqdefault is standard for most videos.
+    const [thumbUrl, setThumbUrl] = React.useState(`https://i.ytimg.com/vi/${youtubeId}/hqdefault.jpg`);
 
     if (!youtubeId) return (
         <div className="relative aspect-video bg-slate-900 overflow-hidden flex items-center justify-center border-b border-slate-700">
@@ -371,10 +371,10 @@ const VideoThumbnail: React.FC<{ youtubeUrl: string, title: string, duration?: s
                     loading="lazy"
                     className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                     onError={() => {
-                        if (thumbUrl.includes('/0.jpg')) {
-                            // Fallback to hqdefault as second best
-                            setThumbUrl(`https://i.ytimg.com/vi/${youtubeId}/hqdefault.jpg`);
-                        } else if (thumbUrl.includes('hqdefault')) {
+                        if (thumbUrl.includes('hqdefault')) {
+                            // Fallback to 0.jpg which is often the player background
+                            setThumbUrl(`https://i.ytimg.com/vi/${youtubeId}/0.jpg`);
+                        } else if (thumbUrl.includes('/0.jpg')) {
                             setThumbUrl(`https://i.ytimg.com/vi/${youtubeId}/default.jpg`);
                         } else {
                             setError(true);

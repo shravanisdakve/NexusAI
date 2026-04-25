@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { PageHeader, Input, Button } from '../components/ui';
+import { PageHeader, Input, Button, Spinner } from '../components/ui';
 import CourseSelector from '../components/CourseSelector';
 import { type ChatMessage } from '../types';
 import { streamChat, streamStudyBuddyChat, extractTextFromFile } from '../services/geminiService';
@@ -10,18 +10,17 @@ import { createChatSession, addMessageToSession } from '../services/aiChatServic
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { getCourses } from '../services/courseService';
-import { GraduationCap, User, Send, Mic, Volume2, VolumeX, Sparkles, Image as ImageIcon, X, Paperclip, Target, Library, Trash2, Save, Edit, Download, PlusCircle, MessageSquare, Lightbulb, Bot, Calendar, ArrowRight } from 'lucide-react';
+import { GraduationCap, User, Send, Mic, Volume2, VolumeX, Sparkles, Image as ImageIcon, X, Paperclip, Target, Library, Trash2, Save, Edit, Download, PlusCircle, MessageSquare, Lightbulb, Bot, Calendar, ArrowRight, CheckCircle2 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { motion, AnimatePresence } from 'framer-motion';
 import { XPBar } from '../components/gamification/XPComponents';
 import PageLayout from '../components/ui/PageLayout';
 
 interface Quiz {
-    topic: string;
     question: string;
     options: string[];
-    correctOptionIndex: number;
-    userAnswerIndex?: number;
+    correctAnswer: string;
+    explanation: string;
 }
 
 const parsePositiveInt = (value: unknown, fallback: number): number => {
@@ -32,9 +31,84 @@ const parsePositiveInt = (value: unknown, fallback: number): number => {
 const UPLOADED_CONTEXT_MAX_CHARS = parsePositiveInt(import.meta.env.VITE_AI_DOC_CONTEXT_MAX_CHARS, 24000);
 const UPLOAD_MAX_FILE_MB = parsePositiveInt(import.meta.env.VITE_AI_DOC_MAX_FILE_MB, 10);
 
+const InteractiveQuiz: React.FC<{ quiz: Quiz; onComplete: (isCorrect: boolean) => void }> = ({ quiz, onComplete }) => {
+    const [selectedOption, setSelectedOption] = useState<number | null>(null);
+    const [showFeedback, setShowFeedback] = useState(false);
+
+    const handleSelect = (idx: number) => {
+        if (showFeedback) return;
+        setSelectedOption(idx);
+        setShowFeedback(true);
+        onComplete(quiz.options[idx] === quiz.correctAnswer);
+    };
+
+    return (
+        <div className="bg-slate-900/60 border border-violet-500/20 rounded-2xl p-5 mt-2 shadow-xl">
+            <h4 className="text-[13px] font-bold text-white mb-4 leading-relaxed">{quiz.question}</h4>
+            <div className="space-y-2">
+                {quiz.options.map((option, idx) => {
+                    const isCorrect = option === quiz.correctAnswer;
+                    const isSelected = selectedOption === idx;
+                    let bgColor = 'bg-slate-800/50 border-white/5 hover:border-violet-500/30';
+                    
+                    if (showFeedback) {
+                        if (isCorrect) bgColor = 'bg-emerald-500/10 border-emerald-500/40 text-emerald-400';
+                        else if (isSelected) bgColor = 'bg-rose-500/10 border-rose-500/40 text-rose-400';
+                        else bgColor = 'bg-slate-800/30 border-white/5 opacity-50';
+                    }
+
+                    return (
+                        <button
+                            key={idx}
+                            onClick={() => handleSelect(idx)}
+                            disabled={showFeedback}
+                            className={`w-full text-left px-4 py-3 rounded-xl border text-[12.5px] font-medium transition-all ${bgColor}`}
+                        >
+                            <div className="flex items-center justify-between">
+                                <span>{option}</span>
+                                {showFeedback && isCorrect && <CheckCircle2 size={14} className="text-emerald-500" />}
+                                {showFeedback && isSelected && !isCorrect && <X size={14} className="text-rose-500" />}
+                            </div>
+                        </button>
+                    );
+                })}
+            </div>
+            {showFeedback && (
+                <motion.div initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} className="mt-4 pt-4 border-t border-white/5">
+                    <p className="text-[11px] text-slate-400 leading-relaxed italic">
+                        <span className="font-bold text-violet-400 uppercase tracking-widest mr-2">Explanation:</span>
+                        {quiz.explanation}
+                    </p>
+                </motion.div>
+            )}
+        </div>
+    );
+};
+
 const ChatItem: React.FC<{ message: ChatMessage; onSpeak: (text: string) => void }> = ({ message, onSpeak }) => {
     const isModel = message.role === 'model';
-    const text = message.parts.map(part => part.text).join('');
+    const rawText = message.parts.map(part => part.text).join('');
+
+    // Check if the text is a JSON quiz
+    let quizData: Quiz | null = null;
+    let cleanText = rawText;
+    
+    // Improved JSON extraction (handles markdown blocks too)
+    const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+    if (isModel && jsonMatch) {
+        try {
+            const potentialJson = jsonMatch[0];
+            quizData = JSON.parse(potentialJson);
+            // If it's a valid quiz object, hide the JSON from text
+            if (quizData && quizData.question && quizData.options) {
+                cleanText = rawText.replace(potentialJson, '').replace(/```json|```/g, '').trim();
+            } else {
+                quizData = null; // Not our quiz format
+            }
+        } catch (e) {
+            quizData = null;
+        }
+    }
 
     return (
         <motion.div 
@@ -45,20 +119,32 @@ const ChatItem: React.FC<{ message: ChatMessage; onSpeak: (text: string) => void
             <div className={`flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center shadow-lg ring-1 ring-white/10 ${
                 isModel ? 'bg-gradient-to-tr from-violet-600 to-sky-500' : 'bg-slate-700'
             }`}>
-                {isModel ? <GraduationCap className="w-5 h-5 text-white" /> : <User className="w-5 h-5 text-slate-300" />}
+                {isModel ? <Bot className="w-5 h-5 text-white" /> : <User className="w-5 h-5 text-slate-300" />}
             </div>
             
             <div className={`flex flex-col gap-2 max-w-[80%] lg:max-w-[720px] ${isModel ? 'items-start' : 'items-end'}`}>
-                <div className={`px-4 py-3 rounded-2xl shadow-sm text-[13.5px] leading-relaxed ${
-                    isModel ? 'bg-slate-800 border border-slate-700/50 text-slate-200 rounded-tl-none' 
-                           : 'bg-sky-600 text-white rounded-tr-none'
-                }`}>
-                    <div className="prose prose-invert prose-sm max-w-none">
-                        <ReactMarkdown>{text}</ReactMarkdown>
+                {cleanText && (
+                    <div className={`px-4 py-3 rounded-2xl shadow-sm text-[13.5px] leading-relaxed ${
+                        isModel ? 'bg-slate-800 border border-slate-700/50 text-slate-200 rounded-tl-none' 
+                               : 'bg-sky-600 text-white rounded-tr-none'
+                    }`}>
+                        <div className="prose prose-invert prose-sm max-w-none">
+                            <ReactMarkdown>{cleanText}</ReactMarkdown>
+                        </div>
                     </div>
-                </div>
-                {isModel && text && (
-                    <button onClick={() => onSpeak(text)} className="flex items-center gap-1.5 px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest text-slate-500 hover:text-violet-400 transition-all hover:bg-slate-800/50">
+                )}
+
+                {quizData && (
+                    <div className="w-full min-w-[300px] md:min-w-[450px]">
+                        <InteractiveQuiz quiz={quizData} onComplete={(correct) => {
+                            // Optional: track progress or award XP
+                            console.log("Quiz answer correct:", correct);
+                        }} />
+                    </div>
+                )}
+
+                {isModel && cleanText && (
+                    <button onClick={() => onSpeak(cleanText)} className="flex items-center gap-1.5 px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest text-slate-500 hover:text-violet-400 transition-all hover:bg-slate-800/50">
                         <Volume2 size={11} /> Listen
                     </button>
                 )}
@@ -154,7 +240,8 @@ const AiTutor: React.FC = () => {
             }
             if (modelResponse && (isAutoSpeaking || isVoiceInput)) handleSpeak(modelResponse);
         } catch (err: any) {
-            setError('Connection failed.');
+            console.error("[AiChat] Stream Error:", err);
+            setError(`Connection failed: ${err.message || 'Unknown error'}`);
         } finally { setIsLoading(false); }
     }, [input, isLoading, isExtracting, selectedCourse, uploadedContext, language, selectedDocument, isAutoSpeaking]);
 
@@ -238,13 +325,18 @@ const AiTutor: React.FC = () => {
                                     <ChatItem message={msg} onSpeak={handleSpeak} />
                                     {msg.role === 'model' && msg.parts.map(p => p.text).join('').length > 10 && idx === messages.length - 1 && !isLoading && (
                                         <motion.div initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} className="flex flex-wrap gap-2 ml-14 mb-4">
-                                            {['Explain simpler', 'Give example', 'Quiz me', 'Next topic'].map(cmd => (
+                                            {[
+                                                { label: 'Explain simpler', prompt: 'Can you explain this again but even more simply? Use a different analogy that an absolute beginner would understand.' },
+                                                { label: 'Give example', prompt: 'Please provide a concrete, real-world example of this concept, specifically how it might be used in a Mumbai University engineering context.' },
+                                                { label: 'Quiz me', prompt: 'QUIZ_ME: Based on our discussion, generate 1 challenging multiple choice question. Return ONLY a raw JSON object with: { "question": "...", "options": ["A", "B", "C", "D"], "correctAnswer": "exact option text", "explanation": "A direct, technical explanation of why this specific answer is correct. Do not mention syllabus, curriculum, or MU scheme in the explanation." }. Do not add any conversational text.' },
+                                                { label: 'Next topic', prompt: 'Great, I understand this. What is the next logical topic or sub-topic I should learn within this subject to stay on track with the MU syllabus?' }
+                                            ].map(cmd => (
                                                 <button
-                                                    key={cmd}
-                                                    onClick={() => handleSend(`${cmd} about this concept`)}
+                                                    key={cmd.label}
+                                                    onClick={() => handleSend(cmd.prompt)}
                                                     className="px-3 py-1.5 bg-slate-800/80 hover:bg-violet-600 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-white rounded-lg border border-white/5 transition-all shadow-sm active:scale-95"
                                                 >
-                                                    {cmd}
+                                                    {cmd.label}
                                                 </button>
                                             ))}
                                         </motion.div>
@@ -323,8 +415,8 @@ const AiTutor: React.FC = () => {
                     </div>
                     
                     <div className="flex items-center gap-2">
-                        <label className="p-4 bg-slate-900/60 hover:bg-slate-800 rounded-xl border border-white/5 cursor-pointer transition-colors group">
-                            <input type="file" onChange={handleImageUpload} className="hidden" />
+                        <label htmlFor="ai-chat-image-upload" className="p-4 bg-slate-900/60 hover:bg-slate-800 rounded-xl border border-white/5 cursor-pointer transition-colors group">
+                            <input id="ai-chat-image-upload" name="imageUpload" type="file" onChange={handleImageUpload} className="hidden" />
                             <Paperclip size={20} className="text-slate-500 group-hover:text-white" />
                         </label>
                         <button onClick={handleListen} className={`p-4 rounded-xl border transition-all ${isListening ? 'bg-rose-500/20 border-rose-500/30 text-rose-500 animate-pulse outline outline-rose-500/10' : 'bg-slate-900 border-white/5 text-slate-500 hover:text-white'}`}>

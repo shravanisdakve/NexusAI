@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { useAuth } from '../contexts/AuthContext';
-import { getCourses, addCourse } from '../services/courseService';
+import { getCourses, addCourse, importCurriculumSubjects } from '../services/courseService';
 import { getNotes, addTextNote, uploadNoteFile, deleteNote, getFlashcards, addFlashcards, updateFlashcard, updateNoteContent, getQuizzes, savePersonalQuiz, updateQuizScore } from '../services/notesService';
 import { getStudyPlan, saveStudyPlan, updateTaskCompletion } from '../services/studyPlanService';
 import { type Note, type Course, type Flashcard as FlashcardType, type StudyPlan, type StudyTask, type PersonalQuiz } from '../types';
@@ -13,7 +13,7 @@ import {
   Calendar, Target, CheckCircle2, Circle, Users, Sparkles, 
   Zap, RefreshCw, ChevronRight, ArrowRight 
 } from 'lucide-react';
-import { generateFlashcards, extractTextFromFile, generateStudyPlan, generateQuizSet, parseStudyPlanPayload } from '../services/geminiService';
+import { generateFlashcards, summarizeText, extractTextFromFile, extractTextFromUrl, generateStudyPlan, generateQuizSet, parseStudyPlanPayload } from '../services/geminiService';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useLanguage } from '../contexts/LanguageContext';
 import Flashcard from '../components/Flashcard';
@@ -69,10 +69,15 @@ const Notes: React.FC = () => {
   const [isGenerating, setIsGenerating] = useState(false); // Loading state for note-based generation
   const [isQuizGenerating, setIsQuizGenerating] = useState(false); // New loading state for quiz
   const [isFileGenerating, setIsFileGenerating] = useState(false); // Loading state for file-based generation
+  const [isSummarizing, setIsSummarizing] = useState(false); // New state for summarization
   const [isSingleGenerating, setIsSingleGenerating] = useState<string | null>(null); // Track which note ID is generating
   const [aiInquiry, setAiInquiry] = useState('');
   const [isAILoading, setIsAILoading] = useState(false);
   const [aiResponse, setAiResponse] = useState<string | null>(null);
+  const [isImporting, setIsImporting] = useState(false);
+  const [isGroundingActive, setIsGroundingActive] = useState(false);
+  const [groundingSource, setGroundingSource] = useState<string | null>(null);
+  const [isGroundingLoading, setIsGroundingLoading] = useState(false);
 
   const location = useLocation();
   const initRef = useRef(false);
@@ -127,7 +132,55 @@ const Notes: React.FC = () => {
     setAiInquiry('');
   }, [activeNote?.id]);
 
+  // Handle automatic RAG grounding when notes change
+  useEffect(() => {
+    if (notes.length > 0) {
+        const syllabusNote = notes.find(n => n.title.includes("Syllabus Context"));
+        if (syllabusNote && syllabusNote.content && !groundingSource) {
+            console.log(`[RAG-Auto] Grounding AI with existing syllabus note: ${syllabusNote.title}`);
+            setGroundingSource(syllabusNote.content);
+            setIsGroundingActive(true);
+        } else if (!syllabusNote) {
+            setGroundingSource(null);
+            setIsGroundingActive(false);
+        }
+    } else {
+        setGroundingSource(null);
+        setIsGroundingActive(false);
+    }
+  }, [notes, selectedCourse]);
+
   // --- Handlers ---
+  const handlePersonalizeWorkspace = async () => {
+    if (!user?.branch || isImporting) {
+        showToast("Please update your branch in profile settings first!", "info");
+        return;
+    }
+
+    setIsImporting(true);
+    const loadingToast = showToast("Syncing with MU Curriculum...", "info");
+    
+    try {
+        // Map user.year (1-4) to a default semester if semester isn't explicit
+        const sem = user.semester ? parseInt(user.semester) : (user.year ? (user.year * 2 - 1) : 1);
+        
+        const newCourses = await importCurriculumSubjects(user.branch, sem);
+        
+        if (newCourses.length > 0) {
+            setCourses(prev => [...prev, ...newCourses]);
+            showToast(`Success! Imported ${newCourses.length} subjects for ${user.branch} Sem ${sem}.`, "success");
+            if (newCourses[0]) setSelectedCourse(newCourses[0].id);
+        } else {
+            showToast("No new subjects found for your current profile. You can still add them manually!", "info");
+        }
+    } catch (error) {
+        console.error("Personalization failed:", error);
+        showToast("Failed to fetch curriculum. Please check your branch details.", "error");
+    } finally {
+        setIsImporting(false);
+    }
+  };
+
   const handleAddCourse = async () => {
     if (!newCourseName.trim()) return;
     
@@ -214,6 +267,24 @@ const Notes: React.FC = () => {
     } catch (error) {
       console.error("Failed to save note edit:", error);
       showToast("Unable to save your changes. Please check your connection.", 'error');
+    }
+  };
+
+  const handleSummarizeNote = async () => {
+    if (!activeNote?.content || activeNote.content === "[Text extraction pending or failed]" || isSummarizing) return;
+
+    setIsSummarizing(true);
+    setAiResponse(null);
+    try {
+      console.log(`Summarizing note '${activeNote.title}' (length: ${activeNote.content.length})`);
+      const summary = await summarizeText(activeNote.content, language);
+      setAiResponse(summary);
+      showToast("Summary generated successfully!", 'success');
+    } catch (error) {
+      console.error("Failed to summarize note:", error);
+      showToast("Failed to generate summary. Please try again.", 'error');
+    } finally {
+      setIsSummarizing(false);
     }
   };
 
@@ -416,20 +487,67 @@ const Notes: React.FC = () => {
 
 
   const handleAiInquiry = async () => {
-    if (!aiInquiry.trim() || !activeNote?.content || isAILoading) return;
+    if (!aiInquiry.trim() || (!activeNote?.content && !groundingSource) || isAILoading) return;
     
     setIsAILoading(true);
     setAiResponse(null);
     try {
-        // Simplified AI inquiry flow - could use a dedicated service later
-        const response = await generateFlashcards(`Question: ${aiInquiry}\n\nContext based on note: ${activeNote.content}`, language);
-        // This is a hack for now to show the chat capability
+        const contextPrefix = isGroundingActive && groundingSource 
+            ? `[OFFICIAL CURRICULUM CONTEXT]:\n${groundingSource}\n\n[USER NOTE CONTEXT]:\n`
+            : `[NOTE CONTEXT]:\n`;
+
+        const fullContext = contextPrefix + (activeNote?.content || "");
+        const response = await generateFlashcards(`Question: ${aiInquiry}\n\nContext: ${fullContext}`, language);
+        
         const parsed = JSON.parse(response);
-        setAiResponse(Array.isArray(parsed) ? parsed[0]?.front : (parsed.flashcards?.[0]?.front || "I've analyzed your note. Let's study!"));
+        setAiResponse(Array.isArray(parsed) ? parsed[0]?.front : (parsed.flashcards?.[0]?.front || "Result analyzed. Check note context."));
     } catch (e) {
-        setAiResponse("I couldn't process that inquiry right now. Try summarizing the note first!");
+        setAiResponse("Intelligence sync interrupted. Verify grounding sources and try again.");
     } finally {
         setIsAILoading(false);
+    }
+  };
+
+  const handleIngestSyllabus = async () => {
+    if (!user?.branch || isGroundingLoading) return;
+    
+    setIsGroundingLoading(true);
+    showToast(`Discovering Rev-2024 syllabus for ${user.branch}...`, "info");
+    
+    try {
+        // In a real production RAG, we'd have a mapping of official MU links.
+        // For this implementation, we use a known high-quality source for MU PDFs
+        const mockUrlMapping: Record<string, string> = {
+            'Computer Engineering': 'https://mu.ac.in/wp-content/uploads/2019/10/4.52-Computer-Engineering.pdf',
+            'Information Technology': 'https://mu.ac.in/wp-content/uploads/2019/10/4.33-Information-Technology.pdf',
+            'Data Science': 'https://mu.ac.in/wp-content/uploads/2021/08/4.29-B.E.-Data-Science.pdf'
+        };
+
+        const syllabusUrl = mockUrlMapping[user.branch] || 'https://mu.ac.in/wp-content/uploads/2019/10/4.52-Computer-Engineering.pdf';
+        
+        const text = await extractTextFromUrl(syllabusUrl);
+        setGroundingSource(text);
+        setIsGroundingActive(true);
+
+        // Save as a persistent Note if a course is selected
+        if (selectedCourse) {
+            try {
+                const newNote = await addTextNote(selectedCourse, "Official Syllabus Context (MU)", text);
+                setNotes(prev => [newNote, ...prev]);
+                setActiveNote(newNote);
+                setEditedContent(text);
+                setIsEditingNote(false);
+            } catch (noteErr) {
+                console.warn("Could not persist syllabus note, keeping in-memory only:", noteErr);
+            }
+        }
+
+        showToast("Intelligence Core Grounded & Persisted! 🎓", "success");
+    } catch (e) {
+        console.error("RAG Grounding failed:", e);
+        showToast("PDF Discovery failed. Try manual upload in Notes.", "error");
+    } finally {
+        setIsGroundingLoading(false);
     }
   };
 
@@ -439,22 +557,24 @@ const Notes: React.FC = () => {
       {selectedCourse ? (
         <div className="flex-1 flex flex-col bg-slate-800/50 rounded-xl ring-1 ring-slate-700 overflow-hidden">
           {/* --- Content Area --- */}
-          {activeTab === 'notes' && (
-            <NotesView
-              notes={notes}
-              activeNote={activeNote}
-              isEditingNote={isEditingNote}
-              editedContent={editedContent}
-              isSingleGenerating={isSingleGenerating}
-              onSelectNote={handleSelectNote}
-              onDeleteNote={handleDeleteNote}
-              onSaveEdit={handleSaveNoteEdit}
-              onEditClick={() => setIsEditingNote(true)}
-              onContentChange={setEditedContent}
-              onAddNoteClick={() => setIsModalOpen(true)}
-              onGenerateSingleNoteFlashcards={handleGenerateSingleNoteFlashcards}
-            />
-          )}
+              {activeTab === 'notes' && (
+                <NotesView
+                  notes={notes}
+                  activeNote={activeNote}
+                  isEditingNote={isEditingNote}
+                  editedContent={editedContent}
+                  isSingleGenerating={isSingleGenerating}
+                  isSummarizing={isSummarizing}
+                  onSelectNote={handleSelectNote}
+                  onDeleteNote={handleDeleteNote}
+                  onSaveEdit={handleSaveNoteEdit}
+                  onEditClick={() => setIsEditingNote(true)}
+                  onContentChange={setEditedContent}
+                  onAddNoteClick={() => setIsModalOpen(true)}
+                  onGenerateSingleNoteFlashcards={handleGenerateSingleNoteFlashcards}
+                  onSummarizeNote={handleSummarizeNote}
+                />
+              )}
 
           {activeTab === 'flashcards' && (
             <FlashcardsView
@@ -486,6 +606,7 @@ const Notes: React.FC = () => {
           {activeTab === 'plan' && (
             <StudyPlanView
               courseId={selectedCourse}
+              courseName={courses.find(c => c.id === selectedCourse)?.name || 'this course'}
               notes={notes}
               studyPlan={studyPlan}
               onPlanSaved={setStudyPlan}
@@ -497,7 +618,7 @@ const Notes: React.FC = () => {
           {/* Ghost Arrow - Guidance Animation */}
           <div className="absolute right-8 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 translate-x-4 group-hover:translate-x-0 transition-all duration-700 pointer-events-none hidden xl:block">
             <div className="flex flex-col items-center gap-2">
-              <div className="text-[9px] font-black uppercase text-violet-500 tracking-[0.3em] rotate-90 mb-10 whitespace-nowrap italic">Begin Navigation</div>
+              <div className="text-[8px] font-black uppercase text-violet-500 tracking-[0.3em] rotate-90 mb-6 whitespace-nowrap italic">Begin Navigation</div>
               <motion.div 
                 animate={{ x: [0, 8, 0] }}
                 transition={{ duration: 1.5, repeat: Infinity }}
@@ -514,41 +635,38 @@ const Notes: React.FC = () => {
               key="empty-workspace"
               className="max-w-md text-center"
             >
-              <div className="w-20 h-20 rounded-3xl bg-slate-950 border border-white/5 flex items-center justify-center mx-auto mb-8 shadow-2xl relative shadow-violet-900/10">
-                  <BookOpen className="w-8 h-8 text-slate-700" />
+              <div className="w-16 h-16 rounded-3xl bg-slate-950 border border-white/5 flex items-center justify-center mx-auto mb-4 shadow-2xl relative shadow-violet-900/10">
+                  <BookOpen className="w-7 h-7 text-slate-700" />
                   <div className="absolute inset-0 bg-violet-600/5 blur-2xl rounded-full" />
               </div>
               
-              <h3 className="text-2xl font-black text-white italic tracking-tighter uppercase mb-4 leading-tight">Workspace Entry Pending</h3>
-              <p className="text-slate-500 mb-10 text-[11px] font-bold leading-relaxed uppercase tracking-[0.3em] italic max-w-xs mx-auto opacity-60">
+              <h3 className="text-xl font-black text-white italic tracking-tighter uppercase mb-2 leading-tight">Workspace Entry Pending</h3>
+              <p className="text-slate-500 mb-6 text-[10px] font-bold leading-relaxed uppercase tracking-[0.3em] italic max-w-xs mx-auto opacity-60">
                 Select a course from the right panel or create a new one to start.
               </p>
 
-              <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <div className="flex flex-col sm:flex-row gap-2.5 justify-center">
                 <Button 
                     variant="ghost" 
-                    className="h-14 px-8 bg-white/5 border border-white/10 hover:bg-white/10 hover:text-white text-slate-300 text-[9px] font-black uppercase tracking-[0.2em] rounded-2xl"
-                    onClick={() => {
-                        const rail = document.getElementById('course-navigator-list');
-                        rail?.scrollIntoView({ behavior: 'smooth' });
-                        rail?.classList.add('ring-2', 'ring-violet-500/50');
-                        setTimeout(() => rail?.classList.remove('ring-2', 'ring-violet-500/50'), 2000);
-                    }}
+                    className="h-10 px-6 bg-white/5 border border-white/10 hover:bg-white/10 hover:text-white text-slate-300 text-[8px] font-black uppercase tracking-[0.2em] rounded-2xl"
+                    disabled={isImporting}
+                    onClick={handlePersonalizeWorkspace}
                 >
-                  <ChevronRight size={14} className="mr-2 opacity-50" /> Select Context
+                  {isImporting ? <RefreshCw size={12} className="mr-2 animate-spin" /> : <Sparkles size={12} className="mr-2 text-violet-400" />}
+                  Personalize My Workspace
                 </Button>
                 <Button 
-                    className="h-14 px-8 bg-violet-600 hover:bg-violet-500 text-white shadow-2xl shadow-violet-900/20 text-[9px] font-black uppercase tracking-[0.2em] rounded-2xl active:scale-95 transition-all"
+                    className="h-10 px-6 bg-violet-600 hover:bg-violet-500 text-white shadow-2xl shadow-violet-900/20 text-[8px] font-black uppercase tracking-[0.2em] rounded-2xl active:scale-95 transition-all"
                     onClick={() => setIsAddCourseModalOpen(true)}
                 >
-                  <PlusCircle size={14} className="mr-2" /> New Course
+                  <PlusCircle size={12} className="mr-2" /> New Course
                 </Button>
               </div>
 
               <div className="mt-16 flex flex-wrap justify-center gap-3 opacity-20 group-hover:opacity-50 transition-all duration-1000">
                 {[
                   "AI Flashcards",
-                  "Document Scanner",
+                  "MU Curriculum Sync",
                   "Personalized Quizzes"
                 ].map((tip, i) => (
                   <div key={i} className="flex items-center gap-2 text-[8px] font-black text-slate-400 uppercase tracking-widest px-4 py-2 bg-slate-900/40 rounded-full border border-white/5">
@@ -566,10 +684,10 @@ const Notes: React.FC = () => {
   const SideContent = (
     <div className="space-y-6">
       {/* --- JOURNEY PROGRESS (Guided Flow) --- */}
-      <div className="p-4 bg-slate-900/40 rounded-2xl border border-white/[0.06] relative overflow-hidden">
-        <div className="flex items-center gap-2 mb-4 px-1">
-          <Target size={14} className="text-violet-500" />
-          <p className="text-[10px] font-black text-white italic uppercase tracking-[0.2em]">Guided Journey</p>
+      <div className="p-2 bg-slate-900/40 rounded-xl border border-white/[0.06] relative overflow-hidden">
+        <div className="flex items-center gap-2 mb-2 px-1">
+          <Target size={12} className="text-violet-500" />
+          <p className="text-[9px] font-black text-white italic uppercase tracking-[0.2em]">Journey</p>
         </div>
         <div className="flex items-center gap-1">
           {[
@@ -579,7 +697,7 @@ const Notes: React.FC = () => {
           ].map((step, i, arr) => (
             <React.Fragment key={step.id}>
               <div className={`
-                flex-1 h-8 rounded-lg flex items-center justify-center text-[8px] font-black uppercase tracking-tighter transition-all italic border
+                flex-1 h-6 rounded-lg flex items-center justify-center text-[7px] font-black uppercase tracking-tighter transition-all italic border
                 ${step.active 
                   ? 'bg-violet-600/20 border-violet-500/30 text-violet-300' 
                   : 'bg-slate-950/40 border-white/[0.04] text-slate-700'}
@@ -593,15 +711,15 @@ const Notes: React.FC = () => {
         </div>
       </div>
       {/* 1. CUSTOM COURSE NAVIGATOR */}
-      <div className="p-4 bg-slate-900/40 rounded-2xl border border-white/[0.06] flex flex-col h-[320px]">
-        <div className="flex items-center justify-between mb-4 shrink-0 px-1 pt-1">
-          <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Your Navigator</p>
+      <div className="p-2 bg-slate-900/40 rounded-xl border border-white/[0.06] flex flex-col h-[160px]">
+        <div className="flex items-center justify-between mb-1.5 shrink-0 px-1 pt-0.5">
+          <p className="text-[9px] font-black text-slate-700 uppercase tracking-[0.2em]">Navigator</p>
           <button 
             onClick={() => setIsAddCourseModalOpen(true)} 
-            className="w-7 h-7 flex items-center justify-center rounded-lg bg-violet-600/10 text-violet-400 hover:bg-violet-600 hover:text-white transition-all group"
+            className="w-6 h-6 flex items-center justify-center rounded-lg bg-violet-600/10 text-violet-400 hover:bg-violet-600 hover:text-white transition-all group"
             title="Create Course"
           >
-            <PlusCircle size={14} className="group-hover:scale-110 transition-transform" />
+            <PlusCircle size={12} className="group-hover:scale-110 transition-transform" />
           </button>
         </div>
         
@@ -617,20 +735,20 @@ const Notes: React.FC = () => {
                     key={course.id}
                     onClick={() => setSelectedCourse(course.id)}
                     className={`
-                        w-full flex items-center gap-3 px-4 py-3.5 rounded-xl border text-[11px] font-black uppercase tracking-tighter transition-all relative overflow-hidden group
+                        w-full flex items-center gap-2 px-2 py-1.5 rounded-lg border text-[9px] font-black uppercase tracking-tighter transition-all relative overflow-hidden group
                         ${selectedCourse === course.id
-                            ? 'bg-violet-600/10 border-violet-500/30 text-white shadow-lg'
+                            ? 'bg-violet-600/10 border-violet-500/20 text-white shadow-lg'
                             : 'bg-slate-950/40 border-white/[0.03] text-slate-500 hover:text-slate-300 hover:border-white/10 hover:bg-slate-950/60'}
                     `}
                 >
                     {selectedCourse === course.id && (
                         <div className="absolute inset-y-0 left-0 w-1 bg-violet-500 shadow-[0_0_10px_rgba(139,92,246,0.5)]" />
                     )}
-                    <span className={`shrink-0 ${selectedCourse === course.id ? 'text-violet-400' : 'text-slate-700'}`}>
-                        <FileText size={16} />
+                    <span className={`shrink-0 ${selectedCourse === course.id ? 'text-violet-400' : 'text-slate-800'}`}>
+                        <FileText size={14} />
                     </span>
                     <span className="flex-1 text-left truncate italic tracking-tight">{course.name}</span>
-                    {selectedCourse === course.id && <ChevronRight size={12} className="text-violet-500/50" />}
+                    {selectedCourse === course.id && <ChevronRight size={10} className="text-violet-500/40" />}
                 </button>
             ))
           )}
@@ -656,18 +774,18 @@ const Notes: React.FC = () => {
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id as any)}
                   disabled={isDisabled}
-                  className={`flex items-center gap-3 w-full px-4 py-3.5 rounded-xl text-[10px] font-black uppercase tracking-[0.1em] transition-all border group italic ${
+                  className={`flex items-center gap-2 w-full px-2 py-2 rounded-lg text-[9px] font-black uppercase tracking-[0.1em] transition-all border group italic ${
                     activeTab === tab.id
                       ? 'bg-violet-600 text-white border-violet-500 shadow-xl'
-                      : 'text-slate-500 border-transparent hover:bg-white/5 hover:text-slate-300 disabled:opacity-20 disabled:cursor-not-allowed'
+                      : 'text-slate-600 border-transparent hover:bg-white/5 hover:text-slate-400 disabled:opacity-20 disabled:cursor-not-allowed'
                   }`}
                 >
-                  <tab.icon size={14} className={activeTab === tab.id ? 'text-white' : 'text-slate-700 group-hover:text-violet-400'} />
+                  <tab.icon size={12} className={activeTab === tab.id ? 'text-white' : 'text-slate-800 group-hover:text-violet-400'} />
                   <span className="flex-1 text-left tracking-tight">{tab.label}</span>
-                  <span className={`text-[8px] px-2 py-0.5 rounded-full border shadow-inner italic ${
+                  <span className={`text-[7px] px-1.5 py-0.5 rounded-full border italic ${
                     activeTab === tab.id 
                       ? 'bg-white/20 border-white/10 text-white' 
-                      : 'bg-black/20 border-white/5 text-slate-700'
+                      : 'bg-black/20 border-white/5 text-slate-800'
                   }`}>
                       {subLabel}
                   </span>
@@ -677,36 +795,62 @@ const Notes: React.FC = () => {
           </div>
         </div>
       ) : (
-        <div className="p-5 bg-violet-600/10 rounded-2xl border border-violet-500/20 relative overflow-hidden group">
+        <div className="p-3 bg-violet-600/10 rounded-xl border border-violet-500/20 relative overflow-hidden group">
           {/* Animated Background Glow */}
           <div className="absolute inset-0 bg-gradient-to-br from-violet-600/5 to-transparent opacity-50" />
           
           <div className="relative z-10">
-            <div className="flex items-center gap-2 mb-4">
-              <Sparkles size={14} className="text-violet-400 animate-pulse" />
-              <p className="text-[10px] font-black text-violet-400 uppercase tracking-[0.2em] italic">Intelligence Engine</p>
+            <div className="flex items-center gap-2 mb-2">
+              <Sparkles size={12} className="text-violet-400 animate-pulse" />
+              <p className="text-[9px] font-black text-violet-400 uppercase tracking-[0.2em] italic">Intelligence</p>
             </div>
             
-            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-6 leading-relaxed italic">
-                Active context: <span className="text-white">{activeNote.title}</span>. Ask AI or generate study nodes.
+            <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-3 leading-relaxed italic truncate">
+                Context: <span className="text-white">{activeNote.title}</span>
             </p>
 
             {/* AI Inquiry Box */}
-            <div className="mb-6 space-y-3">
+            <div className="mb-4 space-y-2">
+                {/* RAG Grounding Toggle */}
+                <div className="flex items-center justify-between px-1 mb-2">
+                    <div className="flex items-center gap-2">
+                        <div className={`w-1.5 h-1.5 rounded-full ${isGroundingActive ? 'bg-emerald-500 shadow-[0_0_8px_emerald]' : 'bg-slate-700'}`} />
+                        <span className={`text-[8px] font-black uppercase tracking-widest ${isGroundingActive ? 'text-emerald-400' : 'text-slate-600'}`}>
+                            {isGroundingActive ? 'Grounding Active' : 'RAG Standby'}
+                        </span>
+                    </div>
+                    {groundingSource ? (
+                        <button 
+                            onClick={() => setIsGroundingActive(!isGroundingActive)}
+                            className="text-[8px] font-bold text-violet-400 hover:text-white uppercase tracking-tighter"
+                        >
+                            {isGroundingActive ? '[ Disconnect ]' : '[ Link ]'}
+                        </button>
+                    ) : (
+                        <button 
+                            onClick={handleIngestSyllabus}
+                            className="text-[8px] font-bold text-slate-500 hover:text-violet-400 uppercase tracking-tighter"
+                            disabled={isGroundingLoading}
+                        >
+                            {isGroundingLoading ? 'Discovering...' : 'Fetch Syllabus'}
+                        </button>
+                    )}
+                </div>
+
                 <div className="relative">
                     <Textarea 
                        value={aiInquiry}
                        onChange={e => setAiInquiry(e.target.value)}
-                       placeholder="Ask anything about this note..."
-                       className="bg-slate-950/80 border-white/5 text-[11px] font-bold italic h-24 placeholder:text-slate-700 focus:ring-violet-500/50 pt-3"
+                       placeholder={isGroundingActive ? "Ask within syllabus context..." : "Query active note..."}
+                       className="bg-slate-950/80 border-white/5 text-[10px] font-bold italic h-20 placeholder:text-slate-800 focus:ring-violet-500/50 pt-2"
                        onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handleAiInquiry()}
                     />
                     <button 
                         onClick={handleAiInquiry}
                         disabled={!aiInquiry.trim() || isAILoading}
-                        className="absolute bottom-3 right-3 w-8 h-8 rounded-lg bg-violet-600 text-white flex items-center justify-center hover:bg-violet-500 transition-all disabled:opacity-20"
+                        className="absolute bottom-2 right-2 w-7 h-7 rounded-lg bg-violet-600 text-white flex items-center justify-center hover:bg-violet-500 transition-all disabled:opacity-20"
                     >
-                        {isAILoading ? <RefreshCw size={12} className="animate-spin" /> : <ArrowRight size={14} />}
+                        {isAILoading ? <RefreshCw size={11} className="animate-spin" /> : <ArrowRight size={12} />}
                     </button>
                 </div>
                 
@@ -722,28 +866,30 @@ const Notes: React.FC = () => {
                 )}
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-1.5">
                 <Button 
                     onClick={() => handleGenerateSingleNoteFlashcards(activeNote)}
                     disabled={isSingleGenerating === activeNote.id}
-                    className="w-full h-11 bg-white/5 border border-white/5 text-[9px] font-black uppercase tracking-widest italic hover:bg-violet-600 hover:text-white transition-all"
+                    className="w-full h-8.5 bg-white/5 border border-white/5 text-[8px] font-black uppercase tracking-widest italic hover:bg-violet-600 hover:text-white transition-all"
                 >
-                    {isSingleGenerating === activeNote.id ? <RefreshCw size={12} className="animate-spin mr-2" /> : <Layers size={14} className="mr-2" />}
+                    {isSingleGenerating === activeNote.id ? <RefreshCw size={11} className="animate-spin mr-2" /> : <Layers size={13} className="mr-2" />}
                     Generate Flashcards
                 </Button>
                 <Button 
                     onClick={handleGenerateQuiz}
                     disabled={isQuizGenerating}
-                    className="w-full h-11 bg-white/5 border border-white/5 text-[9px] font-black uppercase tracking-widest italic hover:bg-emerald-600 hover:text-white transition-all"
+                    className="w-full h-8.5 bg-white/5 border border-white/5 text-[8px] font-black uppercase tracking-widest italic hover:bg-emerald-600 hover:text-white transition-all"
                 >
-                    {isQuizGenerating ? <RefreshCw size={12} className="animate-spin mr-2" /> : <Zap size={14} className="mr-2" />}
+                    {isQuizGenerating ? <RefreshCw size={11} className="animate-spin mr-2" /> : <Zap size={13} className="mr-2" />}
                     Create Knowledge Probe
                 </Button>
                 <Button 
-                   onClick={handleGenerateFromNotes}
-                   className="w-full h-9 bg-transparent text-[8px] font-black text-slate-600 uppercase tracking-widest hover:text-slate-400"
+                   onClick={handleSummarizeNote}
+                   disabled={isSummarizing || !activeNote.content}
+                   className="w-full h-8 bg-transparent text-[8px] font-black text-slate-600 uppercase tracking-widest hover:text-slate-400"
                 >
-                    <FileText size={12} className="mr-2" /> Context Summary
+                    {isSummarizing ? <RefreshCw size={11} className="mr-2 animate-spin" /> : <FileText size={11} className="mr-2" />} 
+                    Context Summary
                 </Button>
             </div>
             
@@ -867,6 +1013,7 @@ const NotesView: React.FC<{
   isEditingNote: boolean;
   editedContent: string;
   isSingleGenerating: string | null;
+  isSummarizing: boolean;
   onSelectNote: (note: Note) => void;
   onDeleteNote: (note: Note) => void;
   onSaveEdit: (note: Note) => void;
@@ -874,19 +1021,22 @@ const NotesView: React.FC<{
   onContentChange: (content: string) => void;
   onAddNoteClick: () => void;
   onGenerateSingleNoteFlashcards: (note: Note) => void;
+  onSummarizeNote: () => void;
 }> = ({
   notes,
   activeNote,
   isEditingNote,
   editedContent,
   isSingleGenerating,
+  isSummarizing,
   onSelectNote,
   onDeleteNote,
   onSaveEdit,
   onEditClick,
   onContentChange,
   onAddNoteClick,
-  onGenerateSingleNoteFlashcards
+  onGenerateSingleNoteFlashcards,
+  onSummarizeNote
 }) => {
     const navigate = useNavigate();
 
@@ -1004,6 +1154,17 @@ const NotesView: React.FC<{
               <div className="flex justify-between items-center p-4 border-b border-slate-700 bg-slate-800 sticky top-0 z-10">
                 <h3 className="text-lg font-semibold text-white truncate">{activeNote.title}</h3>
                 <div className="flex items-center gap-2 flex-shrink-0">
+
+                  {/* --- Summarize Button --- */}
+                  <Button
+                    onClick={onSummarizeNote}
+                    disabled={isSummarizing || !activeNote.content || activeNote.content === "[Text extraction pending or failed]"}
+                    className="p-2 text-slate-400 hover:text-violet-400 transition-colors"
+                    aria-label="Summarize Note"
+                    title="Summarize Note"
+                  >
+                    {isSummarizing ? <Spinner size={16} /> : <Sparkles size={16} />}
+                  </Button>
 
                   {/* --- Generate Flashcards Button (as requested) --- */}
                   <Button
@@ -1269,6 +1430,7 @@ const FlashcardsView: React.FC<{
 }> = ({
   flashcards, onGenerateFromNotes, onGenerateFromFile, isGenerating, isFileGenerating, courseId, notes, onUpdateCard
 }) => {
+    const { showToast } = useToast();
     const [reviewFlashcards, setReviewFlashcards] = useState<FlashcardType[]>([]);
     const [isReviewing, setIsReviewing] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null); // Ref for hidden file input
@@ -1377,7 +1539,24 @@ const FlashcardsView: React.FC<{
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pb-20">
               {flashcards.map((card) => (
-                <Flashcard key={card.id} front={card.front} back={card.back} />
+                <Flashcard 
+                  key={card.id} 
+                  front={card.front} 
+                  back={card.back} 
+                  isFlagged={card.bucket === 1 && card.lastReview === 0}
+                  onFlag={async () => {
+                    // Manual review injection: Reset progress to Bucket 1, LastReview 0
+                    // This forces the card into the next review session
+                    try {
+                      await updateFlashcard(courseId, card.id, { bucket: 1, lastReview: 0 });
+                      // We need to reload to show the UI change
+                      onUpdateCard(card, false); // Reuse existing reload/state logic
+                      showToast("Card added to immediate review pool.", 'success');
+                    } catch (e) {
+                      showToast("Failed to flag card.", 'error');
+                    }
+                  }}
+                />
               ))}
             </div>
           </div>
@@ -1647,10 +1826,11 @@ const PersonalQuizPlayer: React.FC<{ quiz: PersonalQuiz, onClose: () => void, on
 // --- StudyPlanView Sub-Component ---
 const StudyPlanView: React.FC<{
   courseId: string;
+  courseName: string;
   notes: Note[];
   studyPlan: any;
   onPlanSaved: (plan: any) => void;
-}> = ({ courseId, notes, studyPlan, onPlanSaved }) => {
+}> = ({ courseId, courseName, notes, studyPlan, onPlanSaved }) => {
   const [isGenerating, setIsGenerating] = useState(false);
 
   const handleGeneratePlan = async () => {
@@ -1724,7 +1904,7 @@ const StudyPlanView: React.FC<{
             <p className="text-xs font-black uppercase tracking-[0.2em] text-white italic">Neural Roadmap Active</p>
          </div>
          <p className="text-slate-400 text-xs leading-relaxed italic mb-8 relative z-10">
-            Your evolutionary mastery path for <span className="text-white font-bold">{courseId}</span> has been successfully architected. Our engines have mapped your {notes.length} repository entries into a sequential study roadmap.
+            Your evolutionary mastery path for <span className="text-white font-bold">{courseName}</span> has been successfully architected. Our engines have mapped your {notes.length} repository entries into a sequential study roadmap.
          </p>
          
          <div className="space-y-3 relative z-10">

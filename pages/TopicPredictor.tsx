@@ -85,8 +85,9 @@ const TopicPredictor: React.FC = () => {
             <div className="bg-slate-800/40 rounded-[2rem] p-8 border border-white/5 shadow-2xl backdrop-blur-md no-print">
                 <div className="flex flex-col md:flex-row gap-4 items-end">
                     <div className="flex-1">
-                        <label className="block text-xs font-black uppercase tracking-widest text-slate-500 mb-3 ml-1">Subject Neural Target</label>
+                        <label htmlFor="subject-target" className="block text-xs font-black uppercase tracking-widest text-slate-500 mb-3 ml-1">Subject Neural Target</label>
                         <Input
+                            id="subject-target"
                             value={subject}
                             onChange={(e) => setSubject(e.target.value)}
                             placeholder="e.g. Analysis of Algorithms, Data structures..."

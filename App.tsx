@@ -1,6 +1,7 @@
 
 
 import React from 'react';
+import { TimerProvider } from './contexts/TimerContext';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import Sidebar from './components/Sidebar';
 import Dashboard from './pages/Dashboard'; // Renamed StudyHub to Dashboard
@@ -58,10 +59,30 @@ import { ModeProvider } from './contexts/ModeContext';
 import Header from './components/Header';
 import { SidebarProvider } from './contexts/SidebarContext';
 import MobileBottomNav from './components/MobileBottomNav';
+import AdminLayout from './pages/admin/AdminLayout';
+import AdminDashboard from './pages/admin/AdminDashboard';
+import UserManagement from './pages/admin/UserManagement';
+import FeatureManagement from './pages/admin/FeatureManagement';
+import RoomManagement from './pages/admin/RoomManagement';
+import AdminLogs from './pages/admin/AdminLogs';
+import AIControl from './pages/admin/AIControl';
+import ContentManagement from './pages/admin/ContentManagement';
+import CurriculumManagement from './pages/admin/CurriculumManagement';
+import QuizManagement from './pages/admin/QuizManagement';
+import ReportManagement from './pages/admin/ReportManagement';
+import AdminSettings from './pages/admin/AdminSettings';
 import ViewProfilePage from './pages/profile/ViewProfilePage';
 import EditProfilePage from './pages/profile/EditProfilePage';
 import ProfileSettingsPage from './pages/profile/ProfileSettingsPage';
-import { TimerProvider } from './contexts/TimerContext';
+
+const AdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user, isAuthenticated, loading } = useAuth();
+  if (loading) return <div className="flex bg-[#050608] items-center justify-center min-h-screen text-violet-500 font-bold tracking-widest uppercase">Initializing Console...</div>;
+  if (!isAuthenticated || (user?.role !== 'admin' && user?.role !== 'superadmin')) {
+    return <Navigate to="/" replace />;
+  }
+  return <>{children}</>;
+};
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated, loading } = useAuth(); // Using isAuthenticated and loading from useAuth
@@ -220,6 +241,22 @@ const AppContent: React.FC = () => {
             <Route path="/profile" element={<ProtectedRoute><ViewProfilePage /></ProtectedRoute>} />
             <Route path="/profile/edit" element={<ProtectedRoute><EditProfilePage /></ProtectedRoute>} />
             <Route path="/profile/settings" element={<ProtectedRoute><ProfileSettingsPage /></ProtectedRoute>} />
+            
+            {/* Admin Routes */}
+            <Route path="/admin" element={<AdminRoute><AdminLayout /></AdminRoute>}>
+              <Route index element={<AdminDashboard />} />
+              <Route path="users" element={<UserManagement />} />
+              <Route path="rooms" element={<RoomManagement />} />
+              <Route path="ai" element={<AIControl />} />
+              <Route path="content" element={<ContentManagement />} />
+              <Route path="curriculum" element={<CurriculumManagement />} />
+              <Route path="quizzes" element={<QuizManagement />} />
+              <Route path="reports" element={<ReportManagement />} />
+              <Route path="features" element={<FeatureManagement />} />
+              <Route path="logs" element={<AdminLogs />} />
+              <Route path="settings" element={<AdminSettings />} />
+              <Route path="*" element={<Navigate to="/admin" replace />} />
+            </Route>
 
             {/* Fallback */}
             <Route path="*" element={<Navigate to="/" replace />} />

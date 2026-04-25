@@ -16,10 +16,13 @@ const authMiddleware = (req, res, next) => {
 
     // Verify token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    // Normalize the user object to use 'id' consistently
+    // Normalize the user object to use 'id' and 'userId' consistently
+    const userId = decoded.userId || decoded.id;
     req.user = {
-      id: decoded.userId || decoded.id,
+      id: userId,
+      userId: userId,
       email: decoded.email,
+      role: decoded.role,
       ...decoded
     };
     next();

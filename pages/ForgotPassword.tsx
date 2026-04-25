@@ -31,11 +31,19 @@ const ForgotPassword: React.FC = () => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#0a0f1e]">
       <div className="w-full max-w-md p-8 bg-[#1a1f2e] rounded-2xl border border-gray-800">
-        <div className="flex items-center justify-center gap-3 mb-6">
-          <div className="w-12 h-12 bg-purple-600 rounded-xl flex items-center justify-center">
-            <GraduationCap className="w-6 h-6 text-white" />
+        <div className="flex items-center justify-center gap-3 mb-8">
+          <div className="relative flex-shrink-0">
+            <div className="absolute inset-0 bg-purple-600 blur-[20px] rounded-xl opacity-20"></div>
+            <img
+              src="/nexusai-logo.png"
+              alt="NexusAI Logo"
+              className="relative z-10 w-11 h-11 object-contain"
+            />
           </div>
-          <h1 className="text-3xl font-bold text-white">{t('sidebar.brand')}</h1>
+          <div className="flex flex-col">
+            <h1 className="text-3xl font-black text-white tracking-tighter leading-none italic uppercase">Nexus AI</h1>
+            <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500 mt-1">Intelligence Core</span>
+          </div>
         </div>
 
         <h2 className="text-2xl font-bold text-white text-center mb-2">{t('forgot.title')}</h2>

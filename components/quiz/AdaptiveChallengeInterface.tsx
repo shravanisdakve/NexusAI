@@ -104,6 +104,11 @@ const AdaptiveChallengeInterface: React.FC<AdaptiveChallengeInterfaceProps> = ({
         return next;
       });
       showToast("Correct! +10 XP", 'success');
+      
+      // Auto-transition to next question
+      setTimeout(() => {
+        if (!isGameOver) handleNext();
+      }, 1200);
     } else {
       if (challengeData.mode === 'streak_mode') {
         setStreak(0);
@@ -111,7 +116,12 @@ const AdaptiveChallengeInterface: React.FC<AdaptiveChallengeInterfaceProps> = ({
         return;
       }
       setStreak(0);
-      showToast("Incorrect. Keep going!", 'error');
+      showToast("Incorrect. Next question incoming...", 'error');
+      
+      // Auto-transition even on wrong answer for non-streak mode
+      setTimeout(() => {
+        if (!isGameOver) handleNext();
+      }, 1200);
     }
   };
 
@@ -131,36 +141,36 @@ const AdaptiveChallengeInterface: React.FC<AdaptiveChallengeInterfaceProps> = ({
     const accuracy = Math.round((score / challengeData.questions.length) * 100);
     return (
       <div className="max-w-xl mx-auto bg-slate-900 border border-slate-800 rounded-[2.5rem] overflow-hidden shadow-2xl animate-in zoom-in duration-500">
-        <div className="bg-gradient-to-br from-indigo-600 to-violet-700 p-12 text-center relative overflow-hidden">
+        <div className="bg-gradient-to-br from-indigo-600 to-violet-700 p-4 text-center relative overflow-hidden">
            <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-white/10 to-transparent pointer-events-none"></div>
-           <Award className="mx-auto text-yellow-300 mb-6 drop-shadow-2xl" size={64} />
-           <h2 className="text-3xl font-black text-white mb-2 leading-none uppercase tracking-tighter">Challenge Terminated</h2>
-           <p className="text-indigo-200 font-bold uppercase tracking-widest text-[10px] opacity-80">Final Analysis Complete</p>
+           <Award className="mx-auto text-yellow-300 mb-2 drop-shadow-2xl" size={32} />
+           <h2 className="text-xl font-black text-white mb-1 leading-none uppercase tracking-tighter">Challenge Terminated</h2>
+           <p className="text-indigo-200 font-bold uppercase tracking-widest text-[9px] opacity-80">Final Analysis Complete</p>
         </div>
 
-        <div className="p-10 space-y-8">
-           <div className="grid grid-cols-3 gap-3">
-              <div className="bg-slate-950 p-4 rounded-2xl border border-white/5 text-center">
-                 <span className="block text-2xl font-black text-white">{score}</span>
-                 <p className="text-[8px] uppercase font-black text-slate-500 tracking-widest">Points</p>
+        <div className="p-4 md:p-6 space-y-4">
+           <div className="grid grid-cols-3 gap-2">
+              <div className="bg-slate-950 p-3 rounded-2xl border border-white/5 text-center">
+                 <span className="block text-xl font-black text-white">{score}</span>
+                 <p className="text-[7px] uppercase font-black text-slate-500 tracking-widest">Points</p>
               </div>
-              <div className="bg-slate-950 p-4 rounded-2xl border border-white/5 text-center">
-                 <span className="block text-2xl font-black text-violet-400">{maxStreak}</span>
-                 <p className="text-[8px] uppercase font-black text-slate-500 tracking-widest">Max Streak</p>
+              <div className="bg-slate-950 p-3 rounded-2xl border border-white/5 text-center">
+                 <span className="block text-xl font-black text-violet-400">{maxStreak}</span>
+                 <p className="text-[7px] uppercase font-black text-slate-500 tracking-widest">Max Streak</p>
               </div>
-              <div className="bg-slate-950 p-4 rounded-2xl border border-white/5 text-center">
-                 <span className="block text-2xl font-black text-emerald-400">{accuracy}%</span>
-                 <p className="text-[8px] uppercase font-black text-slate-500 tracking-widest">Accuracy</p>
+              <div className="bg-slate-950 p-3 rounded-2xl border border-white/5 text-center">
+                 <span className="block text-xl font-black text-emerald-400">{accuracy}%</span>
+                 <p className="text-[7px] uppercase font-black text-slate-500 tracking-widest">Accuracy</p>
               </div>
            </div>
 
-           <div className="space-y-4 pt-4">
+           <div className="space-y-4 pt-1">
               <p className="text-center text-xs text-slate-400 italic">
                 {accuracy >= 80 ? "Legendary performance. Your neural pathways are optimized." : 
                  accuracy >= 50 ? "Solid effort. More iterations required for mastery." : 
                  "Sub-optimal data. Recommend immediate focused revision."}
               </p>
-              <Button onClick={onClose} className="w-full h-14 bg-white text-slate-900 hover:bg-slate-200 font-black uppercase tracking-widest rounded-2xl transition-all shadow-xl shadow-white/5">
+              <Button onClick={onClose} className="w-full h-10 text-[xs] bg-white text-slate-900 hover:bg-slate-200 font-black uppercase tracking-widest rounded-2xl transition-all shadow-xl shadow-white/5">
                 Return to Nexus Hub
               </Button>
            </div>
@@ -172,7 +182,7 @@ const AdaptiveChallengeInterface: React.FC<AdaptiveChallengeInterfaceProps> = ({
   return (
     <div className="max-w-2xl mx-auto bg-slate-950 border border-white/10 rounded-[3rem] overflow-hidden shadow-2xl relative">
       {/* Header Info */}
-      <div className="px-8 py-6 bg-slate-900/50 border-b border-white/5 flex items-center justify-between">
+      <div className="px-8 py-3 bg-slate-900/50 border-b border-white/5 flex items-center justify-between">
          <div className="flex items-center gap-4">
             <div className={`w-10 h-10 rounded-xl flex items-center justify-center border ${challengeData.mode === 'speed_drill' ? 'bg-amber-500/10 border-amber-500/20 text-amber-400' : 'bg-rose-500/10 border-rose-500/20 text-rose-400'}`}>
                {challengeData.mode === 'speed_drill' ? <Zap size={20} /> : <Flame size={20} />}
@@ -197,13 +207,13 @@ const AdaptiveChallengeInterface: React.FC<AdaptiveChallengeInterfaceProps> = ({
          </div>
       </div>
 
-      <div className="p-8 md:p-12 space-y-10">
+      <div className="p-5 md:p-6 space-y-4">
          <div className="min-h-[80px]">
             <span className="text-[10px] font-black uppercase tracking-[0.3em] text-violet-500 mb-2 block">{currentQ.topic}</span>
             <h2 className="text-xl md:text-2xl font-black text-white leading-tight">{currentQ.question}</h2>
          </div>
 
-         <div className="grid gap-3">
+         <div className="grid gap-2">
             {currentQ.options?.map((opt, i) => {
                const isSelected = selectedOpt === opt;
                const isCorrect = isAnswered && opt === currentQ.correctAnswer;
@@ -215,21 +225,21 @@ const AdaptiveChallengeInterface: React.FC<AdaptiveChallengeInterfaceProps> = ({
                      onClick={() => handleAnswer(opt)}
                      disabled={isAnswered || isGameOver}
                      className={`
-                        w-full p-5 rounded-2xl border text-left transition-all relative overflow-hidden group
+                        w-full p-3.5 rounded-2xl border text-left transition-all relative overflow-hidden group
                         ${isCorrect ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-100' : 
                           isWrong ? 'bg-rose-500/10 border-rose-500/50 text-rose-100' :
                           isSelected ? 'bg-indigo-500/10 border-indigo-500/50 text-indigo-100' : 'bg-slate-900 border-white/5 text-slate-400 hover:border-white/20'}
                      `}
                   >
                      <div className="flex items-center gap-4 relative z-10">
-                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-black text-xs transition-colors
+                        <div className={`w-7 h-7 rounded-lg flex items-center justify-center font-black text-[10px] transition-colors
                            ${isCorrect ? 'bg-emerald-500 text-white' : 
                              isWrong ? 'bg-rose-500 text-white' :
                              isSelected ? 'bg-indigo-500 text-white' : 'bg-slate-800 text-slate-500 group-hover:bg-slate-700'}
                         `}>
                            {String.fromCharCode(65+i)}
                         </div>
-                        <span className="font-bold flex-1">{opt}</span>
+                        <span className="font-bold flex-1 text-sm">{opt}</span>
                         {isCorrect && <CheckCircle2 size={18} className="text-emerald-500" />}
                         {isWrong && <XCircle size={18} className="text-rose-500" />}
                      </div>
@@ -238,13 +248,7 @@ const AdaptiveChallengeInterface: React.FC<AdaptiveChallengeInterfaceProps> = ({
             })}
          </div>
 
-         <div className="flex justify-center pt-4">
-            {isAnswered && !isGameOver && (
-               <Button onClick={handleNext} className="h-14 px-12 rounded-2xl bg-indigo-600 hover:bg-indigo-500 font-black uppercase tracking-widest shadow-xl shadow-indigo-900/40 animate-in slide-in-from-bottom-2">
-                  Initialize Next Scan <ChevronRight size={18} className="ml-2" />
-               </Button>
-            )}
-         </div>
+         {/* Auto-progression enabled: Manual button removed for speed */}
       </div>
     </div>
   );

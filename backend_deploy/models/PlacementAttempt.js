@@ -26,4 +26,8 @@ const PlacementAttemptSchema = new mongoose.Schema({
     recommendation: { type: String, default: '' },
 }, { timestamps: true });
 
+// P2: Compound indexes for high-frequency dashboard queries
+PlacementAttemptSchema.index({ userId: 1, createdAt: -1 });           // History: all attempts by user, newest first
+PlacementAttemptSchema.index({ userId: 1, simulatorSlug: 1 });        // Per-simulator stats and retake checks
+
 module.exports = mongoose.model('PlacementAttempt', PlacementAttemptSchema);

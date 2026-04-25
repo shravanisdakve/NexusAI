@@ -2,6 +2,38 @@
 import React, { useState } from 'react';
 import { Clipboard, Check, X } from 'lucide-react';
 
+// Spinner Component
+interface SpinnerProps {
+    size?: 'sm' | 'md' | 'lg' | 'xl' | number;
+    className?: string;
+}
+
+export const Spinner: React.FC<SpinnerProps> = ({ size = 'md', className = '' }) => {
+    let sizeClass = 'h-5 w-5';
+    let style = {};
+
+    if (typeof size === 'number') {
+        style = { height: size, width: size };
+        sizeClass = '';
+    } else {
+        const sizes = {
+            sm: 'h-4 w-4',
+            md: 'h-5 w-5',
+            lg: 'h-8 w-8',
+            xl: 'h-12 w-12'
+        };
+        sizeClass = sizes[size as keyof typeof sizes] || sizes.md;
+    }
+
+    return (
+        <svg className={`animate-spin text-white ${sizeClass} ${className}`} style={style} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+    );
+};
+
+
 // PageHeader Component
 interface PageHeaderProps {
     title: string;
@@ -132,37 +164,6 @@ export const Select = React.forwardRef<HTMLSelectElement, React.SelectHTMLAttrib
 );
 
 Select.displayName = 'Select';
-
-// Spinner Component
-interface SpinnerProps {
-    size?: 'sm' | 'md' | 'lg' | 'xl' | number;
-    className?: string;
-}
-
-export const Spinner: React.FC<SpinnerProps> = ({ size = 'md', className = '' }) => {
-    let sizeClass = 'h-5 w-5';
-    let style = {};
-
-    if (typeof size === 'number') {
-        style = { height: size, width: size };
-        sizeClass = '';
-    } else {
-        const sizes = {
-            sm: 'h-4 w-4',
-            md: 'h-5 w-5',
-            lg: 'h-8 w-8',
-            xl: 'h-12 w-12'
-        };
-        sizeClass = sizes[size as keyof typeof sizes] || sizes.md;
-    }
-
-    return (
-        <svg className={`animate-spin text-white ${sizeClass} ${className}`} style={style} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-        </svg>
-    );
-};
 
 // CodeBlock Component
 interface CodeBlockProps {
@@ -395,6 +396,111 @@ export const TooltipContent: React.FC<{ children: React.ReactNode; className?: s
                     'right-full top-1/2 -translate-y-1/2 -mr-1 border-b border-l'
                 }`}></div>
             </div>
+        </div>
+    );
+};
+
+// SearchableSelect Component
+interface SearchableSelectProps {
+    id?: string;
+    options: string[];
+    value: string;
+    onChange: (value: string) => void;
+    placeholder?: string;
+    disabled?: boolean;
+    className?: string;
+}
+
+export const SearchableSelect: React.FC<SearchableSelectProps> = ({
+    id,
+    options,
+    value,
+    onChange,
+    placeholder = 'Search...',
+    disabled = false,
+    className = ''
+}) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
+    const containerRef = React.useRef<HTMLDivElement>(null);
+
+    React.useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+                setIsOpen(false);
+            }
+        };
+
+        if (isOpen) {
+            document.addEventListener('mousedown', handleClickOutside);
+        }
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [isOpen]);
+
+    const filteredOptions = options.filter(option =>
+        option.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    return (
+        <div ref={containerRef} className={`relative ${className}`}>
+            <div
+                onClick={() => !disabled && setIsOpen(!isOpen)}
+                className={`w-full bg-slate-800 border-2 ${isOpen ? 'border-violet-500' : 'border-slate-600'} rounded-xl py-3 px-4 text-white focus:outline-none transition-all duration-300 cursor-pointer flex justify-between items-center ${disabled ? 'opacity-50 cursor-not-allowed' : 'hover:border-slate-500 shadow-lg shadow-black/5'}`}
+            >
+                <span className={value ? 'text-white font-medium' : 'text-slate-400'}>
+                    {value || placeholder}
+                </span>
+                <svg className={`w-5 h-5 text-slate-400 transition-transform duration-300 ${isOpen ? 'rotate-180 text-violet-400' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                </svg>
+            </div>
+
+            {isOpen && (
+                <div className="absolute z-[100] w-full mt-2 bg-slate-900 border-2 border-slate-700 rounded-xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                    <div className="p-3 border-b border-white/5 bg-slate-800/50">
+                        <input
+                            id={id || "college-search-input"}
+                            name="collegeSearch"
+                            autoFocus
+                            type="text"
+                            className="w-full bg-slate-900 border border-white/10 rounded-lg py-2 px-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-violet-500 focus:border-violet-500/50 transition-all"
+                            placeholder="Type to search..."
+                            aria-label="Search options"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            onClick={(e) => e.stopPropagation()}
+                        />
+                    </div>
+                    <ul className="max-h-64 overflow-y-auto custom-scrollbar bg-slate-900/90 backdrop-blur-md">
+                        {filteredOptions.length > 0 ? (
+                            filteredOptions.map((option, index) => (
+                                <li
+                                    key={index}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        onChange(option);
+                                        setIsOpen(false);
+                                        setSearchTerm('');
+                                    }}
+                                    className={`px-4 py-3 text-sm transition-all cursor-pointer border-b border-white/[0.02] last:border-0 ${
+                                        value === option 
+                                            ? 'bg-violet-600 text-white font-bold' 
+                                            : 'text-slate-300 hover:bg-white/5 hover:text-white'
+                                    }`}
+                                >
+                                    {option}
+                                </li>
+                            ))
+                        ) : (
+                            <li className="px-4 py-6 text-sm text-slate-500 italic text-center">
+                                No colleges found matching "{searchTerm}"
+                            </li>
+                        )}
+                    </ul>
+                </div>
+            )}
         </div>
     );
 };

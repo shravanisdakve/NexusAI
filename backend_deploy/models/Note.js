@@ -52,6 +52,19 @@ const noteSchema = new mongoose.Schema({
         ref: 'User',
         required: true,
         index: true
+    },
+    isFlagged: {
+        type: Boolean,
+        default: false
+    },
+    flaggedReason: {
+        type: String,
+        default: null
+    },
+    // Audit field: when was the note last meaningfully edited
+    lastUpdatedAt: {
+        type: Date,
+        default: Date.now
     }
 }, {
     timestamps: true

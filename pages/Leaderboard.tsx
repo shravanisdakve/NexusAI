@@ -40,7 +40,7 @@ const Leaderboard: React.FC = () => {
     const others = filteredEntries.slice(3);
 
     const MainContent = (
-        <div className="space-y-8 animate-in fade-in duration-700 pb-20">
+        <div className="space-y-4 animate-in fade-in duration-700 pb-10">
             {/* Header Section */}
             <div>
                 <div className="flex items-center gap-3 mb-2">
@@ -56,55 +56,55 @@ const Leaderboard: React.FC = () => {
 
             {/* Podium Section */}
             {!isLoading && entries.length >= 3 && (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end pt-12">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end pt-4">
                     {/* Rank 2 */}
                     <motion.div 
-                        initial={{ opacity: 0, y: 20 }}
+                        initial={{ opacity: 0, y: 15 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.1 }}
-                        className="order-2 md:order-1 h-[220px] bg-slate-900/40 border border-white/5 rounded-[2.5rem] p-6 flex flex-col items-center justify-center relative overflow-hidden group"
+                        className="order-2 md:order-1 h-[150px] bg-slate-900/40 border border-white/5 rounded-3xl p-4 flex flex-col items-center justify-center relative overflow-hidden group"
                     >
                         <div className="absolute top-0 left-0 w-full h-1 bg-slate-400/30" />
-                        <div className="w-16 h-16 rounded-2xl bg-slate-800 border border-white/10 flex items-center justify-center mb-4 relative">
-                            <span className="text-2xl font-black text-slate-400">2</span>
-                            <Medal className="absolute -top-3 -right-3 text-slate-400" size={24} />
+                        <div className="w-12 h-12 rounded-xl bg-slate-800 border border-white/10 flex items-center justify-center mb-2 relative">
+                            <span className="text-xl font-black text-slate-400">2</span>
+                            <Medal className="absolute -top-2 -right-2 text-slate-400" size={18} />
                         </div>
-                        <h3 className="text-sm font-bold text-white uppercase text-center truncate w-full">{topThree[1].name}</h3>
-                        <p className="text-xs font-black text-slate-500 mt-1 uppercase tracking-widest">{topThree[1].xp} XP</p>
+                        <h3 className="text-[11px] font-bold text-white uppercase text-center truncate w-full">{topThree[1].name}</h3>
+                        <p className="text-[9px] font-black text-slate-500 mt-0.5 uppercase tracking-widest">{topThree[1].xp} XP</p>
                     </motion.div>
 
                     {/* Rank 1 */}
                     <motion.div 
-                        initial={{ opacity: 0, y: 20 }}
+                        initial={{ opacity: 0, y: 15 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="order-1 md:order-2 h-[280px] bg-amber-500/5 border border-amber-500/20 rounded-[3rem] p-8 flex flex-col items-center justify-center relative overflow-hidden shadow-2xl shadow-amber-900/10 ring-1 ring-amber-500/20"
+                        className="order-1 md:order-2 h-[190px] bg-amber-500/5 border border-amber-500/20 rounded-[2rem] p-5 flex flex-col items-center justify-center relative overflow-hidden shadow-2xl shadow-amber-900/10 ring-1 ring-amber-500/20"
                     >
-                        <div className="absolute top-0 left-0 w-full h-1.5 bg-amber-500" />
-                        <div className="w-24 h-24 rounded-[2rem] bg-amber-500/10 border border-amber-500/30 flex items-center justify-center mb-4 relative shadow-2xl shadow-amber-500/20">
-                            <Crown className="absolute -top-8 text-amber-500 animate-bounce" size={40} />
-                            <span className="text-3xl font-black text-amber-500">1</span>
+                        <div className="absolute top-0 left-0 w-full h-1 bg-amber-500" />
+                        <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center mb-3 relative shadow-2xl shadow-amber-500/20">
+                            <Crown className="absolute -top-6 text-amber-500 animate-bounce" size={28} />
+                            <span className="text-2xl font-black text-amber-500">1</span>
                         </div>
-                        <h3 className="text-lg font-black text-white uppercase italic tracking-tight text-center truncate w-full">{topThree[0].name}</h3>
-                        <div className="flex items-center gap-2 mt-2">
-                            <Flame className="text-amber-500" size={14} />
-                            <span className="text-[11px] font-black text-amber-500 uppercase tracking-[0.2em]">{topThree[0].xp} TOTAL XP</span>
+                        <h3 className="text-sm font-black text-white uppercase italic tracking-tight text-center truncate w-full">{topThree[0].name}</h3>
+                        <div className="flex items-center gap-1.5 mt-1.5">
+                            <Flame className="text-amber-500" size={12} />
+                            <span className="text-[10px] font-black text-amber-500 uppercase tracking-[0.2em]">{topThree[0].xp} XP</span>
                         </div>
                     </motion.div>
 
                     {/* Rank 3 */}
                     <motion.div 
-                        initial={{ opacity: 0, y: 20 }}
+                        initial={{ opacity: 0, y: 15 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.2 }}
-                        className="order-3 h-[180px] bg-slate-900/40 border border-white/5 rounded-[2.5rem] p-6 flex flex-col items-center justify-center relative overflow-hidden"
+                        className="order-3 h-[130px] bg-slate-900/40 border border-white/5 rounded-3xl p-4 flex flex-col items-center justify-center relative overflow-hidden"
                     >
                         <div className="absolute top-0 left-0 w-full h-1 bg-amber-800/30" />
-                        <div className="w-14 h-14 rounded-2xl bg-slate-800 border border-white/10 flex items-center justify-center mb-4 relative">
-                            <span className="text-xl font-black text-amber-800">3</span>
-                            <Medal className="absolute -top-3 -right-3 text-amber-800" size={20} />
+                        <div className="w-10 h-10 rounded-xl bg-slate-800 border border-white/10 flex items-center justify-center mb-2 relative">
+                            <span className="text-lg font-black text-amber-800">3</span>
+                            <Medal className="absolute -top-2 -right-2 text-amber-800" size={16} />
                         </div>
-                        <h3 className="text-sm font-bold text-white uppercase text-center truncate w-full">{topThree[2].name}</h3>
-                        <p className="text-xs font-black text-slate-500 mt-1 uppercase tracking-widest">{topThree[2].xp} XP</p>
+                        <h3 className="text-[11px] font-bold text-white uppercase text-center truncate w-full">{topThree[2].name}</h3>
+                        <p className="text-[9px] font-black text-slate-500 mt-0.5 uppercase tracking-widest">{topThree[2].xp} XP</p>
                     </motion.div>
                 </div>
             )}
@@ -137,7 +137,7 @@ const Leaderboard: React.FC = () => {
                                 initial={{ opacity: 0, x: -10 }}
                                 animate={{ opacity: 1, x: 0 }}
                                 transition={{ delay: i * 0.05 }}
-                                className={`flex items-center gap-4 p-4 rounded-2xl border transition-all ${entry.userId === user?.id ? 'bg-violet-600/10 border-violet-500/30' : 'bg-slate-900/40 border-white/5 hover:border-white/10'}`}
+                                className={`flex items-center gap-3 p-2.5 rounded-2xl border transition-all ${entry.userId === user?.id ? 'bg-violet-600/10 border-violet-500/30' : 'bg-slate-900/40 border-white/5 hover:border-white/10'}`}
                             >
                                 <div className="w-8 text-[11px] font-black text-slate-600 italic">#{entry.rank}</div>
                                 <div className="w-10 h-10 rounded-xl bg-slate-950 border border-white/5 flex items-center justify-center text-sm font-black text-slate-400">
@@ -166,11 +166,11 @@ const Leaderboard: React.FC = () => {
         <div className="space-y-6">
             {/* My Position Snapshot */}
             {!isLoading && (
-                <div className="bg-gradient-to-br from-violet-600 to-indigo-700 rounded-[2.5rem] p-6 shadow-2xl shadow-violet-900/20 relative overflow-hidden group">
-                    <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition-transform">
-                        <Award size={64} />
+                <div className="bg-gradient-to-br from-violet-600 to-indigo-700 rounded-3xl p-4 shadow-2xl shadow-violet-900/20 relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:scale-110 transition-transform">
+                        <Award size={48} />
                     </div>
-                    <p className="text-[10px] font-black text-white/60 uppercase tracking-widest mb-6">Personal Status</p>
+                    <p className="text-[10px] font-black text-white/60 uppercase tracking-widest mb-3">Personal Status</p>
                     <div className="space-y-4 relative z-10">
                         <div>
                             <p className="text-[9px] font-black text-white/50 uppercase mb-1">Current Ranking</p>

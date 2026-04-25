@@ -385,6 +385,8 @@ const UniversityStatus: React.FC = () => {
                 <div className="relative group lg:max-w-xs ml-auto w-full">
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-blue-500 transition-colors" />
                     <input
+                        id="university-search-input"
+                        name="universitySearch"
                         type="text"
                         placeholder={getSearchPlaceholder()}
                         value={query}
@@ -541,18 +543,14 @@ const UniversityStatus: React.FC = () => {
                             <div className="bg-gradient-to-br from-indigo-900/20 to-slate-900/40 border border-indigo-500/20 rounded-[2.5rem] p-8 relative overflow-hidden group shadow-2xl">
                                 <div className="absolute top-0 right-0 p-40 bg-indigo-500/5 blur-[120px] rounded-full -mr-20 -mt-20 group-hover:bg-indigo-500/10 transition-all duration-1000" />
                                 <div className="relative z-10 flex flex-col xl:flex-row items-center gap-8">
-                                    <div className="w-20 h-20 rounded-2xl bg-slate-900 flex items-center justify-center p-4 shadow-2xl shrink-0 border border-indigo-500/20 backdrop-blur-xl group">
-                                        <div className="absolute inset-0 flex items-center justify-center opacity-20 group-hover:opacity-40 transition-opacity">
-                                            <GraduationCap size={40} className="text-white" />
+                                    <div className="w-20 h-20 rounded-2xl bg-slate-900 flex items-center justify-center p-4 shadow-2xl shrink-0 border border-indigo-500/20 backdrop-blur-xl group relative overflow-hidden">
+                                        <div className="absolute inset-0 flex items-center justify-center opacity-10 group-hover:opacity-20 transition-opacity">
+                                            <GraduationCap size={60} className="text-indigo-400" />
                                         </div>
-                                        <img 
-                                            src="https://muadmission.samarth.edu.in/static/media/logo.png" 
-                                            alt="SAMARTH" 
-                                            className="w-full relative z-10 opacity-80 brightness-0 invert transition-opacity" 
-                                            onError={(e) => {
-                                                (e.target as HTMLImageElement).style.display = 'none';
-                                            }}
-                                        />
+                                        <div className="relative z-10 flex flex-col items-center">
+                                            <GraduationCap size={24} className="text-indigo-400 mb-1" />
+                                            <span className="text-[8px] font-black text-indigo-300 uppercase tracking-tighter">SAMARTH</span>
+                                        </div>
                                     </div>
                                     <div className="flex-1 text-center xl:text-left">
                                         <div className="flex flex-col gap-1 mb-4 xl:items-start items-center">

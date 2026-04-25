@@ -1,18 +1,28 @@
 require('dotenv').config();
+console.log('[PHASE 4 - FINAL] Starting NexusAI Backend...');
+console.log('[DEBUG] Required dotenv');
+
 const express = require('express');
+console.log('[DEBUG] Required express');
 const cors = require('cors');
+console.log('[DEBUG] Required cors');
 const path = require('path');
+console.log('[DEBUG] Required path');
+const rateLimit = require('express-rate-limit');
+console.log('[DEBUG] Required express-rate-limit');
 const connectDB = require('./config/db');
+console.log('[DEBUG] Required db config');
 
 const app = express();
 const server = require('http').createServer(app);
+console.log('[DEBUG] Created HTTP server');
 const socketHandler = require('./socketHandler');
+console.log('[DEBUG] Required socketHandler');
 const initScraperCron = require('./cron/muScraper');
+console.log('[DEBUG] Required muScraper cron');
 
 const isProduction = process.env.NODE_ENV === 'production';
 const PORT = process.env.PORT || 8080;
-
-console.log('[PHASE 4 - FINAL] Starting NexusAI Backend...');
 
 // 1. Connect Database
 (async () => {
@@ -83,6 +93,18 @@ const safeLoad = (route, path) => {
     }
 };
 
+// P1 FIX: Rate limiting for AI routes — prevents quota exhaustion from rapid/scripted requests
+const aiRateLimit = rateLimit({
+    windowMs: 60 * 1000,       // 1 minute window
+    max: 25,                    // 25 AI requests per minute per IP
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { success: false, error: 'Too many AI requests. Please wait a moment before trying again.' }
+});
+app.use('/api/gemini', aiRateLimit);
+app.use('/api/ai-chat', aiRateLimit);
+app.use('/api/mu-tutor', aiRateLimit);
+
 safeLoad('/api/auth', './routes/auth');
 safeLoad('/api/gemini', './routes/extractionProvider');
 safeLoad('/api/analytics', './routes/analytics');
@@ -101,10 +123,22 @@ safeLoad('/api/personalization', './routes/personalization');
 safeLoad('/api/ai-chat', './routes/aiChat');
 safeLoad('/api/mu-tutor', './routes/muTutor');
 safeLoad('/api/gamification', './routes/gamification');
+safeLoad('/api/admin', './routes/admin');
 
-// Minimal Health Check
+// Health Check — includes observability data
+let serverStartTime = Date.now();
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', mode: 'final', timestamp: new Date().toISOString() });
+  const scraperHealth = (() => {
+    try { return require('./cron/muScraper').getScraperHealth(); }
+    catch { return null; }
+  })();
+  res.json({
+    status: 'ok',
+    mode: process.env.NODE_ENV || 'development',
+    uptime: Math.floor((Date.now() - serverStartTime) / 1000) + 's',
+    scraper: scraperHealth,
+    timestamp: new Date().toISOString()
+  });
 });
 
 // Serve Frontend

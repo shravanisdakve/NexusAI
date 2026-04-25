@@ -13,12 +13,8 @@ interface KnowledgeMapProps {
 }
 
 const KnowledgeMap: React.FC<KnowledgeMapProps> = ({ topics }) => {
-    // Basic force-directed-ish layout or simple circular layout for SVG
     const width = 600;
-    const height = 400;
-    const centerX = width / 2;
-    const centerY = height / 2;
-    const radius = 120;
+    const height = 220; // Reduced height
     const containerRef = useRef<HTMLDivElement>(null);
     const [tooltip, setTooltip] = useState<{ topic: TopicData; x: number; y: number } | null>(null);
 
@@ -31,16 +27,24 @@ const KnowledgeMap: React.FC<KnowledgeMapProps> = ({ topics }) => {
     };
 
     return (
-        <div ref={containerRef} className="bg-slate-900/50 rounded-3xl p-6 ring-1 ring-slate-700 overflow-hidden relative border border-slate-700/50">
-            <h4 className="text-sm uppercase tracking-widest font-black text-slate-400 mb-6 flex items-center gap-2">
-                <Brain className="w-4 h-4 text-violet-400" />
-                AI Semantic Proficiency Mapping
-            </h4>
+        <div ref={containerRef} className="bg-slate-900/40 border border-white/[0.05] rounded-2xl p-4 overflow-hidden relative group">
+            <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                    <Brain className="w-3.5 h-3.5 text-violet-400" />
+                    <h4 className="text-[10px] uppercase tracking-widest font-black text-slate-400">
+                        Conceptual Mapping
+                    </h4>
+                </div>
+                <div className="flex gap-3 text-[9px] font-bold uppercase tracking-tighter opacity-60">
+                    <div className="flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Mastered</div>
+                    <div className="flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-rose-500" /> Gap</div>
+                </div>
+            </div>
 
-            <svg width="100%" height="400" viewBox={`0 0 ${width} ${height}`} className="mx-auto">
+            <svg width="100%" height="160" viewBox={`0 0 ${width} 160`} className="mx-auto">
                 <defs>
                     <filter id="glow">
-                        <feGaussianBlur stdDeviation="3" result="coloredBlur" />
+                        <feGaussianBlur stdDeviation="2" result="coloredBlur" />
                         <feMerge>
                             <feMergeNode in="coloredBlur" />
                             <feMergeNode in="SourceGraphic" />
@@ -48,36 +52,14 @@ const KnowledgeMap: React.FC<KnowledgeMapProps> = ({ topics }) => {
                     </filter>
                 </defs>
 
-                {/* Draw Connections to Center */}
+                {/* Linear Grid */}
+                <line x1="50" y1="80" x2={width - 50} y2="80" stroke="rgba(148, 163, 184, 0.1)" strokeWidth="1" strokeDasharray="4 4" />
+
+                {/* Topic Nodes in a horizontal spread */}
                 {topics.map((topic, i) => {
-                    const angle = (i / topics.length) * 2 * Math.PI;
-                    const x = centerX + radius * Math.cos(angle);
-                    const y = centerY + radius * Math.sin(angle);
-
-                    return (
-                        <line
-                            key={`line-${i}`}
-                            x1={centerX} y1={centerY}
-                            x2={x} y2={y}
-                            stroke="rgba(148, 163, 184, 0.2)"
-                            strokeWidth="2"
-                        />
-                    );
-                })}
-
-                {/* Center Node */}
-                <circle
-                    cx={centerX} cy={centerY} r="10"
-                    fill="#8b5cf6"
-                    filter="url(#glow)"
-                />
-
-                {/* Topic Nodes */}
-                {topics.map((topic, i) => {
-                    const angle = (i / topics.length) * 2 * Math.PI;
-                    const x = centerX + radius * Math.cos(angle);
-                    const y = centerY + radius * Math.sin(angle);
-                    const nodeRadius = 20 + (topic.strength * 15);
+                    const x = 80 + (i * ((width - 160) / Math.max(1, topics.length - 1)));
+                    const y = 80 + (i % 2 === 0 ? -25 : 25);
+                    const nodeRadius = 16 + (topic.strength * 10);
                     const color = topic.strength > 0.7 ? '#10b981' : topic.strength > 0.4 ? '#f59e0b' : '#ef4444';
 
                     return (
@@ -88,38 +70,38 @@ const KnowledgeMap: React.FC<KnowledgeMapProps> = ({ topics }) => {
                             onMouseLeave={() => setTooltip(null)}
                             className="cursor-help"
                         >
+                            <line x1={x} y1="80" x2={x} y2={y} stroke={color} strokeWidth="1" opacity="0.2" />
                             <motion.circle
                                 initial={{ scale: 0 }}
                                 animate={{ scale: 1 }}
-                                transition={{ delay: i * 0.1, type: 'spring' }}
+                                transition={{ delay: i * 0.05, type: 'spring' }}
                                 cx={x} cy={y} r={nodeRadius}
                                 fill={color}
-                                fillOpacity="0.2"
+                                fillOpacity="0.1"
                                 stroke={color}
-                                strokeWidth="2"
+                                strokeWidth="1.5"
                                 filter="url(#glow)"
                             />
                             <text
-                                x={x} y={y + nodeRadius + 20}
+                                x={x} y={y + (i % 2 === 0 ? -nodeRadius - 8 : nodeRadius + 14)}
                                 textAnchor="middle"
-                                fill="#94a3b8"
-                                fontSize="12"
-                                fontWeight="600"
-                                className="pointer-events-none"
+                                fill="#64748b"
+                                fontSize="9"
+                                fontWeight="800"
+                                className="uppercase tracking-tighter"
                             >
-                                {topic.name}
+                                {topic.name.length > 12 ? topic.name.substring(0, 10) + '...' : topic.name}
                             </text>
                             <text
-                                x={x} y={y + 4}
+                                x={x} y={y + 3}
                                 textAnchor="middle"
                                 fill="white"
-                                fontSize="10"
-                                fontWeight="bold"
-                                className="pointer-events-none"
+                                fontSize="9"
+                                fontWeight="black"
+                                className="pointer-events-none opacity-80"
                             >
                                 {Math.round(topic.strength * 100)}%
                             </text>
-                            <title>{`${topic.name}: ${Math.round(topic.strength * 100)}%`}</title>
                         </g>
                     );
                 })}
@@ -127,24 +109,13 @@ const KnowledgeMap: React.FC<KnowledgeMapProps> = ({ topics }) => {
 
             {tooltip && (
                 <div
-                    className="absolute z-20 w-56 rounded-xl border border-violet-500/30 bg-slate-950/95 p-3 text-[11px] text-slate-200 shadow-2xl pointer-events-none"
+                    className="absolute z-20 w-48 rounded-xl border border-violet-500/30 bg-slate-950/95 p-2.5 text-[10px] text-slate-200 shadow-2xl pointer-events-none backdrop-blur-md"
                     style={{ left: tooltip.x, top: tooltip.y }}
                 >
-                    <p className="font-semibold text-violet-300 mb-1">{tooltip.topic.name}</p>
-                    <p className="text-slate-300 mb-2">Score: {Math.round(tooltip.topic.strength * 100)}%</p>
-                    {(tooltip.topic.details || ['No additional explanation available']).map((line, idx) => (
-                        <p key={`${tooltip.topic.name}-${idx}`} className="text-slate-400 leading-relaxed">
-                            {line}
-                        </p>
-                    ))}
+                    <p className="font-black text-violet-400 uppercase tracking-widest mb-1">{tooltip.topic.name}</p>
+                    <p className="text-slate-400">Proficiency: <span className="text-white font-bold">{Math.round(tooltip.topic.strength * 100)}%</span></p>
                 </div>
             )}
-
-            <div className="absolute bottom-6 right-6 flex gap-4 text-xs">
-                <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-full bg-emerald-500"></div> Mastered</div>
-                <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-full bg-amber-500"></div> Improving</div>
-                <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-full bg-rose-500"></div> Gap Found</div>
-            </div>
         </div>
     );
 };

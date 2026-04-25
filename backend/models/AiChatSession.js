@@ -34,4 +34,7 @@ const aiChatSessionSchema = new mongoose.Schema({
     }
 });
 
+// P2: Indexes for session list queries (user's chat history, sorted by recency)
+aiChatSessionSchema.index({ userId: 1, lastUpdated: -1 });
+
 module.exports = mongoose.model('AiChatSession', aiChatSessionSchema);

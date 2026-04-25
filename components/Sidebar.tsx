@@ -27,6 +27,7 @@ import {
     BookOpen,
     Bot,
     Target,
+    ShieldAlert,
 } from 'lucide-react';
 
 // Unified nav groups — always shown together, no mode switching
@@ -209,6 +210,18 @@ const Sidebar: React.FC = () => {
                     })}
 
                 </nav>
+
+                {(user?.role === 'admin' || user?.role === 'superadmin') && (
+                    <div className={`mt-auto mb-4 ${isCollapsed ? 'px-3' : 'px-4'}`}>
+                        <NavLink
+                            to="/admin"
+                            className={`flex items-center px-3 py-2.5 text-xs font-bold uppercase tracking-widest transition-all duration-200 rounded-xl w-full border border-violet-500/20 bg-violet-500/5 text-violet-400 hover:bg-violet-500/10 ${isCollapsed ? 'justify-center px-0' : ''}`}
+                        >
+                            <ShieldAlert className={`${isCollapsed ? 'mr-0' : 'mr-3'} h-[16px] w-[16px] flex-shrink-0`} />
+                            {!isCollapsed && <span>Admin Console</span>}
+                        </NavLink>
+                    </div>
+                )}
             </motion.aside>
         </>
     );

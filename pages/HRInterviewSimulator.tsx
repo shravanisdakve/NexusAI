@@ -227,11 +227,11 @@ const HRInterviewSimulator: React.FC<HRInterviewSimulatorProps> = ({ standalone 
                     <div className="grid grid-cols-2 gap-6 relative z-10">
                         <div className="space-y-2">
                             <label htmlFor="hr-target-role" className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Candidate Target Role</label>
-                            <Input id="hr-target-role" value={targetRole} onChange={(e) => setTargetRole(e.target.value)} aria-label="Target Role" className="h-12 text-xs bg-slate-950/60 border-white/5 font-bold tracking-tight rounded-2xl" />
+                            <Input id="hr-target-role" name="targetRole" value={targetRole} onChange={(e) => setTargetRole(e.target.value)} aria-label="Target Role" className="h-12 text-xs bg-slate-950/60 border-white/5 font-bold tracking-tight rounded-2xl" />
                         </div>
                         <div className="space-y-2">
                             <label htmlFor="hr-target-company" className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Target Corporate Entity</label>
-                            <Input id="hr-target-company" value={targetCompany} onChange={(e) => setTargetCompany(e.target.value)} placeholder="e.g., Tech Giants" aria-label="Target Company" className="h-12 text-xs bg-slate-950/60 border-white/5 font-bold tracking-tight rounded-2xl" />
+                            <Input id="hr-target-company" name="targetCompany" value={targetCompany} onChange={(e) => setTargetCompany(e.target.value)} placeholder="e.g., Tech Giants" aria-label="Target Company" className="h-12 text-xs bg-slate-950/60 border-white/5 font-bold tracking-tight rounded-2xl" />
                         </div>
                     </div>
                 </Card>

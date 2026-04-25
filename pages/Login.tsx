@@ -21,7 +21,8 @@ const Login: React.FC = () => {
 
     try {
       await login(email, password);
-      navigate('/');
+      // Pass state to tell the dashboard we just logged in
+      navigate('/', { state: { justLoggedIn: true } });
     } catch (err: any) {
       setError(err.message || t('login.invalidCredentials'));
     } finally {
@@ -32,11 +33,19 @@ const Login: React.FC = () => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#0a0f1e]">
       <div className="w-[360px] p-6 bg-[#1a1f2e] rounded-2xl border border-gray-800 shadow-2xl">
-        <div className="flex items-center justify-center gap-2 mb-6">
-          <div className="w-8 h-8 bg-purple-600 rounded-lg flex items-center justify-center">
-            <GraduationCap className="w-4 h-4 text-white" />
+        <div className="flex items-center justify-center gap-3 mb-8">
+          <div className="relative flex-shrink-0">
+            <div className="absolute inset-0 bg-purple-600 blur-[20px] rounded-xl opacity-20"></div>
+            <img
+              src="/nexusai-logo.png"
+              alt="NexusAI Logo"
+              className="relative z-10 w-10 h-10 object-contain"
+            />
           </div>
-          <h1 className="text-xl font-bold text-white">{t('sidebar.brand')}</h1>
+          <div className="flex flex-col">
+            <h1 className="text-2xl font-black text-white tracking-tighter leading-none">NEXUS AI</h1>
+            <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-slate-500 mt-1">Intelligence Core</span>
+          </div>
         </div>
 
         <h2 className="text-2xl font-bold text-white text-center mb-1">{t('login.welcomeBack')}</h2>

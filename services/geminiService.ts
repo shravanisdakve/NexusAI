@@ -1,4 +1,4 @@
-import { GeminiRequest, GeminiResponse } from '../types';
+import { GeminiRequest, GeminiResponse, ChatMessage } from '../types';
 
 const API_URL = import.meta.env.VITE_API_BASE_URL || '';
 
@@ -85,10 +85,11 @@ export const streamChat = async (message: string, base64Data?: string, mimeType?
 
 
 // --- STUDY BUDDY (NOTES-BASED) SERVICE ---
-export const streamStudyBuddyChat = async (message: string, notes: string, language?: string): Promise<ReadableStream<Uint8Array> | null> => {
-    const requestBody: GeminiRequest = { message, notes, language };
+export const streamStudyBuddyChat = async (message: string, notes: string, history: ChatMessage[] = [], language?: string, signal?: AbortSignal, topic?: string): Promise<ReadableStream<Uint8Array> | null> => {
+    const requestBody: GeminiRequest = { message, notes, history, language, topic };
     const response = await fetch(`${API_URL}/api/gemini/streamStudyBuddyChat`, {
         method: 'POST',
+        signal, // Support cancellation
         headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -234,8 +235,72 @@ export const extractTextFromFile = async (base64Data: string, mimeType: string):
     return data.text;
 };
 
+export const extractTextFromUrl = async (url: string): Promise<string> => {
+    try {
+        const response = await fetch(`${API_URL}/api/gemini/extractTextFromUrl`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            },
+            body: JSON.stringify({ url }),
+        });
+
+        if (!response.ok) throw new Error('Failed to extract text from URL');
+        const data = await response.json();
+        return data.text;
+    } catch (error) {
+        console.error('Error extracting text from URL:', error);
+        throw error;
+    }
+};
+
 // --- QUIZ GENERATION SERVICE ---
 export const generateQuizQuestion = async (context: string, language?: string): Promise<string> => {
+    const normalizeQuizQuestion = (value: any) => {
+        const fallback = {
+            question: `Solve one aptitude question on: ${context.slice(0, 80)}.`,
+            options: ['Option A', 'Option B', 'Option C', 'Option D'],
+            correctOptionIndex: 0,
+            explanation: 'Fallback question due to invalid AI response format.'
+        };
+
+        if (!value || typeof value !== 'object') return fallback;
+
+        const options = Array.isArray(value.options) ? value.options.map((o: any) => String(o)) : [];
+        const normalizedOptions =
+            options.length >= 4
+                ? options.slice(0, 4)
+                : [...options, 'Option B', 'Option C', 'Option D'].slice(0, 4);
+
+        let index = Number(value.correctOptionIndex);
+        if (!Number.isInteger(index) || index < 0 || index > 3) {
+            const correctAnswer = value.correctAnswer != null ? String(value.correctAnswer) : '';
+            const foundIndex = normalizedOptions.findIndex((o) => o === correctAnswer);
+            index = foundIndex >= 0 ? foundIndex : 0;
+        }
+
+        return {
+            question: String(value.question || fallback.question),
+            options: normalizedOptions,
+            correctOptionIndex: index,
+            explanation: String(value.explanation || 'Review the core concept and eliminate incorrect options.')
+        };
+    };
+
+    const parseLooseJsonObject = (raw: string) => {
+        const text = String(raw || '').replace(/```json|```/gi, '').trim();
+        const start = text.indexOf('{');
+        const end = text.lastIndexOf('}');
+        const segment = start !== -1 && end !== -1 && end > start ? text.slice(start, end + 1) : text;
+        const repaired = segment
+            .replace(/[\u201C\u201D]/g, '"')
+            .replace(/[\u2018\u2019]/g, "'")
+            .replace(/,\s*([}\]])/g, '$1')
+            .replace(/\\(?!["\\/bfnrtu])/g, '\\\\');
+        return JSON.parse(repaired);
+    };
+
     const requestBody: GeminiRequest = { context, language };
     const response = await fetch(`${API_URL}/api/gemini/generateQuizQuestion`, {
         method: 'POST',
@@ -255,7 +320,20 @@ export const generateQuizQuestion = async (context: string, language?: string): 
     if (!data.question) {
         throw new Error('Question not found in response');
     }
-    return data.question;
+
+    let parsed: any = null;
+    if (typeof data.question === 'string') {
+        try {
+            parsed = parseLooseJsonObject(data.question);
+        } catch {
+            parsed = null;
+        }
+    } else if (typeof data.question === 'object') {
+        parsed = data.question;
+    }
+
+    const normalized = normalizeQuizQuestion(parsed);
+    return JSON.stringify(normalized);
 };
 
 export const generateQuizSet = async (context: string, count: number = 5, language?: string): Promise<string> => {
@@ -420,7 +498,7 @@ export const getSuggestionForMood = async (mood: string, language?: string): Pro
         return data.suggestion;
     } catch (error) {
         console.error("Error in getSuggestionForMood:", error);
-        return "Could not get an AI suggestion at this time.";
+        throw error;
     }
 };
 
@@ -526,7 +604,14 @@ export const generateStudyPlan = async (config: { goal: string; durationDays: nu
     });
 
     if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        let message = `HTTP error! status: ${response.status}`;
+        try {
+            const errorData = await response.json();
+            message = errorData?.details || errorData?.error || message;
+        } catch {
+            // Keep fallback message when response is not JSON.
+        }
+        throw new Error(message);
     }
 
     return response.json();

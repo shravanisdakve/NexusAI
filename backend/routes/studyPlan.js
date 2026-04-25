@@ -182,15 +182,15 @@ router.post('/generate', auth, async (req, res) => {
     console.log(`[StudyPlan] GENERATE request received`);
     try {
         const { goal, durationDays, notesContext, language } = req.body;
-        console.log(`[StudyPlan] Generate parameters - Language: ${language}, Goal: ${goal}, Duration: ${durationDays}`);
+        const contextLimit = 1200; // Keep prompt compact for faster local generation
         let prompt = `You are an expert personalized academic advisor for engineering students. 
         A student wants to achieve the following goal: "${goal}" in ${durationDays} days.
         They have provided the following notes context for their course:
         ---
-        ${(notesContext || '').substring(0, 8000)}
+        ${(notesContext || '').substring(0, contextLimit)}
         ---
         Based on this, generate a structured, day-by-day study plan.
-        Each day should have 2-3 specific tasks. 
+        Keep it concise and practical. Each day should have exactly 2 specific tasks.
         Task types MUST be one of: 'note' (reviewing notes), 'quiz' (taking a practice quiz), 'study-room' (collaborative session), or 'review' (general review).
         Make the plan realistic and progressive.`;
 
@@ -202,66 +202,92 @@ router.post('/generate', auth, async (req, res) => {
 
         prompt += `
         
-        Return ONLY a JSON object with a "days" key containing the array of daily plans.
-        Do not include markdown formatting like \`\`\`json.
+        Return ONLY a raw JSON object string. No conversational text.
         
         JSON Structure:
         {
             "days": [
                 {
                     "day": number,
-                    "focus": "Brief focus for the day",
+                    "focus": "string",
                     "tasks": [
-                        {
-                            "title": "string",
-                            "description": "string",
-                            "type": "note" | "quiz" | "study-room" | "review",
-                            "duration": "e.g. 45 min",
-                            "technique": "e.g. Pomodoro, Active Recall"
-                        }
-                    ],
-                    "resources": ["Specific URL or book reference", "Another resource"]
+                        { "title": "string", "description": "string", "type": "note"|"quiz"|"study-room"|"review" }
+                    ]
                 }
             ]
         }`;
 
-        console.log(`[StudyPlan] Calling AI Provider (Robust Generation Mode)...`);
+        console.log(`[StudyPlan] Requesting generation from Hybrid Provider chain...`);
         const result = await aiProvider.generate(prompt, {
             feature: 'studyPlan',
+            fast: true,
             json: true,
-            temperature: 0.2
+            maxTokens: 512, // Increased slightly for Gemini
+            timeoutMs: 90000,
+            temperature: 0.1 // Lower temperature for more predictable JSON
         });
 
-        if (!result) throw new Error('AI Provider returned empty result');
+        if (!result) throw new Error('AI Provider returned an empty response.');
 
-        let responseText = result;
-        if (typeof result !== 'string') {
-            responseText = JSON.stringify(result);
-        } else {
-            responseText = result.replace(/```json|```/g, '').trim();
+        let rawResponse = typeof result === 'string' ? result : JSON.stringify(result);
+        
+        // --- STAGE 1: Aggressive Extraction ---
+        // Find the first { or [ and the last } or ]
+        const start = Math.min(
+            rawResponse.indexOf('{') === -1 ? Infinity : rawResponse.indexOf('{'),
+            rawResponse.indexOf('[') === -1 ? Infinity : rawResponse.indexOf('[')
+        );
+        const end = Math.max(
+            rawResponse.lastIndexOf('}'),
+            rawResponse.lastIndexOf(']')
+        );
+
+        if (start === Infinity || end === -1 || end <= start) {
+            console.error(`[StudyPlan] AI returned non-JSON content: ${rawResponse.substring(0, 100)}...`);
+            throw new Error('AI output did not contain valid JSON structure.');
         }
 
-        console.log(`[StudyPlan] Received AI response. Parsing...`);
-        const parsedPlan = parseStudyPlanJson(responseText);
-        
-        // Normalize structure (AI might return raw array instead of {days: []})
-        let finalPlan = parsedPlan;
-        if (Array.isArray(parsedPlan)) {
-            finalPlan = { days: parsedPlan };
-        } else if (!parsedPlan.days && parsedPlan.schedule) {
-            finalPlan = { days: parsedPlan.schedule };
+        const jsonSegment = rawResponse.substring(start, end + 1);
+        console.log(`[StudyPlan] Parsing segment (${jsonSegment.length} chars)...`);
+
+        try {
+            let parsedPlan = JSON.parse(jsonSegment);
+            
+            // Handle error response from provider
+            if (parsedPlan.error) {
+                throw new Error(parsedPlan.error);
+            }
+
+            // Normalize structure
+            let finalPlan = parsedPlan;
+            if (Array.isArray(parsedPlan)) {
+                finalPlan = { days: parsedPlan };
+            } else if (!parsedPlan.days && parsedPlan.schedule) {
+                finalPlan = { days: parsedPlan.schedule };
+            } else if (!parsedPlan.days) {
+                // If the AI just returned a list of days as values but not in an array
+                const possibleDays = Object.values(parsedPlan).filter(v => typeof v === 'object' && v !== null);
+                if (possibleDays.length > 0) finalPlan = { days: possibleDays };
+            }
+
+            if (!finalPlan.days || !Array.isArray(finalPlan.days)) {
+                throw new Error('Parsed object missing "days" array.');
+            }
+
+            console.log(`[StudyPlan] Generation successful! Days: ${finalPlan.days.length}`);
+            res.json({ planJson: JSON.stringify(finalPlan) });
+
+        } catch (parseErr) {
+            console.error(`[StudyPlan] JSON Parse Failure. Segment: ${jsonSegment.substring(0, 200)}...`);
+            throw new Error(parseErr.message || 'The AI generated a plan but it was not in the correct technical format.');
         }
 
-        const normalizedPlanJson = JSON.stringify(finalPlan);
-        console.log(`[StudyPlan] Generation complete. Days: ${finalPlan.days?.length}`);
-        
-        res.json({ planJson: normalizedPlanJson });
     } catch (error) {
         console.error("[StudyPlan] GENERATE ERROR:", error.message);
         res.status(500).json({ 
-            error: "Failed to generate study plan", 
+            error: "Study Plan Generation Failed", 
             details: error.message,
-            suggestion: "Try with a shorter goal or fewer days"
+            suggestion: "Try simplifying your goal or checking your internet connection."
         });
     }
 });

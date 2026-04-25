@@ -46,6 +46,11 @@ const StudyRoomSchema = new mongoose.Schema({
         type: String,
         default: ''
     },
+    notesLock: {
+        userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+        acquiredAt: { type: Date, default: null },
+    },
+    notesVersion: { type: Number, default: 1 },
     userNotes: [{
         userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
         content: { type: String, default: '' },
@@ -83,7 +88,11 @@ const StudyRoomSchema = new mongoose.Schema({
         topic: { type: String, required: true },
         updatedAt: { type: Date, default: Date.now }
     }],
-    trackedConcepts: [String]
+    trackedConcepts: [String],
+    whiteboardSnapshot: {
+        type: [mongoose.Schema.Types.Mixed], // Array of strokes for persistence
+        default: []
+    }
 });
 
 StudyRoomSchema.index({ createdBy: 1, topic: 1 }, { unique: true });

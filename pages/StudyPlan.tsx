@@ -159,7 +159,8 @@ const StudyPlan: React.FC = () => {
             showToast('Plan generated! Review and save it below.', 'success');
         } catch (error) {
             console.error("Error generating plan:", error);
-            showToast('Failed to generate plan. Please try again.', 'error');
+            const message = error instanceof Error ? error.message : 'Failed to generate plan. Please try again.';
+            showToast(message, 'error');
         } finally {
             setLoading(false);
         }
@@ -229,7 +230,7 @@ const StudyPlan: React.FC = () => {
     };
 
     return (
-        <div className="space-y-6 max-w-5xl mx-auto pb-12">
+        <div className="space-y-4 max-w-5xl mx-auto pb-4">
             <div className="flex items-center gap-4">
                 <Button variant="ghost" onClick={() => navigate('/')} className="p-2 text-slate-400">
                     <ArrowLeft size={20} />
@@ -241,11 +242,11 @@ const StudyPlan: React.FC = () => {
             </div>
 
             {!plan ? (
-                <div className="bg-slate-800 rounded-3xl p-8 ring-1 ring-slate-700 shadow-xl max-w-2xl mx-auto">
-                    <div className="bg-violet-500/20 w-16 h-16 rounded-2xl flex items-center justify-center mb-6 mx-auto">
-                        <Calendar className="text-violet-400 w-8 h-8" />
+                <div className="bg-slate-800 rounded-3xl p-4 ring-1 ring-slate-700 shadow-xl max-w-2xl mx-auto">
+                    <div className="bg-violet-500/20 w-12 h-12 rounded-2xl flex items-center justify-center mb-3 mx-auto">
+                        <Calendar className="text-violet-400 w-6 h-6" />
                     </div>
-                    <form onSubmit={handleGenerate} className="space-y-6">
+                    <form onSubmit={handleGenerate} className="space-y-4">
                         <div className="space-y-4">
                             <div>
                                 <label className="block text-sm font-medium text-slate-400 mb-2">Main Goal</label>
@@ -317,26 +318,26 @@ const StudyPlan: React.FC = () => {
                     </form>
                 </div>
             ) : (
-                <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                    <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-3xl p-8 ring-1 ring-slate-700 shadow-2xl">
-                        <div className="flex justify-between items-start mb-6">
+                <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-3xl p-4 ring-1 ring-slate-700 shadow-2xl">
+                        <div className="flex justify-between items-start mb-3">
                             <div>
-                                <h3 className="text-3xl font-black text-white mb-2">{plan.title}</h3>
-                                <p className="text-slate-400 max-w-2xl">{plan.overview}</p>
+                                <h3 className="text-xl font-black text-white mb-1">{plan.title}</h3>
+                                <p className="text-[xs] text-slate-400 max-w-2xl">{plan.overview}</p>
                             </div>
-                            <Button variant="outline" onClick={() => setPlan(null)} className="text-slate-400 font-bold px-6 py-2 border-slate-700">
+                            <Button variant="outline" onClick={() => setPlan(null)} className="h-8 text-slate-400 font-bold px-4 text-[10px] border-slate-700">
                                 New Plan
                             </Button>
                         </div>
 
                         <div className="grid gap-6">
                             {plan.schedule.map((day, dayIdx) => (
-                                <div key={day.day} className="bg-slate-800/50 rounded-2xl p-6 border border-slate-700 hover:border-violet-500/50 transition-colors">
-                                    <div className="flex items-center gap-4 mb-4">
-                                        <div className="bg-violet-600/20 text-violet-400 font-bold px-3 py-1 rounded-full text-sm">
+                                <div key={day.day} className="bg-slate-800/50 rounded-2xl p-4 border border-slate-700 hover:border-violet-500/50 transition-colors">
+                                    <div className="flex items-center gap-4 mb-2">
+                                        <div className="bg-violet-600/20 text-violet-400 font-bold px-2 py-0.5 rounded-full text-[10px]">
                                             Day {day.day}
                                         </div>
-                                        <h4 className="text-xl font-bold text-white">{day.focus}</h4>
+                                        <h4 className="text-base font-bold text-white">{day.focus}</h4>
                                     </div>
                                     <div className="grid md:grid-cols-2 gap-6">
                                         <div className="space-y-3">
@@ -383,18 +384,18 @@ const StudyPlan: React.FC = () => {
                             ))}
                         </div>
 
-                        <div className="mt-8 flex gap-4">
+                        <div className="mt-4 flex gap-4">
                             <Button
                                 onClick={handleSavePlan}
-                                className="flex-1 bg-violet-600 hover:bg-violet-500 h-14 text-lg font-bold shadow-xl shadow-violet-900/20"
+                                className="flex-1 bg-violet-600 hover:bg-violet-500 h-10 text-xs font-bold shadow-xl shadow-violet-900/20"
                                 isLoading={saving}
                             >
-                                <CheckCircle className="mr-2" /> Save & Start Plan
+                                <CheckCircle size={14} className="mr-2" /> Save & Start Plan
                             </Button>
                             <Button
                                 variant="outline"
                                 onClick={() => setPlan(null)}
-                                className="px-8 border-slate-700 text-slate-400 hover:bg-slate-800"
+                                className="h-10 px-6 border-slate-700 text-slate-400 text-[xs] hover:bg-slate-800"
                             >
                                 Discard
                             </Button>
