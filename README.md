@@ -1,4 +1,5 @@
 # NexusAI — AI-Powered Academic System for Mumbai University Students
+**Maintained by: Shravani Dakve**
 
 ## Overview
 NexusAI is an AI-powered academic productivity platform specifically engineered for Mumbai University engineering students. It bridges the gap between fragmented study tools by offering real-time collaborative study rooms, a context-aware AI tutor, structured notes, quiz generation, and placement preparation workflows—all in a single centralized system.
